@@ -1,0 +1,11 @@
+openai
+anthropic
+google-genai
+python-dotenv
+streamlit
+matplotlib
+seaborn
+datasets
+aiohttp
+xai_sdk
+mistralai

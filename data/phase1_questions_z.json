@@ -1,0 +1,142 @@
+{
+  "revision": "z",
+  "timestamp": "2026-01-18T01:39:33.022851",
+  "phase": 1,
+  "duration_seconds": 18.02,
+  "timing_by_model": {
+    "gpt-5.2": 4.93,
+    "gpt-5-mini": 9.25,
+    "claude-opus-4-5": 4.96,
+    "claude-sonnet-4-5": 5.83,
+    "gemini-3-pro-preview": 16.61,
+    "gemini-3-flash-thinking": 4.3,
+    "grok-4-1-fast": 7.54,
+    "deepseek-chat": 5.52,
+    "llama-4-maverick": 3.03,
+    "sonar-pro": 3.13,
+    "kimi-k2-0905": 11.71,
+    "mistral-large": 3.35
+  },
+  "questions_by_model": {
+    "gpt-5.2": [
+      {
+        "category": "reasoning/logic",
+        "question": "You have 12 identical-looking coins, and one is counterfeit and differs in weight (you don’t know if it’s heavier or lighter). Using a balance scale only 3 times, how can you identify the counterfeit coin and determine whether it’s heavier or lighter?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How would you set up a secure home Wi‑Fi network for a non-technical user, including router configuration steps (SSID, WPA3/WPA2, admin password, firmware updates), guest network setup, and basic security checks?"
+      }
+    ],
+    "gpt-5-mini": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Summarize the major outcomes and commitments from the most recent United Nations climate conference (COP), including any new agreements, updated emissions targets, and significant funding or technology transfer pledges by countries."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a near-future city where plants have been engineered to serve as the primary medium for data storage and transmission. Describe a short scene (200–300 words) focusing on sensory detail and an unexpected human–plant interaction that reveals cultural or ethical tensions around this technology."
+      }
+    ],
+    "claude-opus-4-5": [
+      {
+        "category": "reasoning/logic",
+        "question": "A farmer has 17 sheep. All but 9 run away. How many sheep does the farmer have left?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a haiku from the perspective of a smartphone that has just been dropped into a toilet."
+      }
+    ],
+    "claude-sonnet-4-5": [
+      {
+        "category": "reasoning/logic",
+        "question": "If a train leaves Station A at 2:00 PM traveling at 60 mph, and another train leaves Station B (180 miles away) at 2:30 PM traveling toward Station A at 90 mph, at what time will they meet?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short story about a character who discovers they can hear plants thinking, but only when it rains."
+      }
+    ],
+    "gemini-3-pro-preview": [
+      {
+        "category": "reasoning/logic",
+        "question": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new holiday celebrated on Mars in the year 2150, describe its specific traditions regarding food and gravity, and write a brief greeting card message for the occasion."
+      }
+    ],
+    "gemini-3-flash-thinking": [
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital city of Australia?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a new, unique holiday tradition for a society living on a moon with two suns."
+      }
+    ],
+    "grok-4-1-fast": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the results of the 2024 US presidential election?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
+      }
+    ],
+    "deepseek-chat": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the main outcomes of the most recent G7 summit, and which country hosted it?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all Bloops are Razzies, and some Razzies are Tazzies, can we conclude that some Bloops are definitely Tazzies? Explain your reasoning."
+      }
+    ],
+    "llama-4-maverick": [
+      {
+        "category": "reasoning/logic",
+        "question": "A snail is at the bottom of a 20-foot well. Each day, it climbs up 3 feet, but at night, it slips back 2 feet. How many days will it take for the snail to reach the top of the well?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a futuristic underwater city for 10,000 inhabitants, including its main features and transportation systems."
+      }
+    ],
+    "sonar-pro": [
+      {
+        "category": "reasoning/logic",
+        "question": "Alice has 4 brothers and 3 sisters. How many sisters does Alice's brother have? Explain your reasoning step by step."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Stranded on an island with only a rope, a knife, and flint, describe step-by-step how you would signal for help and explain why your method is effective."
+      }
+    ],
+    "kimi-k2-0905": [
+      {
+        "category": "reasoning/logic",
+        "question": "If a train leaves Station A at 60 km/h and another leaves Station B, 120 km away, at 40 km/h toward each other on a single track, and a fly shuttles nonstop between them at 100 km/h until they collide, what total distance does the fly travel?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the 2024 Nobel Prize in Chemistry and what was their key discovery?"
+      }
+    ],
+    "mistral-large": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Summarize the key outcomes of the most recent G20 summit, including any major agreements or controversies discussed by the participating nations."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A train leaves Station A traveling east at 60 mph, and another train leaves Station B traveling west at 40 mph. The stations are 300 miles apart. If a bird starts at Station A and flies back and forth between the two trains at 80 mph until the trains meet, how far will the bird have traveled in total?"
+      }
+    ]
+  }
+}

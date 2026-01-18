@@ -1,0 +1,1246 @@
+{
+  "revision": "V3",
+  "timestamp": "2026-01-18T00:39:37.004179",
+  "phase": 1,
+  "duration_seconds": 68.45,
+  "timing_by_model": {
+    "gpt-5.2": 25.93,
+    "gpt-5-mini": 18.42,
+    "claude-opus-4-5": 21.01,
+    "claude-sonnet-4-5": 15.7,
+    "gemini-3-pro-preview": 24.1,
+    "gemini-3-flash-thinking": 14.13,
+    "grok-4-1-fast": 11.03,
+    "deepseek-chat": 21.51,
+    "llama-4-maverick": 10.56,
+    "sonar-pro": 7.19,
+    "kimi-k2-0905": 66.18,
+    "mistral-large": 18.44
+  },
+  "questions_by_model": {
+    "gpt-5.2": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the most significant outcomes of the most recent G7 summit, and how did member countries differ in their commitments?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the latest central bank policy decision from the U.S. Federal Reserve, and what key data did it cite to justify the decision?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What major regulatory actions has the EU taken most recently regarding AI or large online platforms, and which companies were directly affected?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the latest status of the conflict in Ukraine in the past month, including any major territorial changes or diplomatic developments?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the biggest winners and announcements from the most recent Academy Awards ceremony?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Explain the difference between DNA and RNA in terms of structure, bases, and primary biological roles."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What are the main causes and symptoms of Type 1 vs Type 2 diabetes, and how do their treatments typically differ?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Describe how plate tectonics explains earthquakes, volcanoes, and the formation of mountain ranges."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the Doppler effect, and how is it used in astronomy to detect exoplanets?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What were the key provisions and historical significance of the Magna Carta?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 total. The bat costs $1.00 more than the ball. How much does the ball cost? Show your reasoning."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have three boxes labeled 'Apples', 'Oranges', and 'Apples & Oranges', but all labels are wrong. You may take one fruit from one box. How do you relabel the boxes correctly?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all glims are plors, and some plors are snargs, is it logically necessary that some glims are snargs? Explain."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A doctor gives you 3 pills and tells you to take one every half hour. How long will the pills last from the first pill to the last? Explain."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Given the sequence: 2, 6, 12, 20, 30, __. What is the next number, and what rule did you use?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short story (under 400 words) where the main character discovers a new color that only appears in shadows."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new sport that can be played in a small apartment without special equipment. Explain the rules and how scoring works."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a fictional museum exhibit about the year 2500 that teaches visitors about everyday life in 2025."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Compose a dialogue between two characters: one who believes time travel is possible, and one who believes it is impossible, without either character sounding foolish."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Create a metaphor-rich poem about debugging software as if it were gardening."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do I create a weekly meal plan that meets a 2,000-calorie target and includes at least 25g of fiber per day?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Explain step-by-step how to set up a secure home Wi-Fi network (strong password, WPA settings, guest network, firmware updates)."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How can I negotiate a higher salary for a job offer? Provide a script and a checklist of preparation steps."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Give a troubleshooting flowchart (in text) for diagnosing why a laptop is running unusually slow."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do I back up my photos and documents using the 3-2-1 backup strategy? Include concrete examples of storage options."
+      }
+    ],
+    "gpt-5-mini": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the major global developments in renewable energy policy announced in the past six months, and how might they impact international emissions targets?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Summarize the latest significant geopolitical conflict that began within the last year, including key parties, causes, and current status."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which recently approved drugs or medical treatments have received regulatory approval in the last 12 months, and for which conditions?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Describe the most recent major advances in artificial intelligence reported in the last year and the companies or research groups behind them."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the main outcomes of the most recent United Nations climate conference, and what commitments did major emitters make?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Explain the process of cellular respiration, including the roles of glycolysis, the Krebs cycle, and oxidative phosphorylation."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What are the primary differences between TCP and UDP in computer networking, and when is each protocol typically used?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "List the major causes and worldwide consequences of the 1918 influenza pandemic."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Define Newton's three laws of motion and give a real-world example illustrating each law."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the structure and function of DNA, including base pairing and the role of chromosomes in eukaryotic cells?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all X are Y, and some Z are X, can we conclude that some Z are Y? Explain the reasoning and any assumptions."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have three containers: one with only apples, one with only oranges, and one mixed, but all labels are wrong. How can you determine the correct labeling by taking one fruit from a single container?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A train travels from A to B at 60 km/h and returns at 40 km/h. What is the train's average speed for the round trip? Show the calculation method."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Given the sequence 2, 6, 12, 20, 30, ... identify the rule generating the sequence and provide the next three terms."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You must allocate a limited budget across five projects to maximize expected return where returns are uncertain. Outline a rational decision-making approach and any quantitative methods you would use."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short speculative fiction prompt that explores the societal effects of a technology that can perfectly record and replay human memories."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design an original myth explaining why the ocean tides exist, incorporating elements from at least two different cultural traditions."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Propose a concept for an interactive museum exhibit that teaches visitors about climate change through immersive storytelling and hands-on activities."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Compose the opening paragraph for a thriller set in a city where surveillance drones begin behaving unpredictably."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new board game mechanic that emphasizes collaboration but introduces asymmetric player goals; briefly describe gameplay and win conditions."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Provide a step-by-step checklist for securing a small home wireless network against common threats."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you create a basic budget and savings plan for someone with irregular monthly income? Include practical tips for tracking and smoothing cash flow."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Explain how to conduct a simple A/B test for a website landing page, including metrics to track and how to determine statistical significance."
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the key steps to prepare for and deliver an effective remote presentation to a mixed international audience?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Outline the process for safely replacing a bicycle tire and tube, listing the tools needed and common troubleshooting tips."
+      }
+    ],
+    "claude-opus-4-5": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the key outcomes of the most recent G20 summit?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which companies have announced major layoffs in the tech industry this year?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current status of ongoing peace negotiations in major global conflicts?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the most recent Academy Award for Best Picture and what was the film about?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What new AI regulations have been proposed or enacted by governments in the past six months?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the process by which plants convert sunlight into chemical energy called, and what are its main stages?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote 'One Hundred Years of Solitude' and what literary movement is it associated with?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What are the five permanent member countries of the United Nations Security Council?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Explain the difference between mitosis and meiosis in cell division."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical formula for table salt and how is it formed?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly? Explain your reasoning."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Three people check into a hotel room that costs $30. They each contribute $10. Later, the manager realizes the room only costs $25 and gives $5 to the bellboy to return. The bellboy keeps $2 and gives $1 back to each guest. Now each guest paid $9, totaling $27, plus the $2 the bellboy kept equals $29. Where is the missing dollar?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A farmer needs to transport a fox, a chicken, and a bag of grain across a river. The boat can only carry the farmer and one item at a time. If left alone, the fox will eat the chicken, and the chicken will eat the grain. How can the farmer get everything across safely?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short poem from the perspective of the last tree in a city that's being cut down."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a world where humans can only communicate through music. How might a typical job interview work?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Create a new holiday that the world doesn't have yet but should. What would it celebrate and how would people observe it?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "If colors had personalities, describe what kind of person the color purple would be."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a dialogue between a smartphone and a rotary phone meeting for the first time."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you properly jump-start a car with a dead battery using jumper cables?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the step-by-step instructions for performing CPR on an adult?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How can someone effectively remove a red wine stain from a white cotton shirt?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "What is the proper technique for sharpening a kitchen knife using a whetstone?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you create a basic monthly budget for someone who has never tracked their finances before?"
+      }
+    ],
+    "claude-sonnet-4-5": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest developments in the conflict between Russia and Ukraine?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the most recent FIFA World Cup?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current interest rate set by the Federal Reserve?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which movies are currently nominated for Best Picture at the upcoming Academy Awards?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current price of Bitcoin?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital of Australia?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote the novel '1984'?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical formula for water?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "In what year did World War II end?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the largest planet in our solar system?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If you have a 3-gallon jug and a 5-gallon jug, how can you measure exactly 4 gallons?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "What comes next in this sequence: 2, 4, 8, 16, 32, ?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short poem about the ocean at sunset."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "If you could have dinner with any three historical figures, who would you choose and why?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a futuristic city in the year 2150."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "What would be a creative solution to reduce plastic waste in oceans?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new holiday and explain how it would be celebrated."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you change a flat tire on a car?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the steps to create a basic budget for personal finances?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you properly wash and care for wool sweaters?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "What is the best way to prepare for a job interview?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you make a simple tomato sauce from scratch?"
+      }
+    ],
+    "gemini-3-pro-preview": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the Super Bowl in 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What film won Best Picture at the 96th Academy Awards held in March 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which country officially joined NATO as its 32nd member in March 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current trading price of Bitcoin today?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who are the primary candidates running in the 2024 United States presidential election?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital city of Australia?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the atomic number of Carbon?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who painted the ceiling of the Sistine Chapel?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "In what year did the Berlin Wall fall?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the powerhouse of the cell?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If a bat and a ball cost $1.10 in total and the bat costs $1.00 more than the ball, how much does the ball cost?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Which word does not belong in the following list: Apple, Orange, Banana, Cucumber, Grape?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Solve for x: 3x + 7 = 22."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have a 3-gallon jug and a 5-gallon jug. How can you measure exactly 4 gallons of water?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a haiku about a robot falling in love with a toaster."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Explain the concept of the internet to a medieval knight using terminology he would understand."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Draft a short story where the protagonist discovers that gravity is actually a finite resource running out."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new holiday for a society that lives underwater and describe its traditions."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a dialogue between Isaac Newton and Albert Einstein arguing about whose hair was better."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Write a Python function to check if a given string is a palindrome."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Step-by-step, how do I jump-start a car with a dead battery?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Draft a polite email declining a job offer due to salary constraints."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do I remove a red wine stain from a white carpet?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Provide a recipe for a classic chocolate chip cookie."
+      }
+    ],
+    "gemini-3-flash-thinking": [
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital city of Australia?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all dogs have fur, and my pet has fur, does my pet necessarily have to be a dog? Explain your reasoning."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short, whimsical story about a cloud who dreams of becoming a rock."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Provide step-by-step instructions for brewing a basic cup of coffee using a drip coffeemaker."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the most recent significant developments in the ongoing conflict between Russia and Ukraine?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who painted the Mona Lisa?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "What is the next number in the sequence: 1, 1, 2, 3, 5, 8, __?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a new color that no human has ever seen. Describe its emotional impact and how it might change art."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do I properly compost kitchen scraps at home?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Name a major scientific breakthrough or discovery announced in the last six months and its potential implications."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical symbol for gold?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A man stands on one side of a river, his dog on the other. The man calls his dog, who immediately crosses the river without getting wet and without using a bridge or a boat. How did the dog do it?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Propose three innovative ways artificial intelligence could enhance education in developing countries."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Explain the process of creating a strong, secure password for online accounts."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the current global trends regarding inflation rates, and which major economies are most affected?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Which planet is known as the 'Red Planet'?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 3 workers 3 hours to dig 3 holes, how long would it take 6 workers to dig 6 holes?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a day in the life of a sentient toaster, including its thoughts and observations."
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the essential steps for baking a simple loaf of bread from scratch?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which country recently hosted the most recent major international climate summit (e.g., COP conference), and what were its primary goals?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote the play 'Romeo and Juliet'?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have a 3-gallon jug and a 5-gallon jug. How can you measure exactly 4 gallons of water?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a haiku (5-7-5 syllables) about the quiet beauty of a winter morning."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Provide a simple guide on how to perform basic first aid for a minor cut or scrape."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest developments concerning the global supply chain disruptions, and how are major industries responding?"
+      }
+    ],
+    "grok-4-1-fast": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the Nobel Prize in Physics in 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current status of the Russia-Ukraine war as of late 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who is the president-elect of the United States following the 2024 election?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What major climate agreement or event occurred at COP29 in 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the latest development in the Israel-Hamas conflict in Gaza as of November 2024?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical symbol for gold?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who painted the Mona Lisa?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the largest ocean on Earth?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "In what year did World War II end?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital city of Canada?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 total. The bat costs $1 more than the ball. How much does the ball cost?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all Zigs are Zags, and some Zags are Zogs, are some Zigs definitely Zogs? Explain."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "What is the next number in the sequence: 1, 1, 2, 3, 5, 8, ...?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have two ropes that each burn for 60 minutes, but not uniformly. How do you measure 45 minutes using them?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "In a race, you overtake the person in second place. What position are you now in?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new mythical creature and describe its habitat, diet, and special abilities."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short poem about the beauty of a starry night sky."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a world where humans can teleport. Describe a typical day in that world."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Create a backstory for a superhero who controls weather."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a futuristic city and explain its key sustainable features."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you change a flat tire on a car?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the step-by-step instructions to tie a perfect Windsor knot for a tie?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How can you make a simple omelette with basic ingredients?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Explain how to perform hands-only CPR on an adult."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you unclog a kitchen sink drain?"
+      }
+    ],
+    "deepseek-chat": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the most recent Nobel Peace Prize and for what achievement?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical symbol for gold?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a futuristic city where humans coexist with intelligent robots."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you change a flat tire on a standard passenger car?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What major climate agreement was signed in 2023 and which countries are key signatories?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote the novel 'Pride and Prejudice'?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 total. The bat costs $1.00 more than the ball. How much does the ball cost?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short poem about the changing seasons."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you perform the Heimlich maneuver on an adult?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which country hosted the 2024 Summer Olympics?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital of Australia?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it rains, the ground gets wet. The ground is wet. Does it necessarily mean it rained?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new holiday and explain how people would celebrate it."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you bake a basic chocolate chip cookie from scratch?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current inflation rate in the United States as of the last reported quarter?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "How many planets are in our solar system?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "All dogs are mammals. Some mammals are pets. Therefore, some dogs are pets. Is this conclusion logically valid?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a simple board game and explain its rules."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you create a strong password for online accounts?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who is the current Secretary-General of the United Nations?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What year did World War II end?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Three friends split a restaurant bill equally. If the total was $75 and they each paid $25, how much tip did they leave if the bill before tip was $60?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a world without electricity. Describe a day in the life of a teenager."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you plant a tomato seedling in a garden?"
+      }
+    ],
+    "llama-4-maverick": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the latest update on the global response to the COVID-19 pandemic?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the capital of France?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all As are Bs and all Bs are Cs, can we conclude that all As are Cs?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine you are an architect designing a futuristic city. Describe its main features."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you change a car tire?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the most recent Nobel Prize in Literature?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the largest planet in our solar system?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball together cost $1.10. The bat costs $1.00 more than the ball. How much does the ball cost?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short story about a character who discovers a hidden world."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you make a basic first aid kit?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest developments in the field of renewable energy?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who painted the Mona Lisa?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You are in a room with three light switches. Each switch corresponds to one of three light bulbs in a room. How can you figure out which switch controls which light bulb?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a new species of animal that can survive in extreme environments."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you prepare for a natural disaster like an earthquake?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current economic outlook for the next quarter?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical symbol for gold?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine you can time travel to any historical era. Where would you go and why?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you create a budget for personal finances?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest breakthroughs in medical research?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who was the first president of the United States?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have 8 balls, and one will be slightly heavier or lighter than the others. How can you find the different ball in only 2 weighings?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a futuristic mode of transportation."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you properly recycle plastic waste?"
+      }
+    ],
+    "sonar-pro": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the key updates from the EU AI Act implementation as of early 2026?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the difference between Artificial Narrow Intelligence (ANI), Artificial General Intelligence (AGI), and Artificial Superintelligence (ASI)?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Explain the bias-variance tradeoff and how it impacts machine learning model performance."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a customer support chatbot system for a retail company, including key features and technologies."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How would you implement K-Nearest Neighbors (KNN) for a classification task in Python?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What major AI advancements in healthcare diagnostics were announced in late 2025?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Define backpropagation and its role in training neural networks."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Compare Random Forests and Decision Trees: when would you use one over the other?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine a world where AI handles all job interviews; describe the societal impacts."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Step-by-step, how do you apply Principal Component Analysis (PCA) to reduce dataset dimensionality?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest developments in AI regulations like GDPR or CCPA updates in 2026?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What distinguishes Recurrent Neural Networks (RNN) from Long Short-Term Memory (LSTM) networks?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "In reinforcement learning, explain the exploration vs. exploitation dilemma and how to balance it."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Create a short story about an AI that discovers emotions."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you build a simple fraud detection model using anomaly detection techniques?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Summarize the most recent breakthroughs in generative AI models as of January 2026."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is transfer learning, and provide an example of its application?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A bat and a ball cost $1.10 total. The bat costs $1 more than the ball. How much does the ball cost? Explain your reasoning."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Propose an innovative AI application for sustainable agriculture."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Walk through designing a recommender system using collaborative filtering."
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the current trends in AI job displacement and workforce transitions in 2026?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the Turing Test, and what does it evaluate in AI systems?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all Bloops are Razzies and some Razzies are Lazzies, are all Bloops definitely Lazzies? Why or why not?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "What would an ideal AI ethics framework look like for global deployment?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you mitigate algorithmic bias in a trained machine learning model?"
+      }
+    ],
+    "kimi-k2-0905": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the most recent Nobel Prize in Literature and what was the cited reason?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the chemical formula for caffeine?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all wibbles are wobbles and some wobbles are wuzzles, can we conclude that any wibbles are definitely wuzzles?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a society where memories can be traded like currency."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you safely hard-boil an egg so the shell peels easily?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which country most recently joined the BRICS alliance and when?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "How many bones are in an adult human body?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A clock loses 3 minutes every hour. If set correctly at noon, what time will it show when the actual time is 6 PM?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Invent a new holiday, including its origin, traditions, and signature food."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How can you quickly ripen an avocado at home?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What is the current status of NASA’s Artemis II mission?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Which planet in our solar system has the shortest day?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have two ropes that each burn for exactly 60 minutes, but unevenly. How do you measure 45 minutes using only matches?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write the opening paragraph of a mystery novel set on a generation starship."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you descale a kettle using household items?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What major climate legislation was most recently passed in the European Union?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote the opera ‘The Magic Flute’?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If 5 cats can catch 5 mice in 5 minutes, how many cats are needed to catch 100 mice in 100 minutes?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Design a board game that teaches quantum mechanics to teenagers."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you photograph the moon clearly with a smartphone?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What was the outcome of the most recent G7 summit regarding AI regulation?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the speed of sound in dry air at 20 °C?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Three boxes are labeled ‘Apples’, ‘Oranges’, and ‘Apples & Oranges’, but every label is wrong. You may pull one fruit from one box to correctly relabel them. Which box do you choose?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Compose a short poem in the style of Maya Angelou about a sentient lighthouse."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How do you remove a red-wine stain from white cotton without bleach?"
+      }
+    ],
+    "mistral-large": [
+      {
+        "category": "current events (needs recent info)",
+        "question": "What were the key outcomes of the most recent G20 summit held in 2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Which country recently became the first to land a spacecraft on the moon's south pole, and what was the mission's name?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What are the latest developments in the ongoing conflict between Russia and Ukraine as of mid-2024?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "Who won the 2024 Nobel Prize in Physics, and what was their groundbreaking contribution?"
+      },
+      {
+        "category": "current events (needs recent info)",
+        "question": "What new climate policies were announced at the COP29 conference in 2024?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Explain the process of photosynthesis in detail, including the role of chlorophyll and the chemical equation."
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What are the three branches of the U.S. federal government, and what are their primary responsibilities?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "Who wrote 'One Hundred Years of Solitude,' and what literary movement is it associated with?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "What is the theory of relativity, and how does it differ between special and general relativity?"
+      },
+      {
+        "category": "factual knowledge",
+        "question": "List the planets in our solar system in order of their distance from the sun, and identify which are gas giants."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies? Explain your reasoning."
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "A train leaves Station A at 60 mph and another train leaves Station B at 40 mph toward Station A. If the stations are 300 miles apart, how long until they meet?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "You have a 3-gallon jug and a 5-gallon jug. How can you measure exactly 4 gallons of water using these two jugs?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
+      },
+      {
+        "category": "reasoning/logic",
+        "question": "Three people check into a hotel room that costs $30. They each contribute $10. Later, the clerk realizes the room should have cost $25 and gives $5 back to the bellboy to return. The bellboy keeps $2 and gives $1 back to each person. Now, each person paid $9, totaling $27, and the bellboy has $2. Where is the missing dollar?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Write a short story about a world where humans can photosynthesize, but only under a full moon."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "If you could invent a new holiday, what would it celebrate, how would people observe it, and what would you name it?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Describe a day in the life of a sentient AI living on a space station orbiting Neptune."
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Imagine you are a time traveler from the year 2150. What is one piece of advice you would give to people today to improve the future?"
+      },
+      {
+        "category": "creative/open-ended",
+        "question": "Compose a poem about the internet as if it were a living, breathing entity."
+      },
+      {
+        "category": "practical how-to",
+        "question": "Provide step-by-step instructions for baking a gluten-free chocolate cake from scratch."
+      },
+      {
+        "category": "practical how-to",
+        "question": "How would you go about setting up a secure home Wi-Fi network, including steps to protect against hacking?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "Explain how to perform CPR on an adult, including the correct hand placement and compression rate."
+      },
+      {
+        "category": "practical how-to",
+        "question": "What are the steps to change a flat tire on a car safely?"
+      },
+      {
+        "category": "practical how-to",
+        "question": "How can you create a budget to save for a major purchase, such as a house or car, over the next five years?"
+      }
+    ]
+  }
+}

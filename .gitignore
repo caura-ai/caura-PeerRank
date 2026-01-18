@@ -1,0 +1,25 @@
+# Environment and secrets
+.env
+
+# Google service account files (root level JSON files)
+/*.json
+
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+
+# Data files (optional - uncomment to exclude run data)
+# data/
+# figures/

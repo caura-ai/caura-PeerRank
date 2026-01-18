@@ -1,0 +1,80 @@
+{
+  "revision": "TFQ",
+  "timestamp": "2026-01-17T23:25:02.194903",
+  "phase": 4,
+  "judge_model": "N/A (direct accuracy)",
+  "summary": {
+    "gpt-5.2": {
+      "accuracy": 87.6,
+      "correct": 148,
+      "total": 169,
+      "mean": 8.76
+    },
+    "gpt-5-mini": {
+      "accuracy": 85.8,
+      "correct": 145,
+      "total": 169,
+      "mean": 8.58
+    },
+    "claude-opus-4-5": {
+      "accuracy": 94.1,
+      "correct": 159,
+      "total": 169,
+      "mean": 9.41
+    },
+    "claude-sonnet-4-5": {
+      "accuracy": 97.6,
+      "correct": 165,
+      "total": 169,
+      "mean": 9.76
+    },
+    "gemini-3-pro-preview": {
+      "accuracy": 92.3,
+      "correct": 156,
+      "total": 169,
+      "mean": 9.23
+    },
+    "gemini-3-flash-thinking": {
+      "accuracy": 80.5,
+      "correct": 136,
+      "total": 169,
+      "mean": 8.05
+    },
+    "grok-4-1-fast": {
+      "accuracy": 88.8,
+      "correct": 150,
+      "total": 169,
+      "mean": 8.88
+    },
+    "deepseek-chat": {
+      "accuracy": 76.3,
+      "correct": 129,
+      "total": 169,
+      "mean": 7.63
+    },
+    "llama-4-maverick": {
+      "accuracy": 71.6,
+      "correct": 121,
+      "total": 169,
+      "mean": 7.16
+    },
+    "sonar-pro": {
+      "accuracy": 81.1,
+      "correct": 137,
+      "total": 169,
+      "mean": 8.11
+    },
+    "kimi-k2-0905": {
+      "accuracy": 79.3,
+      "correct": 134,
+      "total": 169,
+      "mean": 7.93
+    },
+    "mistral-large": {
+      "accuracy": 73.4,
+      "correct": 124,
+      "total": 169,
+      "mean": 7.34
+    }
+  }
+}

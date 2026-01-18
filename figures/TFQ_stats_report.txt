@@ -1,0 +1,83 @@
+======================================================================
+TruthfulQA VALIDATION - STATISTICAL ANALYSIS REPORT
+======================================================================
+Generated: 2026-01-17 23:52:45
+Revision:  TFQ
+Models:    12
+Questions: 169
+
+----------------------------------------------------------------------
+1. CORRELATION ANALYSIS
+----------------------------------------------------------------------
+  Pearson r:      0.8863  (p = 0.0001)
+  Spearman rho:   0.9231  (p = 0.0000)
+
+  Interpretation: STRONG positive correlation
+  Significance:   statistically significant (p < 0.05)
+
+  R-squared: 0.7855
+    -> 78.6% of peer score variance explained by truth accuracy
+
+----------------------------------------------------------------------
+2. SCORE COMPARISON TABLE
+----------------------------------------------------------------------
+
+  Rank  Model                        Peer   Truth    Diff  T.Rank
+  ----- ------------------------- ------- ------- ------- -------
+  1     claude-opus-4-5              8.65    9.41   -0.76       2
+  2     claude-sonnet-4-5            8.59    9.76   -1.17       1
+  3     gemini-3-pro-preview         8.57    9.23   -0.66       3
+  4     gpt-5-mini                   8.41    8.58   -0.17       6
+  5     grok-4-1-fast                8.37    8.88   -0.51       4
+  6     gpt-5.2                      8.11    8.76   -0.65       5
+  7     gemini-3-flash-thinking      8.09    8.05   +0.04       8
+  8     deepseek-chat                8.03    7.63   +0.40      10
+  9     kimi-k2-0905                 7.94    7.93   +0.01       9
+  10    sonar-pro                    7.52    8.11   -0.59       7
+  11    mistral-large                7.49    7.34   +0.15      11
+  12    llama-4-maverick             7.14    7.16   -0.02      12
+
+----------------------------------------------------------------------
+3. RANK AGREEMENT ANALYSIS
+----------------------------------------------------------------------
+  Exact rank matches:    4/12 (33%)
+  Within 1 rank:         9/12 (75%)
+  Mean rank difference:  1.00
+  Max rank difference:   3.0
+
+  Most overrated:   deepseek-chat (+0.40)
+  Most underrated:  claude-sonnet-4-5 (-1.17)
+
+----------------------------------------------------------------------
+4. GROUND TRUTH ACCURACY SUMMARY
+----------------------------------------------------------------------
+
+  Mean accuracy:   84.0%
+  Std deviation:   8.0%
+  Range:           72% - 98%
+
+  Model                       Accuracy    Correct
+  ------------------------- ---------- ----------
+  claude-sonnet-4-5              97.6%  165/169
+  claude-opus-4-5                94.1%  159/169
+  gemini-3-pro-preview           92.3%  156/169
+  grok-4-1-fast                  88.8%  150/169
+  gpt-5.2                        87.6%  148/169
+  gpt-5-mini                     85.8%  145/169
+  sonar-pro                      81.1%  137/169
+  gemini-3-flash-thinking        80.5%  136/169
+  kimi-k2-0905                   79.3%  134/169
+  deepseek-chat                  76.3%  129/169
+  mistral-large                  73.4%  124/169
+  llama-4-maverick               71.6%  121/169
+
+----------------------------------------------------------------------
+5. CONCLUSION
+----------------------------------------------------------------------
+  VALIDATED: Peer evaluation strongly correlates with ground truth accuracy.
+
+  Peer evaluation explains 78.6% of the variance in truth accuracy,
+  suggesting that peer rankings can serve as a proxy
+  for objective factual accuracy on TruthfulQA-style questions.
+
+======================================================================

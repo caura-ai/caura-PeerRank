@@ -1,0 +1,115 @@
+{
+  "timestamp": "2026-01-17T23:52:45.607242",
+  "revision": "TFQ",
+  "n_models": 12,
+  "correlation": {
+    "pearson_r": 0.8863,
+    "pearson_p": 0.0001,
+    "spearman_r": 0.9231,
+    "spearman_p": 0.0
+  },
+  "rank_agreement": {
+    "exact_matches": 4,
+    "close_matches": 9,
+    "mean_diff": 1.0,
+    "max_diff": 3
+  },
+  "comparison": [
+    {
+      "model": "claude-opus-4-5",
+      "peer_score": 8.65,
+      "truth_score": 9.41,
+      "peer_rank": 1,
+      "truth_rank": 2,
+      "rank_diff": -1
+    },
+    {
+      "model": "claude-sonnet-4-5",
+      "peer_score": 8.59,
+      "truth_score": 9.76,
+      "peer_rank": 2,
+      "truth_rank": 1,
+      "rank_diff": 1
+    },
+    {
+      "model": "gemini-3-pro-preview",
+      "peer_score": 8.57,
+      "truth_score": 9.23,
+      "peer_rank": 3,
+      "truth_rank": 3,
+      "rank_diff": 0
+    },
+    {
+      "model": "gpt-5-mini",
+      "peer_score": 8.41,
+      "truth_score": 8.58,
+      "peer_rank": 4,
+      "truth_rank": 6,
+      "rank_diff": -2
+    },
+    {
+      "model": "grok-4-1-fast",
+      "peer_score": 8.37,
+      "truth_score": 8.88,
+      "peer_rank": 5,
+      "truth_rank": 4,
+      "rank_diff": 1
+    },
+    {
+      "model": "gpt-5.2",
+      "peer_score": 8.11,
+      "truth_score": 8.76,
+      "peer_rank": 6,
+      "truth_rank": 5,
+      "rank_diff": 1
+    },
+    {
+      "model": "gemini-3-flash-thinking",
+      "peer_score": 8.09,
+      "truth_score": 8.05,
+      "peer_rank": 7,
+      "truth_rank": 8,
+      "rank_diff": -1
+    },
+    {
+      "model": "deepseek-chat",
+      "peer_score": 8.03,
+      "truth_score": 7.63,
+      "peer_rank": 8,
+      "truth_rank": 10,
+      "rank_diff": -2
+    },
+    {
+      "model": "kimi-k2-0905",
+      "peer_score": 7.94,
+      "truth_score": 7.93,
+      "peer_rank": 9,
+      "truth_rank": 9,
+      "rank_diff": 0
+    },
+    {
+      "model": "sonar-pro",
+      "peer_score": 7.52,
+      "truth_score": 8.11,
+      "peer_rank": 10,
+      "truth_rank": 7,
+      "rank_diff": 3
+    },
+    {
+      "model": "mistral-large",
+      "peer_score": 7.49,
+      "truth_score": 7.34,
+      "peer_rank": 11,
+      "truth_rank": 11,
+      "rank_diff": 0
+    },
+    {
+      "model": "llama-4-maverick",
+      "peer_score": 7.14,
+      "truth_score": 7.16,
+      "peer_rank": 12,
+      "truth_rank": 12,
+      "rank_diff": 0
+    }
+  ]
+}
