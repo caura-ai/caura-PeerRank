@@ -9,3 +9,4 @@ datasets
 aiohttp
 xai_sdk
 mistralai
+scipy
