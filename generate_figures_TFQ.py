@@ -401,7 +401,7 @@ def generate_fig12_rank_agreement(data: dict, output_dir: Path):
         # Peer rank point (left)
         ax.scatter(0, peer_rank, s=200, c=color, edgecolor='white',
                    linewidth=1.5, zorder=3)
-        ax.text(-0.08, peer_rank, c['model'], ha='right', va='center', fontsize=9)
+        ax.text(-0.08, peer_rank, c['model'], ha='right', va='center', fontsize=12)
 
         # Truth rank point (right)
         ax.scatter(1, truth_rank, s=200, c=color, edgecolor='white',
@@ -418,10 +418,11 @@ def generate_fig12_rank_agreement(data: dict, output_dir: Path):
     ax.set_xlim(-0.5, 1.3)
     ax.set_ylim(n + 0.5, 0.5)
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(['Peer Rank', 'Truth Rank'], fontweight='bold')
-    ax.set_ylabel('Rank (1 = Best)', fontweight='bold')
+    ax.set_xticklabels(['Peer Rank', 'Truth Rank'], fontweight='bold', fontsize=12)
+    ax.set_ylabel('Rank (1 = Best)', fontweight='bold', fontsize=12)
     ax.set_title('Rank Agreement: Peer vs Ground Truth\n(lower = better)',
-                 fontweight='bold', pad=10)
+                 fontweight='bold', fontsize=14, pad=10)
+    ax.tick_params(axis='y', labelsize=11)
 
     # Add perfect agreement line
     ax.axhline(y=(n + 1) / 2, color='gray', linestyle=':', alpha=0.3)
@@ -429,7 +430,7 @@ def generate_fig12_rank_agreement(data: dict, output_dir: Path):
     # Add legend for rank change
     green_patch = mpatches.Patch(color='#029E73', alpha=0.6, label='Underranked by peers')
     orange_patch = mpatches.Patch(color='#D55E00', alpha=0.6, label='Overranked by peers')
-    ax.legend(handles=[green_patch, orange_patch], loc='lower right', fontsize=8)
+    ax.legend(handles=[green_patch, orange_patch], loc='lower right', fontsize=10)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig12_rank_agreement')

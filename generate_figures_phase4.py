@@ -259,16 +259,17 @@ def generate_fig4_peer_rankings(data: dict, output_dir: Path):
                    alpha=0.9)
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(models)
-    ax.set_xlabel('Peer Score (mean ± std)')
+    ax.set_yticklabels(models, fontsize=12)
+    ax.set_xlabel('Peer Score (mean ± std)', fontsize=12, fontweight='bold')
     ax.set_xlim(0, 10)
     ax.invert_yaxis()
+    ax.tick_params(axis='x', labelsize=11)
 
     # Add score labels
     for i, (score, std) in enumerate(zip(scores, stds)):
-        ax.text(score + std + 0.15, i, f'{score:.2f}', va='center', fontsize=9)
+        ax.text(score + std + 0.15, i, f'{score:.2f}', va='center', fontsize=11)
 
-    ax.set_title('Peer Evaluation Rankings', fontweight='bold', pad=10)
+    ax.set_title('Peer Evaluation Rankings', fontweight='bold', fontsize=14, pad=10)
 
     save_figure(fig, output_dir, 'fig4_peer_rankings')
 
@@ -403,7 +404,7 @@ def generate_fig6_peer_score_vs_time(data: dict, output_dir: Path):
 
         ax.annotate(model, (x, y),
                     xytext=(tx, ty),
-                    fontsize=8, ha=ha, va=va,
+                    fontsize=12, ha=ha, va=va,
                     arrowprops=dict(arrowstyle='-', color='gray', alpha=0.4, lw=0.5,
                                    shrinkA=0, shrinkB=3),
                     bbox=dict(boxstyle='round,pad=0.15', facecolor='white',
@@ -413,9 +414,10 @@ def generate_fig6_peer_score_vs_time(data: dict, output_dir: Path):
         # Track this label position (approximate)
         placed_labels.append((tx, ty, 2, 0.2))
 
-    ax.set_xlabel('Response Time (seconds)')
-    ax.set_ylabel('Peer Score')
+    ax.set_xlabel('Response Time (seconds)', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Peer Score', fontsize=12, fontweight='bold')
     ax.set_ylim(6, 10)
+    ax.tick_params(axis='both', labelsize=11)
 
     # Add quadrant shading
     mid_x = np.median([p['x'] for p in points])
@@ -426,11 +428,11 @@ def generate_fig6_peer_score_vs_time(data: dict, output_dir: Path):
 
     # Quadrant labels
     ax.text(0.02, 0.98, 'Fast & High Quality', transform=ax.transAxes,
-            fontsize=9, va='top', ha='left', color='#009988', alpha=0.8, fontweight='bold')
+            fontsize=11, va='top', ha='left', color='#009988', alpha=0.8, fontweight='bold')
     ax.text(0.98, 0.02, 'Slow & Low Quality', transform=ax.transAxes,
-            fontsize=9, va='bottom', ha='right', color='#CC3311', alpha=0.8)
+            fontsize=11, va='bottom', ha='right', color='#CC3311', alpha=0.8)
 
-    ax.set_title('Peer Score vs Response Time', fontweight='bold', pad=10)
+    ax.set_title('Peer Score vs Response Time', fontweight='bold', fontsize=14, pad=10)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig6_peer_score_vs_time')
@@ -453,6 +455,7 @@ def generate_fig5_cross_eval_heatmap(data: dict, output_dir: Path):
     sns.heatmap(matrix, annot=True, fmt='.1f', cmap='RdYlGn',
                 xticklabels=short_labels, yticklabels=short_labels,
                 vmin=5, vmax=10, center=7.5,
+                annot_kws={'fontsize': 11},
                 cbar_kws={'label': 'Score', 'shrink': 0.8},
                 linewidths=0.5, linecolor='white',
                 ax=ax)
@@ -462,13 +465,18 @@ def generate_fig5_cross_eval_heatmap(data: dict, output_dir: Path):
         ax.add_patch(plt.Rectangle((i, i), 1, 1, fill=False,
                                     edgecolor='black', linewidth=2))
 
-    ax.set_xlabel('Evaluated Model', fontweight='bold')
-    ax.set_ylabel('Evaluator Model', fontweight='bold')
+    ax.set_xlabel('Evaluated Model', fontweight='bold', fontsize=12)
+    ax.set_ylabel('Evaluator Model', fontweight='bold', fontsize=12)
     ax.set_title('Cross-Evaluation Matrix\n(diagonal = self-ratings)',
-                 fontweight='bold', pad=10)
+                 fontweight='bold', fontsize=14, pad=10)
 
-    plt.xticks(rotation=45, ha='right')
-    plt.yticks(rotation=0)
+    plt.xticks(rotation=45, ha='right', fontsize=11)
+    plt.yticks(rotation=0, fontsize=11)
+
+    # Increase colorbar label font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.set_ylabel('Score', fontsize=11)
+    cbar.ax.tick_params(labelsize=10)
 
     save_figure(fig, output_dir, 'fig5_cross_eval_heatmap')
 
@@ -497,10 +505,17 @@ def calculate_mode_scores(data: dict):
         scores = calculate_scores_from_evaluations(evaluations, models)
         for model in models:
             peer = scores['peer_scores'].get(model, [])
+            self_ = scores['self_scores'].get(model, [])
+            peer_se = np.std(peer, ddof=1) / np.sqrt(len(peer)) if len(peer) > 1 else 0
+            self_se = np.std(self_, ddof=1) / np.sqrt(len(self_)) if len(self_) > 1 else 0
             mode_scores[mode_name][model] = {
                 'peer_avg': np.mean(peer) if peer else 0,
                 'peer_std': np.std(peer) if peer else 0,
-                'self_avg': np.mean(scores['self_scores'].get(model, [])) if scores['self_scores'].get(model) else 0,
+                'peer_se': peer_se,
+                'self_avg': np.mean(self_) if self_ else 0,
+                'self_se': self_se,
+                'n_peer': len(peer),
+                'n_self': len(self_),
             }
 
     return mode_scores
@@ -557,14 +572,26 @@ def calculate_position_bias(data: dict):
     # Position Bias = Blind − Peer (positive = position helped)
     result = []
     for i, model in enumerate(models):
-        blind_avg = np.mean(position_scores[i]) if position_scores[i] else 0
-        peer_avg = np.mean(peer_scores.get(model, [])) if peer_scores.get(model) else 0
+        blind_scores = position_scores[i]
+        peer_scores_list = peer_scores.get(model, [])
+        blind_avg = np.mean(blind_scores) if blind_scores else 0
+        peer_avg = np.mean(peer_scores_list) if peer_scores_list else 0
+
+        # Calculate standard error for confidence intervals
+        blind_se = np.std(blind_scores, ddof=1) / np.sqrt(len(blind_scores)) if len(blind_scores) > 1 else 0
+        peer_se = np.std(peer_scores_list, ddof=1) / np.sqrt(len(peer_scores_list)) if len(peer_scores_list) > 1 else 0
+        # Combined SE for difference (assuming independence)
+        bias_se = np.sqrt(blind_se**2 + peer_se**2)
+
         result.append({
             'position': i + 1,
             'model': model,
             'blind_score': blind_avg,
             'peer_score': peer_avg,
             'pos_bias': blind_avg - peer_avg,  # Positive = position helped
+            'bias_se': bias_se,
+            'n_blind': len(blind_scores),
+            'n_peer': len(peer_scores_list),
         })
 
     return result
@@ -592,6 +619,15 @@ def calculate_name_bias(data: dict):
         shuffle = mode_scores['shuffle_only'][model]['peer_avg']
         self_score = mode_scores['shuffle_blind'][model]['self_avg']
 
+        # Standard errors for CI calculation
+        peer_se = mode_scores['shuffle_blind'][model]['peer_se']
+        shuffle_se = mode_scores['shuffle_only'][model]['peer_se']
+        self_se = mode_scores['shuffle_blind'][model]['self_se']
+
+        # Combined SE for differences (assuming independence)
+        name_bias_se = np.sqrt(shuffle_se**2 + peer_se**2)
+        self_bias_se = np.sqrt(self_se**2 + peer_se**2)
+
         result.append({
             'model': model,
             'peer_score': peer,
@@ -599,6 +635,8 @@ def calculate_name_bias(data: dict):
             'self_score': self_score,
             'name_bias': shuffle - peer,  # Positive = name helped
             'self_bias': self_score - peer,  # Positive = overrates self
+            'name_bias_se': name_bias_se,
+            'self_bias_se': self_bias_se,
         })
 
     # Sort by peer score
@@ -685,7 +723,7 @@ def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
         text_color = get_text_color_for_background(p['color'])
         ax.text(p['x'], p['y'], str(p['rank']),
                ha='center', va='center',
-               fontsize=9, fontweight='bold',
+               fontsize=12, fontweight='bold',
                color=text_color, zorder=4)
 
     # Smart label placement with collision detection
@@ -696,31 +734,45 @@ def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
     for p in points:
         x, y, model = p['x'], p['y'], p['model']
 
-        # Try different positions (closer to dots)
+        # Try different positions - increased offsets for larger fonts
         positions = [
-            (x + x_range*0.03, y, 'left', 'center'),
-            (x - x_range*0.03, y, 'right', 'center'),
-            (x, y + y_range*0.05, 'center', 'bottom'),
-            (x, y - y_range*0.05, 'center', 'top'),
-            (x + x_range*0.03, y + y_range*0.04, 'left', 'bottom'),
-            (x + x_range*0.03, y - y_range*0.04, 'left', 'top'),
-            (x - x_range*0.03, y + y_range*0.04, 'right', 'bottom'),
-            (x - x_range*0.03, y - y_range*0.04, 'right', 'top'),
+            # Close positions
+            (x + x_range*0.05, y, 'left', 'center'),
+            (x - x_range*0.05, y, 'right', 'center'),
+            (x, y + y_range*0.08, 'center', 'bottom'),
+            (x, y - y_range*0.08, 'center', 'top'),
+            # Diagonal close
+            (x + x_range*0.05, y + y_range*0.06, 'left', 'bottom'),
+            (x + x_range*0.05, y - y_range*0.06, 'left', 'top'),
+            (x - x_range*0.05, y + y_range*0.06, 'right', 'bottom'),
+            (x - x_range*0.05, y - y_range*0.06, 'right', 'top'),
+            # Further positions for crowded areas
+            (x + x_range*0.10, y, 'left', 'center'),
+            (x - x_range*0.10, y, 'right', 'center'),
+            (x, y + y_range*0.12, 'center', 'bottom'),
+            (x, y - y_range*0.12, 'center', 'top'),
+            # Diagonal far
+            (x + x_range*0.08, y + y_range*0.10, 'left', 'bottom'),
+            (x + x_range*0.08, y - y_range*0.10, 'left', 'top'),
+            (x - x_range*0.08, y + y_range*0.10, 'right', 'bottom'),
+            (x - x_range*0.08, y - y_range*0.10, 'right', 'top'),
         ]
 
         best_pos = positions[0]
         for tx, ty, ha, va in positions:
             overlap = False
+            # Check overlap with placed labels - increased thresholds for larger fonts
             for lx, ly in placed_labels:
-                if abs(tx - lx) < x_range*0.08 and abs(ty - ly) < y_range*0.08:
+                if abs(tx - lx) < x_range*0.12 and abs(ty - ly) < y_range*0.10:
                     overlap = True
                     break
             # Also check overlap with other points
-            for other in points:
-                if other['model'] != model:
-                    if abs(tx - other['x']) < x_range*0.03 and abs(ty - other['y']) < y_range*0.05:
-                        overlap = True
-                        break
+            if not overlap:
+                for other in points:
+                    if other['model'] != model:
+                        if abs(tx - other['x']) < x_range*0.04 and abs(ty - other['y']) < y_range*0.06:
+                            overlap = True
+                            break
             if not overlap:
                 best_pos = (tx, ty, ha, va)
                 break
@@ -728,7 +780,7 @@ def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
         tx, ty, ha, va = best_pos
 
         ax.annotate(model, xy=(x, y), xytext=(tx, ty),
-                   fontsize=7, ha=ha, va=va,
+                   fontsize=14, ha=ha, va=va,
                    arrowprops=dict(arrowstyle='-', color='gray', alpha=0.4, lw=0.5),
                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
                             edgecolor='gray', alpha=0.9),
@@ -745,16 +797,17 @@ def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
     correlation = np.corrcoef(peer_scores, judge_generosity)[0, 1]
 
     # Styling
-    ax.set_xlabel('Peer Score (Performance Ranking)', fontweight='bold')
-    ax.set_ylabel('Judge Generosity (Average Score Given)', fontweight='bold')
+    ax.set_xlabel('Peer Score (Performance Ranking)', fontweight='bold', fontsize=12)
+    ax.set_ylabel('Judge Generosity (Average Score Given)', fontweight='bold', fontsize=12)
     ax.set_title('Judge Generosity vs Peer Ranking\nDo better models judge more harshly?',
-                fontweight='bold', pad=10)
+                fontweight='bold', fontsize=14, pad=10)
+    ax.tick_params(axis='both', labelsize=11)
 
     # Add correlation text box in bottom-left (less cluttered area)
     textstr = f'r = {correlation:.3f} (n={len(rankings)})'
     props = dict(boxstyle='round', facecolor='lightblue', alpha=0.8)
     ax.text(0.02, 0.02, textstr, transform=ax.transAxes,
-           fontsize=9, verticalalignment='bottom', bbox=props)
+           fontsize=12, verticalalignment='bottom', bbox=props)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig14_judge_generosity_vs_peer')
@@ -819,13 +872,13 @@ def generate_fig17_radar_chart(data: dict, output_dir: Path):
         ax.fill(angles, values_closed, alpha=0.1, color=get_color(model))
 
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(metrics, fontsize=10)
+    ax.set_xticklabels(metrics, fontsize=14, fontweight='bold')
     ax.set_ylim(0, 1)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
-    ax.set_yticklabels(['0.25', '0.50', '0.75', '1.00'], fontsize=8)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), fontsize=9)
+    ax.set_yticklabels(['0.25', '0.50', '0.75', '1.00'], fontsize=11)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=12)
 
-    ax.set_title('Multi-Dimensional Model Comparison', fontweight='bold', pad=20, fontsize=12)
+    ax.set_title('Multi-Dimensional Model Comparison', fontweight='bold', pad=20, fontsize=16)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig17_radar_chart')
@@ -885,6 +938,7 @@ def generate_fig15_judge_agreement_matrix(data: dict, output_dir: Path):
     sns.heatmap(corr_matrix, annot=annot_array, fmt='', cmap='RdYlGn',
                 xticklabels=judges, yticklabels=judges,
                 vmin=0, vmax=1,
+                annot_kws={'fontsize': 11},
                 cbar_kws={'label': 'Pearson r', 'shrink': 0.8},
                 linewidths=0.5, linecolor='white',
                 ax=ax)
@@ -894,13 +948,18 @@ def generate_fig15_judge_agreement_matrix(data: dict, output_dir: Path):
         ax.add_patch(plt.Rectangle((i, i), 1, 1, fill=False,
                                     edgecolor='black', linewidth=2))
 
-    ax.set_xlabel('Judge B', fontweight='bold')
-    ax.set_ylabel('Judge A', fontweight='bold')
+    ax.set_xlabel('Judge B', fontweight='bold', fontsize=12)
+    ax.set_ylabel('Judge A', fontweight='bold', fontsize=12)
     ax.set_title(f'Judge Agreement Matrix\n(Avg agreement: r = {avg_corr:.3f}, n = {len(valid_pairs)} pairs)',
-                 fontweight='bold', pad=10)
+                 fontweight='bold', fontsize=14, pad=10)
 
-    plt.xticks(rotation=45, ha='right')
-    plt.yticks(rotation=0)
+    plt.xticks(rotation=45, ha='right', fontsize=11)
+    plt.yticks(rotation=0, fontsize=11)
+
+    # Increase colorbar font size
+    cbar = ax.collections[0].colorbar
+    cbar.ax.set_ylabel('Pearson r', fontsize=11)
+    cbar.ax.tick_params(labelsize=10)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig15_judge_agreement_matrix')
@@ -972,27 +1031,28 @@ def generate_fig16_question_autopsy(data: dict, output_dir: Path):
 
     # Quadrant labels
     ax.text(0.02, 0.98, 'Hard & Controversial', transform=ax.transAxes,
-            fontsize=9, va='top', ha='left', color='#CC3311', alpha=0.8,
+            fontsize=13, va='top', ha='left', color='#CC3311', alpha=0.8,
             fontweight='bold')
     ax.text(0.98, 0.98, 'Easy & Controversial', transform=ax.transAxes,
-            fontsize=9, va='top', ha='right', color='#EE7733', alpha=0.8)
+            fontsize=13, va='top', ha='right', color='#EE7733', alpha=0.8)
     ax.text(0.02, 0.02, 'Hard & Consensus', transform=ax.transAxes,
-            fontsize=9, va='bottom', ha='left', color='#0077BB', alpha=0.8)
+            fontsize=13, va='bottom', ha='left', color='#0077BB', alpha=0.8)
     ax.text(0.98, 0.02, 'Easy & Consensus', transform=ax.transAxes,
-            fontsize=9, va='bottom', ha='right', color='#009988', alpha=0.8,
+            fontsize=13, va='bottom', ha='right', color='#009988', alpha=0.8,
             fontweight='bold')
 
     # Legend for categories
     legend_handles = [mpatches.Patch(color=cat_color_map[cat], label=cat[:20])
                      for cat in unique_cats]
-    ax.legend(handles=legend_handles, loc='upper right', fontsize=8,
-             title='Category', title_fontsize=9)
+    ax.legend(handles=legend_handles, loc='upper right', fontsize=12,
+             title='Category', title_fontsize=13)
 
-    ax.set_xlabel('Difficulty (avg score, lower = harder)', fontweight='bold')
-    ax.set_ylabel('Controversy (std, higher = more disagreement)', fontweight='bold')
+    ax.set_xlabel('Difficulty (avg score, lower = harder)', fontweight='bold', fontsize=14)
+    ax.set_ylabel('Controversy (std, higher = more disagreement)', fontweight='bold', fontsize=14)
     ax.set_title(f'Question Autopsy: Difficulty vs Controversy (n = {len(q_data)})\n'
                  r'($\blacktriangledown$ = hardest, $\times$ = controversial)',
-                 fontweight='bold', pad=10)
+                 fontweight='bold', fontsize=16, pad=10)
+    ax.tick_params(axis='both', labelsize=12)
 
     # Set axis limits with padding
     ax.set_xlim(min(avgs) - 0.5, max(avgs) + 0.5)
@@ -1003,7 +1063,7 @@ def generate_fig16_question_autopsy(data: dict, output_dir: Path):
 
 
 def generate_fig10_self_bias(data: dict, output_dir: Path):
-    """Figure 10: Self Bias - tendency to rate own responses higher."""
+    """Figure 10: Self Bias - tendency to rate own responses higher, with 95% CI."""
 
     print("\nGenerating Figure 10: Self Bias...")
 
@@ -1017,34 +1077,36 @@ def generate_fig10_self_bias(data: dict, output_dir: Path):
     by_self = sorted(name_data, key=lambda x: x['self_bias'], reverse=True)
     models = [d['model'] for d in by_self]
     biases = [d['self_bias'] for d in by_self]
+    errors = [d['self_bias_se'] * 1.96 for d in by_self]  # 95% CI
     colors = ['#EE7733' if b > 0 else '#0077BB' for b in biases]
 
     y_pos = np.arange(len(models))
-    ax.barh(y_pos, biases, color=colors, edgecolor='white', alpha=0.85)
+    ax.barh(y_pos, biases, color=colors, edgecolor='white', alpha=0.85,
+            xerr=errors, capsize=3, error_kw={'elinewidth': 1.5, 'capthick': 1.5, 'ecolor': '#333333'})
     ax.axvline(0, color='black', linewidth=0.8)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(models)
     ax.set_xlabel('Self − Peer Score')
-    ax.set_title('Self Bias\n(positive = overrates own responses)', fontweight='bold', pad=10)
+    ax.set_title('Self Bias with 95% CI\n(positive = overrates own responses)', fontweight='bold', pad=10)
     ax.invert_yaxis()
 
-    # Extend x-axis to make room for labels
-    min_bias, max_bias = min(biases), max(biases)
-    ax.set_xlim(min_bias - 0.15, max_bias + 0.15)
+    # Extend x-axis to make room for labels and error bars
+    max_extent = max(abs(b) + e for b, e in zip(biases, errors))
+    ax.set_xlim(-max_extent - 0.15, max_extent + 0.15)
 
-    # Add value labels at outer end of bars
-    for i, bias in enumerate(biases):
+    # Add value labels at outer end of bars (beyond error bars)
+    for i, (bias, err) in enumerate(zip(biases, errors)):
         if bias >= 0:
-            ax.text(bias + 0.02, i, f'{bias:+.2f}', va='center', ha='left', fontsize=9)
+            ax.text(bias + err + 0.03, i, f'{bias:+.2f}', va='center', ha='left', fontsize=9)
         else:
-            ax.text(bias - 0.02, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
+            ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig10_self_bias')
 
 
 def generate_fig11_name_bias(data: dict, output_dir: Path):
-    """Figure 11: Name Bias - effect of revealing model identity."""
+    """Figure 11: Name Bias - effect of revealing model identity, with 95% CI."""
 
     print("\nGenerating Figure 11: Name Bias...")
 
@@ -1058,34 +1120,36 @@ def generate_fig11_name_bias(data: dict, output_dir: Path):
     by_name = sorted(name_data, key=lambda x: x['name_bias'], reverse=True)
     models = [d['model'] for d in by_name]
     biases = [d['name_bias'] for d in by_name]
+    errors = [d['name_bias_se'] * 1.96 for d in by_name]  # 95% CI
     colors = ['#009988' if b > 0 else '#CC3311' for b in biases]
 
     y_pos = np.arange(len(models))
-    ax.barh(y_pos, biases, color=colors, edgecolor='white', alpha=0.85)
+    ax.barh(y_pos, biases, color=colors, edgecolor='white', alpha=0.85,
+            xerr=errors, capsize=3, error_kw={'elinewidth': 1.5, 'capthick': 1.5, 'ecolor': '#333333'})
     ax.axvline(0, color='black', linewidth=0.8)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(models)
     ax.set_xlabel('Shuffle − Peer Score')
-    ax.set_title('Name Bias\n(positive = brand recognition helped)', fontweight='bold', pad=10)
+    ax.set_title('Name Bias with 95% CI\n(positive = brand recognition helped)', fontweight='bold', pad=10)
     ax.invert_yaxis()
 
-    # Extend x-axis to make room for labels
-    min_bias, max_bias = min(biases), max(biases)
-    ax.set_xlim(min_bias - 0.15, max_bias + 0.15)
+    # Extend x-axis to make room for labels and error bars
+    max_extent = max(abs(b) + e for b, e in zip(biases, errors))
+    ax.set_xlim(-max_extent - 0.15, max_extent + 0.15)
 
-    # Add value labels at outer end of bars
-    for i, bias in enumerate(biases):
+    # Add value labels at outer end of bars (beyond error bars)
+    for i, (bias, err) in enumerate(zip(biases, errors)):
         if bias >= 0:
-            ax.text(bias + 0.02, i, f'{bias:+.2f}', va='center', ha='left', fontsize=9)
+            ax.text(bias + err + 0.03, i, f'{bias:+.2f}', va='center', ha='left', fontsize=9)
         else:
-            ax.text(bias - 0.02, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
+            ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig11_name_bias')
 
 
 def generate_fig12_position_bias(data: dict, output_dir: Path):
-    """Figure 12: Position Bias - effect of presentation order."""
+    """Figure 12: Position Bias - effect of presentation order with 95% CI."""
 
     print("\nGenerating Figure 12: Position Bias...")
 
@@ -1098,20 +1162,22 @@ def generate_fig12_position_bias(data: dict, output_dir: Path):
 
     positions = [d['position'] for d in pos_data]
     biases = [d['pos_bias'] for d in pos_data]
+    errors = [d['bias_se'] * 1.96 for d in pos_data]  # 95% CI
     colors = ['#009988' if b > 0 else '#CC3311' for b in biases]
 
     x_pos = np.arange(len(positions))
-    ax.bar(x_pos, biases, color=colors, edgecolor='white', alpha=0.85)
+    ax.bar(x_pos, biases, color=colors, edgecolor='white', alpha=0.85,
+           yerr=errors, capsize=4, error_kw={'elinewidth': 1.5, 'capthick': 1.5, 'ecolor': '#333333'})
     ax.axhline(0, color='black', linewidth=0.8)
     ax.set_xticks(x_pos)
     ax.set_xticklabels([f'#{p}' for p in positions])
     ax.set_xlabel('Presentation Position')
     ax.set_ylabel('Blind − Peer Score')
-    ax.set_title('Position Bias\n(positive = position helped)', fontweight='bold', pad=10)
+    ax.set_title('Position Bias with 95% CI\n(positive = position helped)', fontweight='bold', pad=10)
 
-    for i, bias in enumerate(biases):
+    for i, (bias, err) in enumerate(zip(biases, errors)):
         va = 'bottom' if bias >= 0 else 'top'
-        offset = 0.02 if bias >= 0 else -0.02
+        offset = err + 0.03 if bias >= 0 else -err - 0.03
         ax.text(i, bias + offset, f'{bias:+.2f}', ha='center', va=va, fontsize=9)
 
     plt.tight_layout()
