@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import seaborn as sns
+from scipy import stats
 
 from config import calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats
 
@@ -1276,10 +1277,65 @@ def main():
     print(f"\n{'=' * 40}")
     print(f"Done! Figures saved to: {output_dir}/")
 
+    # Provider clustering statistical test
+    clustering_result = compute_provider_clustering(data)
+    if clustering_result:
+        print(f"\n{clustering_result}")
+
     # Generate LaTeX file with figure templates
     generate_latex_templates(output_dir, has_multimode_data(data))
 
     return 0
+
+
+def compute_provider_clustering(data: dict) -> str:
+    """Compute Kruskal-Wallis test for peer scores grouped by provider."""
+
+    # Provider mapping from model names
+    PROVIDER_MAP = {
+        'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+        'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
+        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-thinking': 'Google',
+        'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
+        'grok-4-1-fast': 'xAI',
+        'deepseek-chat': 'DeepSeek',
+        'llama-4-maverick': 'Meta',
+        'sonar-pro': 'Perplexity',
+        'kimi-k2-0905': 'Moonshot',
+        'mistral-large': 'Mistral',
+    }
+
+    evaluations = data['phase3'].get('evaluations', {})
+    models = list(evaluations.keys())
+    scores = calculate_scores_from_evaluations(evaluations, models)
+
+    # Group peer scores by provider
+    provider_scores = {}
+    for model in models:
+        provider = PROVIDER_MAP.get(model, 'Other')
+        peer = scores['peer_scores'].get(model, [])
+        if peer:
+            if provider not in provider_scores:
+                provider_scores[provider] = []
+            provider_scores[provider].extend(peer)
+
+    # Need at least 2 providers with data
+    groups = [v for v in provider_scores.values() if len(v) >= 2]
+    if len(groups) < 2:
+        return None
+
+    # Kruskal-Wallis H-test (non-parametric ANOVA)
+    h_stat, p_value = stats.kruskal(*groups)
+
+    # Effect size: eta-squared approximation = H / (N - 1)
+    n_total = sum(len(g) for g in groups)
+    eta_sq = h_stat / (n_total - 1) if n_total > 1 else 0
+
+    # Format result
+    n_providers = len(groups)
+    sig = "p < 0.001" if p_value < 0.001 else f"p = {p_value:.3f}"
+
+    return f"Provider clustering: Kruskal-Wallis H({n_providers-1}) = {h_stat:.2f}, {sig}, eta^2 = {eta_sq:.3f}"
 
 
 def generate_latex_templates(output_dir: Path, has_bias_figs: bool):

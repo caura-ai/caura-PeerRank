@@ -324,6 +324,25 @@ async def phase2_answer():
     async def answer_one(provider, model_id, model_name, question, semaphore):
         nonlocal completed
 
+        prompt =f"""You are a careful math solver. Solve word problems with explicit arithmetic and unit tracking.
+Do not skip multipliers (people, days, items). Avoid unnecessary algebra.
+Before finalizing, do a quick sanity check for common mistakes (missing factors, reversed comparisons, off-by-one).
+You MUST end with the final answer in the exact format: '#### <number>'.
+
+Solve this math word problem.
+
+Output rules:
+1) Use short numbered steps with equations only (no extra commentary).
+2) Include exactly one 1-line sanity check right before the final answer.
+3) End with the final answer in exactly this format:
+#### <number>
+
+Problem:
+{question}
+"""
+        
+
+        
         prompt = f"""Solve this math problem step by step.
 
 Show your reasoning clearly, then provide your final numerical answer.
@@ -339,7 +358,7 @@ Question: {question["question"]}"""
         try:
             async with semaphore:
                 response, duration, in_tok, out_tok = await call_llm(
-                    provider, model_id, prompt, max_tokens=2048, timeout=90,
+                    provider, model_id, prompt, max_tokens=8192, timeout=300,
                     temperature=0, use_web_search=False
                 )
 

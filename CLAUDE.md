@@ -11,6 +11,7 @@
 - **Cost Tracking**: Real-time token usage and cost analysis per model
 - **Publication Figures**: Generate publication-quality charts and statistical analysis
 - **TruthfulQA Validation**: Correlate peer rankings with ground truth accuracy
+- **GSM8K Validation**: Correlate peer rankings with math accuracy (r=0.986)
 
 ## Prerequisites
 
@@ -54,6 +55,8 @@ python peerrank.py --health     # API health check
 streamlit run peerrank_ui.py    # Launch Streamlit UI
 python generate_figures_phase4.py --revision v1 --output figures/  # Generate publication figures
 python generate_figures_TFQ.py --output figures/              # Generate TFQ validation figures
+python gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
+python gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
 ```
 
 ## Interactive Menu
@@ -101,6 +104,7 @@ phase5.py            # Final analysis by judge LLM
 generate_figures_phase4.py   # Publication-quality figure generation (Figs 4-6, 10-17)
 generate_figures_TFQ.py      # TruthfulQA validation figures (Figs 10-14)
 truthful.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
+gsm8k.py                     # GSM8K validation (correlate peer rankings with math accuracy)
 data/
   phase1_questions_{rev}.json
   phase2_answers_{rev}.json
@@ -108,6 +112,7 @@ data/
   phase4_report_{rev}.md
   phase5_analysis_{rev}.md
   TRUTH/                     # TruthfulQA validation output files
+  GSM8K/                     # GSM8K validation output files
 ```
 
 ## Revision System
@@ -449,6 +454,47 @@ python truthful.py --num-questions 50 # Set question count
 - `phase4_TFQ_scores_TFQ.json` - Ground truth accuracy scores
 - `TFQ_analysis_TFQ.json` - Correlation analysis
 - `TFQ_validation_report_TFQ.md` - Final report
+
+## GSM8K Validation (`gsm8k.py`)
+Correlates peer rankings with GSM8K (Grade School Math 8K) ground truth to validate peer evaluation on mathematical reasoning:
+- 5-phase pipeline mirroring main PeerRank system
+- Uses open-ended math problems with numerical answers (not multiple choice)
+- Extracts answers via `#### <number>` pattern with fallback regex patterns
+- Computes Pearson/Spearman correlation between peer scores and math accuracy
+- **Strong correlation observed**: r=0.986 (p<0.0001) in validation testing
+
+**Key difference from TruthfulQA**: GSM8K uses open-ended problems requiring chain-of-thought reasoning with numerical answers, rather than multiple choice questions.
+
+**Usage**:
+```bash
+python gsm8k.py                           # Interactive menu
+python gsm8k.py --all                     # Run all phases
+python gsm8k.py --phase 1-5               # Run specific phase
+python gsm8k.py --num-questions 50        # Set question count
+python gsm8k.py --difficulty easy,medium  # Filter by difficulty
+python gsm8k.py --difficulty hard         # Only hard questions
+```
+
+**Difficulty levels** (based on solution step count):
+- `easy`: 1-3 reasoning steps (708 questions available)
+- `medium`: 4-5 reasoning steps (477 questions available)
+- `hard`: 6+ reasoning steps (134 questions available)
+
+**Output files** (in `data/GSM8K/`):
+- `phase1_questions_GSM8K.json` - Math problems from GSM8K
+- `phase1_ground_truth_GSM8K.json` - Gold answers with solutions
+- `phase2_answers_GSM8K.json` - Model responses with extracted answers
+- `phase3_rankings_GSM8K.json` - Peer evaluations
+- `phase4_GSM8K_scores_GSM8K.json` - Ground truth accuracy scores
+- `GSM8K_analysis_GSM8K.json` - Correlation analysis
+- `GSM8K_validation_report_GSM8K.md` - Final report
+
+**Answer extraction** (in order of preference):
+1. `#### number` - Explicit format requested in prompt
+2. `final answer is/= number` - Common model phrasing
+3. `therefore/so/thus... number` - Reasoning conclusion
+4. `\boxed{number}` - LaTeX format
+5. Last standalone number - Fallback
 
 ### Figure Generation (`generate_figures_phase4.py`)
 Publication-quality figure generation for research papers:
