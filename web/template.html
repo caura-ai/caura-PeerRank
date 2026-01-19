@@ -22,6 +22,9 @@
                 <span class="badge {% if metadata.web_search == 'ON' %}badge-green{% else %}badge-orange{% endif %}">
                     Web Search: {{ metadata.web_search }}
                 </span>
+                <button class="badge badge-about" onclick="document.getElementById('aboutModal').classList.add('show')">
+                    &#9432; About
+                </button>
             </div>
             <p class="updated"><strong>Last updated:</strong> {{ metadata.generated }}</p>
         </div>
@@ -171,5 +174,67 @@
             <p>Generated {{ generation_time }} | <a href="https://github.com/yourusername/peerrank">GitHub</a></p>
         </div>
     </footer>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('aboutModal').classList.remove('show')">&times;</button>
+            <h2>About PeerRank</h2>
+            <p class="modal-subtitle">Fully Endogenous LLM Evaluation</p>
+
+            <div class="about-section">
+                <h3>How It Works</h3>
+                <div class="about-steps">
+                    <div class="about-step">
+                        <span class="step-num">1</span>
+                        <div>
+                            <strong>Question Generation</strong>
+                            <p>Each LLM generates challenging questions across multiple categories</p>
+                        </div>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-num">2</span>
+                        <div>
+                            <strong>Answer Collection</strong>
+                            <p>All models answer all questions with web search enabled</p>
+                        </div>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-num">3</span>
+                        <div>
+                            <strong>Peer Evaluation</strong>
+                            <p>Each model evaluates every other model's responses (1-10 scale)</p>
+                        </div>
+                    </div>
+                    <div class="about-step">
+                        <span class="step-num">4</span>
+                        <div>
+                            <strong>Bias Detection</strong>
+                            <p>Three evaluation modes detect self-favoritism, brand bias, and position effects</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="about-section">
+                <h3>Bias Modes</h3>
+                <ul class="about-list">
+                    <li><strong>PEER ONLY:</strong> Scores from other models only (self-ratings excluded)</li>
+                    <li><strong>PEER+SELF:</strong> Includes model's rating of its own response</li>
+                    <li><strong>ANONYMOUS:</strong> Model names hidden during evaluation</li>
+                </ul>
+            </div>
+
+            <div class="about-section">
+                <h3>Key Metrics</h3>
+                <ul class="about-list">
+                    <li><strong>Elo Rating:</strong> Pairwise comparison ranking from head-to-head evaluations</li>
+                    <li><strong>Self Bias:</strong> How much a model overrates its own responses</li>
+                    <li><strong>Brand Bias:</strong> Score change when model names are visible vs hidden</li>
+                    <li><strong>Judge Generosity:</strong> Average score a model gives when evaluating others</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
