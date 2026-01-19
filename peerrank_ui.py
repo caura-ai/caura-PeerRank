@@ -14,7 +14,7 @@ import pandas as pd
 from config import (
     MODELS, ALL_MODELS, extract_json, MAX_TOKENS_ANSWER, MAX_TOKENS_EVAL,
     TEMPERATURE_EVAL, match_model_name, BIAS_MODES, BIAS_CONFIGS, UI_DISPLAY_MODES,
-    calculate_scores_from_evaluations,
+    calculate_scores_from_evaluations, calculate_elo_ratings,
 )
 from providers import call_llm
 from phase3 import EVAL_PROMPT, BLIND_LABELS
@@ -309,7 +309,7 @@ if st.session_state.answers:
 
     # Show bias test results if we have evaluations
     if st.session_state.evaluations:
-        st.subheader("📊 Bias Analysis Results")
+        st.subheader("📊 Results")
 
         # Calculate scores for all 3 modes (needed for bias calculations)
         scores_by_config = {}
@@ -320,42 +320,84 @@ if st.session_state.answers:
                 _, _, _, peer_sc = calculate_rankings(config_evals, model_names)
                 scores_by_config[config_name] = {n: mean(peer_sc[n]) if peer_sc[n] else 0 for n in model_names}
 
-        # Display only 2 columns (Peer Score and Shuffle)
-        cols = st.columns(2)
-        rankings_by_config = {}
+        # Get shuffle_blind evaluations for ELO and judge generosity
+        shuffle_blind_evals = st.session_state.evaluations.get("shuffle_blind", {})
 
-        for i, config in enumerate(UI_DISPLAY_MODES):
-            config_name = config["name"]
-            config_evals = st.session_state.evaluations.get(config_name, {})
+        # Display 3 columns: ELO Ratings, Name Bias, Judge Generosity
+        cols = st.columns(3)
 
-            with cols[i]:
-                st.markdown(f"### {config['icon']} {config['display_name']}")
-                st.caption(config["desc"])
+        # Column 1: ELO Ratings
+        with cols[0]:
+            st.markdown("### 🏆 Elo Rating")
+            st.caption("Pairwise comparison ranking")
 
-                if config_evals:
-                    if config_name == "shuffle_blind":
-                        # Peer Score table: Peer, Self, Self Bias
-                        df = build_results_df(config_evals, st.session_state.answers, model_names, mode="peer")
-                        rankings_by_config[config_name] = df["Model"].tolist()
-                        st.dataframe(df, width="stretch", hide_index=True)
+            if shuffle_blind_evals:
+                # Convert UI format to phase3 format for ELO calculation
+                elo_evaluations = {}
+                for evaluator, eval_data in shuffle_blind_evals.items():
+                    scores = eval_data.get("scores", {})
+                    if scores:
+                        elo_evaluations[evaluator] = {"q1": scores}
 
-                        # Show Avg Self-Bias metric
-                        _, _, self_sc, peer_sc = calculate_rankings(config_evals, model_names)
-                        biases = []
-                        for name in model_names:
-                            if self_sc[name] is not None and peer_sc[name]:
-                                biases.append(self_sc[name] - mean(peer_sc[name]))
-                        avg_bias = mean(biases) if biases else 0
-                        st.metric("Avg Self-Bias", f"{avg_bias:+.2f}")
-                    else:
-                        # Shuffle table: Score, Name Bias (Peer - Shuffle)
-                        peer_baseline = scores_by_config.get("shuffle_blind", {})
-                        df = build_results_df(config_evals, st.session_state.answers, model_names,
-                                              mode="shuffle", peer_baseline=peer_baseline)
-                        rankings_by_config[config_name] = df["Model"].tolist()
-                        st.dataframe(df, width="stretch", hide_index=True)
+                elo_data = calculate_elo_ratings(elo_evaluations, model_names)
+                if elo_data and elo_data["ratings"]:
+                    # Build ELO table (Rank, Model, Elo only)
+                    elo_rows = []
+                    sorted_models = sorted(model_names, key=lambda m: elo_data["ratings"].get(m, 1500), reverse=True)
+                    for rank, model in enumerate(sorted_models, 1):
+                        elo_rows.append({
+                            "Rank": rank,
+                            "Model": model,
+                            "Elo": int(elo_data["ratings"].get(model, 1500)),
+                        })
+                    df_elo = pd.DataFrame(elo_rows)
+                    st.dataframe(df_elo, width="stretch", hide_index=True)
                 else:
-                    st.write("No data")
+                    st.write("Could not calculate Elo ratings")
+            else:
+                st.write("No data")
+
+        # Column 2: Name Bias (Shuffle table)
+        with cols[1]:
+            st.markdown("### 🔀 Name Bias")
+            st.caption("Score change when names visible")
+
+            shuffle_only_evals = st.session_state.evaluations.get("shuffle_only", {})
+            if shuffle_only_evals:
+                peer_baseline = scores_by_config.get("shuffle_blind", {})
+                df = build_results_df(shuffle_only_evals, st.session_state.answers, model_names,
+                                      mode="shuffle", peer_baseline=peer_baseline)
+                st.dataframe(df, width="stretch", hide_index=True)
+            else:
+                st.write("No data")
+
+        # Column 3: Judge Generosity
+        with cols[2]:
+            st.markdown("### ⚖️ Judge Generosity")
+            st.caption("Avg score given by each judge")
+
+            if shuffle_blind_evals:
+                # Calculate average score given by each evaluator
+                judge_rows = []
+                for evaluator in model_names:
+                    eval_data = shuffle_blind_evals.get(evaluator, {})
+                    scores = eval_data.get("scores", {})
+                    if scores:
+                        # Get all scores given (excluding self if desired)
+                        all_given = [s.get("score", s) if isinstance(s, dict) else s
+                                     for m, s in scores.items() if m != evaluator]
+                        avg_given = mean(all_given) if all_given else 0
+                        judge_rows.append({
+                            "Judge": evaluator,
+                            "Avg Given": f"{avg_given:.1f}",
+                        })
+
+                # Sort by avg given (most generous first)
+                judge_rows.sort(key=lambda x: float(x["Avg Given"]), reverse=True)
+                df_judge = pd.DataFrame(judge_rows)
+                st.dataframe(df_judge, width="stretch", hide_index=True)
+            else:
+                st.write("No data")
 
         # Comparison summary
         st.divider()
@@ -395,23 +437,6 @@ if st.session_state.answers:
                             biases.append(self_sc[name] - mean(peer_sc[name]))
                     avg_bias = mean(biases) if biases else 0
                     st.write(f"{config['icon']} {config_name}: {avg_bias:+.2f}")
-
-        st.divider()
-
-    # Display each model's answer
-    st.subheader("📝 Answers")
-    for model_name in model_names:
-        ans = st.session_state.answers.get(model_name, {})
-        duration = ans.get("duration", 0)
-
-        header = f"**{model_name}** | ⏱️ {duration:.1f}s"
-        st.markdown(header)
-
-        if ans.get("error"):
-            st.error(f"Error: {ans['error']}")
-        elif ans.get("answer"):
-            with st.expander("📄 Answer", expanded=False):
-                st.markdown(ans["answer"])
 
         st.divider()
 

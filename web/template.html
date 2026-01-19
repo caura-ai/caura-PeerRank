@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeerRank.ai - LLM Peer Evaluation Leaderboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="gradient-bg"></div>
+
+    <header>
+        <div class="container">
+            <h1>PeerRank<span class="accent">.ai</span></h1>
+            <p class="tagline">LLM Peer Evaluation Leaderboard</p>
+            <div class="badges">
+                <span class="badge">{{ metadata.models_count }} Models</span>
+                <span class="badge">{{ metadata.questions_count }} Questions</span>
+                <span class="badge {% if metadata.web_search == 'ON' %}badge-green{% else %}badge-orange{% endif %}">
+                    Web Search: {{ metadata.web_search }}
+                </span>
+            </div>
+            <p class="updated"><strong>Last updated:</strong> {{ metadata.generated }}</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Leaderboard Section -->
+        <section class="leaderboard-section">
+            <div class="section-header">
+                <h2>Leaderboard</h2>
+            </div>
+
+            <div class="leaderboard-grid">
+                <!-- Elo Rankings -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Rated by Peer LLMs</h3>
+                        <span class="card-badge">{{ total_matches }} matches</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="rankings-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-rank">#</th>
+                                    <th class="col-model">Model</th>
+                                    <th class="col-elo">Elo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in elo_rankings %}
+                                <tr class="{% if row.rank == 1 %}rank-gold{% elif row.rank == 2 %}rank-silver{% elif row.rank == 3 %}rank-bronze{% endif %}">
+                                    <td class="col-rank">
+                                        {% if row.rank == 1 %}
+                                        <span class="medal gold">&#128081;</span>
+                                        {% elif row.rank == 2 %}
+                                        <span class="medal silver">&#129352;</span>
+                                        {% elif row.rank == 3 %}
+                                        <span class="medal bronze">&#129353;</span>
+                                        {% else %}
+                                        {{ row.rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="col-model">{{ row.model }}</td>
+                                    <td class="col-elo mono">{{ row.elo }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Judge Generosity -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Judge Generosity</h3>
+                        <span class="card-badge">Avg Score Given</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="rankings-table generosity-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-rank">#</th>
+                                    <th class="col-model">Model</th>
+                                    <th class="col-score">Avg Given</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in judge_generosity %}
+                                <tr class="generosity-row" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                                    <td class="col-rank">{{ row.rank }}</td>
+                                    <td class="col-model">{{ row.model }}</td>
+                                    <td class="col-score">
+                                        <div class="generosity-bar">
+                                            <div class="generosity-fill">
+                                                <div class="generosity-fill-inner" style="width: {{ ((row.avg_given - 5) / 5 * 100)|int }}%; --delay: {{ loop.index0 * 0.1 }}s;"></div>
+                                            </div>
+                                            <span class="generosity-value mono">{{ "%.2f"|format(row.avg_given) }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bias Analysis Section -->
+        <section class="bias-section">
+            <div class="section-header">
+                <h2>Bias Analysis</h2>
+                <p>Detecting self-favoritism, brand recognition, and position effects</p>
+            </div>
+
+            <div class="bias-grid">
+                <!-- Model Bias (Self & Name) -->
+                <div class="card card-wide">
+                    <div class="card-header">
+                        <h3>Model Bias</h3>
+                        <span class="card-badge">Self & Name Effects</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="bias-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-rank">#</th>
+                                    <th class="col-model">Model</th>
+                                    <th class="col-score">PEER ONLY</th>
+                                    <th class="col-score">PEER+SELF</th>
+                                    <th class="col-bias">Self Bias</th>
+                                    <th class="col-score">ANONYMOUS</th>
+                                    <th class="col-bias">BRAND BIAS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in model_bias %}
+                                <tr>
+                                    <td class="col-rank">{{ row.rank }}</td>
+                                    <td class="col-model">{{ row.model }}</td>
+                                    <td class="col-score mono">{{ "%.2f"|format(row.peer) }}</td>
+                                    <td class="col-score mono">{{ "%.2f"|format(row.self) }}</td>
+                                    <td class="col-bias mono {% if row.self_bias.startswith('+') %}bias-positive{% elif row.self_bias.startswith('-') %}bias-negative{% endif %}">
+                                        {{ row.self_bias }}
+                                    </td>
+                                    <td class="col-score mono">{{ "%.2f"|format(row.shuffle) }}</td>
+                                    <td class="col-bias mono {% if row.name_bias.startswith('+') %}bias-positive{% elif row.name_bias.startswith('-') %}bias-negative{% endif %}">
+                                        {{ row.name_bias }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <span class="legend"><span class="dot positive"></span> Positive = overrated self / name helped</span>
+                        <span class="legend"><span class="dot negative"></span> Negative = underrated self / name hurt</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Generated {{ generation_time }} | <a href="https://github.com/yourusername/peerrank">GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>
