@@ -7,6 +7,7 @@
 - **5-Phase Pipeline**: Question generation → Answering → Cross-evaluation → Report → Analysis
 - **12 Models**: OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
 - **Bias Detection**: Measures self-bias, name bias, and position bias through controlled evaluation modes
+- **Elo Ratings**: Alternative ranking via pairwise comparisons (K=32, excludes self-evaluations)
 - **Web Search Integration**: Native search support for most providers, Tavily fallback for others
 - **Cost Tracking**: Real-time token usage and cost analysis per model
 - **Publication Figures**: Generate publication-quality charts and statistical analysis
@@ -49,6 +50,8 @@ python peerrank.py --exclude-categories creative       # Exclude these categorie
 python peerrank.py --seed 42    # Reproducible shuffle ordering for Phase 3
 python peerrank.py --web-search on   # Enable Phase 2 web search (default)
 python peerrank.py --web-search off  # Disable Phase 2 web search (test knowledge only)
+python peerrank.py --elo on          # Enable Phase 4 Elo ratings (default)
+python peerrank.py --elo off         # Disable Phase 4 Elo ratings
 python peerrank.py --judge gpt-5.2   # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
@@ -69,6 +72,7 @@ python gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard 
   Questions per model: 2
   Phase 2 web search: ON
   Phase 3: 3 passes (random)
+  Phase 4 Elo ratings: ON
   Phase 5 judge: gpt-5.2
 
   [1] Phase 1 - Generate Questions
@@ -84,6 +88,7 @@ python gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard 
   [N] Number of questions per model
   [W] Web Search - Toggle Phase 2 grounding
   [D] Seed - Set random seed for Phase 3
+  [E] Elo - Toggle Phase 4 Elo ratings
   [J] Judge - Select Phase 5 analysis judge
   [V] Version - Set revision tag
   [Q] Quit
@@ -142,6 +147,7 @@ Files are tagged with user-set revision (default: `v1`). Change via `[V]` menu o
 - **Answering API Cost Analysis**: Total costs, token usage, and per-answer costs for Phase 2
 - **Performance vs. Cost**: Efficiency rankings combining quality scores with cost (Points²/¢)
 - **Final Peer Rankings**: Scores from shuffle+blind mode (excluding self-ratings)
+- **Elo Ratings**: Pairwise comparison rankings with W-L-T records and rank comparison
 - **Bias Analysis**: Three bias types with Position Bias table and Model Bias table
 - **Judge Generosity**: How lenient/strict each model judges
 - **Judge Agreement Matrix**: Pairwise correlation between judges' scoring patterns
@@ -370,6 +376,52 @@ Returns total cost in USD using TOKEN_COSTS pricing table
 
 **Report Indicator**: Phase 4 header shows "Web search: ON/OFF" status
 
+## Elo Ratings (Phase 4)
+
+Alternative ranking methodology using pairwise comparisons from evaluation scores.
+
+**Configuration**:
+- `PHASE4_ELO` global setting in config.py (default: True)
+- Functions: `get_phase4_elo()` / `set_phase4_elo(enabled: bool)`
+- CLI: `python peerrank.py --elo on/off`
+- Menu: `[E] Elo - Toggle Phase 4 Elo ratings`
+
+**Algorithm**:
+- Initial rating: 1500 (configurable via `ELO_INITIAL_RATING`)
+- K-factor: 32 (configurable via `ELO_K_FACTOR`)
+- Expected score: `E_a = 1 / (1 + 10^((R_b - R_a) / 400))`
+- Rating update: `R_a' = R_a + K * (actual - E_a)`
+
+**Pairwise Conversion**:
+For each (evaluator, question), scores are converted to C(N,2) pairwise matches:
+- `score_a > score_b` → A wins (1.0, 0.0)
+- `score_a < score_b` → B wins (0.0, 1.0)
+- `score_a == score_b` → Tie (0.5, 0.5)
+- Self-evaluations excluded by default
+
+**Report Output**:
+| # | Model | Elo | Win% | W-L-T | Peer | P# | Diff |
+|---|-------|-----|------|-------|------|----|------|
+| 1 | gpt-5.2 | 1687 | 68.2% | 9012-4188-786 | 8.27 | 1 | 0 |
+
+- **Elo**: Final Elo rating
+- **Win%**: Win rate including ties (wins + 0.5*ties / total)
+- **W-L-T**: Wins-Losses-Ties record
+- **Peer**: Peer score from averaging method
+- **P#**: Peer ranking position
+- **Diff**: Peer rank − Elo rank (positive = Elo ranks model higher)
+
+**Data Volume** (typical):
+- 12 evaluators × 60 questions × C(10,2) = ~32,400 pairwise matches
+- Sufficient for Elo convergence
+
+**Functions** (in config.py):
+```python
+calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
+                      k_factor=32, exclude_self=True, seed=None)
+# Returns: {ratings, matches, win_rates, total_matches}
+```
+
 ## Key Patterns
 
 - Async batch processing: `asyncio.gather()`, batch size 5
@@ -508,7 +560,7 @@ Publication-quality figure generation for research papers:
 python generate_figures_phase4.py --revision v1 --output figures/
 ```
 
-**Generates** (Figures 4-6, 10-17):
+**Generates** (Figures 4-6, 10-18):
 - Fig 4: Peer score rankings with error bars
 - Fig 5: Cross-evaluation heatmap
 - Fig 6: Peer score vs response time
@@ -520,6 +572,7 @@ python generate_figures_phase4.py --revision v1 --output figures/
 - Fig 15: Judge agreement matrix (pairwise correlation heatmap)
 - Fig 16: Question autopsy (difficulty vs controversy scatter)
 - Fig 17: Radar chart (multi-dimensional comparison)
+- Fig 18: Elo vs Peer ranking (slope graph with correlation stats)
 
 ### TFQ Figure Generation (`generate_figures_TFQ.py`)
 Publication-quality figures for TruthfulQA validation analysis:

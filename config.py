@@ -109,6 +109,11 @@ NUM_QUESTIONS = 2
 # Phase 2 web search toggle
 PHASE2_WEB_SEARCH = True  # Default: enabled (current behavior)
 
+# Phase 4 Elo rating toggle
+PHASE4_ELO = True  # Default: enabled
+ELO_INITIAL_RATING = 1500
+ELO_K_FACTOR = 32
+
 
 def get_phase2_web_search() -> bool:
     """Get Phase 2 web search setting."""
@@ -119,6 +124,17 @@ def set_phase2_web_search(enabled: bool):
     """Set Phase 2 web search setting."""
     global PHASE2_WEB_SEARCH
     PHASE2_WEB_SEARCH = enabled
+
+
+def get_phase4_elo() -> bool:
+    """Get Phase 4 Elo rating setting."""
+    return PHASE4_ELO
+
+
+def set_phase4_elo(enabled: bool):
+    """Set Phase 4 Elo rating setting."""
+    global PHASE4_ELO
+    PHASE4_ELO = enabled
 
 
 # Phase 3 runs 3 bias modes automatically (shuffle_only, blind_only, shuffle_blind)
@@ -464,6 +480,32 @@ def _pearson_correlation(x: list, y: list) -> float:
     return num / (den_x * den_y)
 
 
+def _spearman_correlation(x: list, y: list) -> float:
+    """Calculate Spearman rank correlation coefficient between two lists."""
+    if len(x) != len(y) or len(x) < 2:
+        return 0.0
+
+    def _rank(data: list) -> list:
+        """Convert values to ranks (1-based, average for ties)."""
+        sorted_indices = sorted(range(len(data)), key=lambda i: data[i], reverse=True)
+        ranks = [0.0] * len(data)
+        i = 0
+        while i < len(sorted_indices):
+            # Find all tied values
+            j = i
+            while j < len(sorted_indices) and data[sorted_indices[j]] == data[sorted_indices[i]]:
+                j += 1
+            # Assign average rank to all tied values
+            avg_rank = (i + 1 + j) / 2  # 1-based ranks
+            for k in range(i, j):
+                ranks[sorted_indices[k]] = avg_rank
+            i = j
+        return ranks
+
+    # Convert to ranks and compute Pearson on ranks
+    return _pearson_correlation(_rank(x), _rank(y))
+
+
 def calculate_judge_agreement(evaluations: dict) -> dict:
     """
     Calculate pairwise correlation between judges based on scores given.
@@ -629,3 +671,149 @@ def calculate_cost(model_id: str, input_tokens: int, output_tokens: int) -> floa
     output_cost = (output_tokens / 1_000_000) * output_cost_per_m
 
     return input_cost + output_cost
+
+
+def _elo_expected_score(rating_a: float, rating_b: float) -> float:
+    """Calculate expected score for player A given ratings."""
+    return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+
+
+def _convert_to_pairwise_matches(evaluations: dict, model_names: list[str], exclude_self: bool = True) -> list[tuple]:
+    """
+    Convert evaluation scores to pairwise match results.
+
+    For each (evaluator, question), generate C(N,2) pairwise comparisons.
+    score_a > score_b → A wins (1.0, 0.0)
+    score_a < score_b → B wins (0.0, 1.0)
+    score_a == score_b → tie (0.5, 0.5)
+
+    Args:
+        evaluations: Dict of {evaluator: {question: {model: {score, reason}}}}
+        model_names: List of model display names
+        exclude_self: If True, skip evaluator's own ratings
+
+    Returns:
+        List of (model_a, model_b, outcome_a, outcome_b) tuples
+    """
+    matches = []
+
+    for evaluator_name, questions in evaluations.items():
+        matched_evaluator = match_model_name(evaluator_name) if exclude_self else None
+
+        for question_id, model_scores in questions.items():
+            # Extract scores for this question
+            scores = {}
+            for model_name, score_data in model_scores.items():
+                if isinstance(score_data, dict) and "score" in score_data:
+                    matched = match_model_name(model_name)
+                    if matched and matched in model_names:
+                        # Skip self-evaluations if requested
+                        if exclude_self and matched == matched_evaluator:
+                            continue
+                        scores[matched] = float(score_data["score"])
+
+            # Generate pairwise comparisons
+            scored_models = list(scores.keys())
+            for i, model_a in enumerate(scored_models):
+                for model_b in scored_models[i + 1:]:
+                    score_a, score_b = scores[model_a], scores[model_b]
+
+                    if score_a > score_b:
+                        outcome_a, outcome_b = 1.0, 0.0
+                    elif score_a < score_b:
+                        outcome_a, outcome_b = 0.0, 1.0
+                    else:
+                        outcome_a, outcome_b = 0.5, 0.5
+
+                    matches.append((model_a, model_b, outcome_a, outcome_b))
+
+    return matches
+
+
+def calculate_elo_ratings(
+    evaluations: dict,
+    model_names: list[str] = None,
+    initial_rating: int = None,
+    k_factor: int = None,
+    exclude_self: bool = True,
+    seed: int = None
+) -> dict:
+    """
+    Calculate Elo ratings from pairwise comparisons in evaluation data.
+
+    Args:
+        evaluations: Dict of {evaluator: {question: {model: {score, reason}}}}
+        model_names: List of model display names (defaults to MODELS)
+        initial_rating: Starting Elo rating (defaults to ELO_INITIAL_RATING)
+        k_factor: K-factor for rating updates (defaults to ELO_K_FACTOR)
+        exclude_self: If True, exclude self-evaluations
+        seed: Random seed for match processing order
+
+    Returns:
+        Dict with:
+        - 'ratings': {model: final_elo_rating}
+        - 'matches': {model: (wins, losses, ties)}
+        - 'win_rates': {model: win_percentage}
+        - 'total_matches': Total number of pairwise comparisons
+    """
+    import random
+
+    if model_names is None:
+        model_names = [n for _, _, n in MODELS]
+    if initial_rating is None:
+        initial_rating = ELO_INITIAL_RATING
+    if k_factor is None:
+        k_factor = ELO_K_FACTOR
+
+    # Initialize ratings
+    ratings = {name: initial_rating for name in model_names}
+    matches = {name: [0, 0, 0] for name in model_names}  # [wins, losses, ties]
+
+    # Convert evaluations to pairwise matches
+    pairwise_matches = _convert_to_pairwise_matches(evaluations, model_names, exclude_self)
+
+    # Optionally shuffle for reproducibility testing
+    if seed is not None:
+        random.seed(seed)
+        random.shuffle(pairwise_matches)
+
+    # Process each match
+    for model_a, model_b, outcome_a, outcome_b in pairwise_matches:
+        # Calculate expected scores
+        expected_a = _elo_expected_score(ratings[model_a], ratings[model_b])
+        expected_b = 1 - expected_a
+
+        # Update ratings
+        ratings[model_a] += k_factor * (outcome_a - expected_a)
+        ratings[model_b] += k_factor * (outcome_b - expected_b)
+
+        # Track match outcomes
+        if outcome_a == 1.0:
+            matches[model_a][0] += 1  # win
+            matches[model_b][1] += 1  # loss
+        elif outcome_a == 0.0:
+            matches[model_a][1] += 1  # loss
+            matches[model_b][0] += 1  # win
+        else:
+            matches[model_a][2] += 1  # tie
+            matches[model_b][2] += 1  # tie
+
+    # Round ratings to integers
+    ratings = {name: int(round(rating)) for name, rating in ratings.items()}
+
+    # Calculate win rates
+    win_rates = {}
+    for name, (wins, losses, ties) in matches.items():
+        total = wins + losses + ties
+        if total > 0:
+            # Win rate: wins + 0.5*ties / total
+            win_rates[name] = (wins + 0.5 * ties) / total * 100
+        else:
+            win_rates[name] = 0.0
+
+    return {
+        "ratings": ratings,
+        "matches": {name: tuple(m) for name, m in matches.items()},
+        "win_rates": win_rates,
+        "total_matches": len(pairwise_matches),
+    }

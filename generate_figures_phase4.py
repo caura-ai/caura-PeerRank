@@ -19,7 +19,10 @@ import numpy as np
 import seaborn as sns
 from scipy import stats
 
-from config import calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats
+from config import (
+    calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats,
+    calculate_elo_ratings, _pearson_correlation, _spearman_correlation,
+)
 
 # =============================================================================
 # Publication-Quality Style Settings
@@ -885,6 +888,111 @@ def generate_fig17_radar_chart(data: dict, output_dir: Path):
     save_figure(fig, output_dir, 'fig17_radar_chart')
 
 
+def generate_fig18_elo_vs_peer(data: dict, output_dir: Path):
+    """Figure 18: Elo Ranking vs Peer Ranking comparison (slope graph)."""
+
+    print("\nGenerating Figure 18: Elo vs Peer Ranking...")
+
+    # Get peer rankings
+    rankings = get_rankings(data)
+    if not rankings:
+        print("  Skipping: No ranking data available")
+        return
+
+    # Get Elo ratings from evaluations
+    evaluations = data['phase3'].get('evaluations', {})
+    if not evaluations:
+        print("  Skipping: No evaluation data available")
+        return
+
+    models = [r['model'] for r in rankings]
+    elo_data = calculate_elo_ratings(evaluations, models)
+
+    if not elo_data or not elo_data['ratings']:
+        print("  Skipping: Could not calculate Elo ratings")
+        return
+
+    # Build comparison data
+    peer_scores = [r['peer_score'] for r in rankings]
+    elo_ratings = [elo_data['ratings'].get(r['model'], 1500) for r in rankings]
+
+    # Calculate correlations
+    pearson_r = _pearson_correlation(peer_scores, elo_ratings)
+    spearman_r = _spearman_correlation(peer_scores, elo_ratings)
+
+    # Sort by Elo for Elo ranking
+    elo_sorted = sorted(enumerate(rankings), key=lambda x: elo_data['ratings'].get(x[1]['model'], 1500), reverse=True)
+    elo_rank = {r['model']: i + 1 for i, (_, r) in enumerate(elo_sorted)}
+
+    # Peer rank is already sorted
+    peer_rank = {r['model']: i + 1 for i, r in enumerate(rankings)}
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    # Create slope graph
+    left_x, right_x = 0.2, 0.8
+
+    for r in rankings:
+        model = r['model']
+        pr = peer_rank[model]
+        er = elo_rank[model]
+        elo_rating = elo_data['ratings'].get(model, 1500)
+        peer_score = r['peer_score']
+        color = get_color(model)
+
+        # Draw line connecting peer rank to elo rank
+        ax.plot([left_x, right_x], [pr, er], '-', color=color, linewidth=2.5, alpha=0.8)
+
+        # Draw points
+        ax.scatter(left_x, pr, s=350, color=color, edgecolor='white', linewidth=2, zorder=3)
+        ax.scatter(right_x, er, s=350, color=color, edgecolor='white', linewidth=2, zorder=3)
+
+        # Rank numbers inside the points
+        text_color = get_text_color_for_background(color)
+        ax.text(left_x, pr, str(pr), ha='center', va='center', fontsize=14,
+                color=text_color, fontweight='bold', zorder=4)
+        ax.text(right_x, er, str(er), ha='center', va='center', fontsize=14,
+                color=text_color, fontweight='bold', zorder=4)
+
+        # Model name and peer score on the left
+        ax.text(left_x - 0.05, pr, f"{model} ({peer_score:.2f})", ha='right', va='center', fontsize=12,
+                color=color, fontweight='bold')
+
+        # Model name and Elo rating on the right with rank change indicator
+        diff = pr - er
+        if diff != 0:
+            diff_str = f" ({diff:+d})"
+        else:
+            diff_str = ""
+        ax.text(right_x + 0.05, er, f"{model} ({elo_rating}){diff_str}", ha='left', va='center', fontsize=12,
+                color=color, fontweight='bold')
+
+    # Axis styling
+    ax.set_xlim(-0.15, 1.15)
+    ax.set_ylim(len(rankings) + 0.5, -0.8)  # Extended top for headers
+
+    # Column headers (positioned above rank 1)
+    ax.text(left_x, -0.4, 'Peer Rank\n(Mean Score)', ha='center', va='top', fontsize=16, fontweight='bold')
+    ax.text(right_x, -0.4, 'Elo Rank\n(Pairwise)', ha='center', va='top', fontsize=16, fontweight='bold')
+
+    # Remove spines and ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # Add correlation stats (top center, between headers and rank 1)
+    corr_text = f"Pearson r = {pearson_r:.3f}  |  Spearman ρ = {spearman_r:.3f}"
+    ax.text(0.5, 0.5, corr_text, ha='center', va='center', fontsize=12,
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='gray', alpha=0.95, zorder=10))
+
+    ax.set_title('Elo Ranking vs Peer Ranking',
+                 fontweight='bold', fontsize=18, pad=20)
+
+    plt.tight_layout()
+    save_figure(fig, output_dir, 'fig18_elo_vs_peer')
+
+
 def generate_fig15_judge_agreement_matrix(data: dict, output_dir: Path):
     """Figure 15: Judge Agreement Matrix - pairwise correlation heatmap (DISCUSSION)."""
 
@@ -1256,6 +1364,7 @@ def main():
     generate_fig4_peer_rankings(data, output_dir)
     generate_fig5_cross_eval_heatmap(data, output_dir)
     generate_fig6_peer_score_vs_time(data, output_dir)
+    generate_fig18_elo_vs_peer(data, output_dir)
 
     # Bias analysis figures (require multi-mode data)
     if has_multimode_data(data):
@@ -1392,6 +1501,14 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
     \label{fig:peer-score-speed}
 \end{figure}
 
+%% FIGURE 18: Elo vs Peer Ranking
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig18_elo_vs_peer.pdf}
+    \caption{Comparison of Elo-based ranking (computed from pairwise comparisons) and mean peer score ranking. Lines connect each model's position in both ranking systems; steeper slopes indicate larger rank changes. Correlation statistics shown at bottom.}
+    \label{fig:elo-vs-peer}
+\end{figure}
+
 """
 
     if has_bias_figs:
@@ -1478,6 +1595,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% fig:peer-rankings     | 4      | Results
 %% fig:cross-eval        | 5      | Results
 %% fig:peer-score-speed  | 6      | Results
+%% fig:elo-vs-peer       | 18     | Results
 %% fig:self-bias         | 10     | Discussion
 %% fig:name-bias         | 11     | Discussion
 %% fig:position-bias     | 12     | Discussion

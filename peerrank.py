@@ -29,6 +29,7 @@ from config import (
     get_revision, set_revision,
     set_bias_test_config, get_bias_test_config,
     get_phase2_web_search, set_phase2_web_search,
+    get_phase4_elo, set_phase4_elo,
     get_phase5_judge, set_phase5_judge,
 )
 from providers import health_check
@@ -71,12 +72,14 @@ def show_menu():
     print(f"  Categories: {len(CATEGORIES)}/{len(ALL_CATEGORIES)} active")
     print(f"  Questions per model: {config.NUM_QUESTIONS}")
 
-    # Show Phase 2, 3, and 5 config
+    # Show Phase 2, 3, 4, and 5 config
     web_search = "ON" if get_phase2_web_search() else "OFF"
     print(f"  Phase 2 web search: {web_search}")
     seed = get_bias_test_config().get("seed")
     seed_str = f"seed={seed}" if seed is not None else "random"
     print(f"  Phase 3: 3 passes ({seed_str})")
+    elo_status = "ON" if get_phase4_elo() else "OFF"
+    print(f"  Phase 4 Elo ratings: {elo_status}")
     judge = get_phase5_judge()[2]
     print(f"  Phase 5 judge: {judge}")
 
@@ -95,6 +98,7 @@ def show_menu():
   [N] Number of questions per model
   [W] Web Search - Toggle Phase 2 grounding
   [D] Seed - Set random seed for Phase 3
+  [E] Elo - Toggle Phase 4 Elo ratings
   [J] Judge - Select Phase 5 analysis judge
   [V] Version - Set revision tag
   [Q] Quit
@@ -162,6 +166,24 @@ def change_web_search():
     elif choice in ("n", "no"):
         set_phase2_web_search(False)
         print("  Phase 2 web search: OFF")
+    else:
+        print("  Unchanged")
+
+
+def change_elo():
+    """Toggle Elo ratings for Phase 4."""
+    current = get_phase4_elo()
+    print(f"\n  Current Phase 4 Elo ratings: {'ON' if current else 'OFF'}")
+    print("  Elo ratings derive rankings from pairwise comparisons.")
+    print("  Provides alternative ranking methodology alongside peer scores.\n")
+
+    choice = input("  Enable Elo ratings? (y/n): ").strip().lower()
+    if choice in ("y", "yes"):
+        set_phase4_elo(True)
+        print("  Phase 4 Elo ratings: ON")
+    elif choice in ("n", "no"):
+        set_phase4_elo(False)
+        print("  Phase 4 Elo ratings: OFF")
     else:
         print("  Unchanged")
 
@@ -296,6 +318,7 @@ async def main():
     parser.add_argument("--exclude-categories", type=str, help="Categories to exclude (comma-separated keywords)")
     parser.add_argument("--seed", type=int, help="Random seed for reproducible Phase 3 shuffle ordering")
     parser.add_argument("--web-search", type=str, choices=["on", "off"], help="Enable/disable web search in Phase 2")
+    parser.add_argument("--elo", type=str, choices=["on", "off"], help="Enable/disable Elo ratings in Phase 4")
     parser.add_argument("--judge", type=str, help="Judge model for Phase 5 analysis (model name)")
     parser.add_argument("--rev", type=str, help="Set revision tag")
     args = parser.parse_args()
@@ -330,6 +353,11 @@ async def main():
     if args.web_search:
         set_phase2_web_search(args.web_search.lower() == "on")
         print(f"Phase 2 web search: {args.web_search.upper()}")
+
+    # Apply Elo setting for Phase 4
+    if args.elo:
+        set_phase4_elo(args.elo.lower() == "on")
+        print(f"Phase 4 Elo ratings: {args.elo.upper()}")
 
     # Apply judge for Phase 5
     if args.judge:
@@ -383,6 +411,9 @@ async def main():
             continue
         elif choice == "D":
             change_seed()
+            continue
+        elif choice == "E":
+            change_elo()
             continue
         elif choice == "J":
             select_judge()

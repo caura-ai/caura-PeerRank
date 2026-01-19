@@ -9,6 +9,8 @@ from config import (
     MODELS, ALL_MODELS, DATA_DIR, load_json, format_duration, get_revision,
     format_table, match_model_name, calculate_scores_from_evaluations,
     calculate_judge_agreement, calculate_question_stats,
+    get_phase4_elo, calculate_elo_ratings, ELO_K_FACTOR,
+    _pearson_correlation, _spearman_correlation,
 )
 
 
@@ -243,6 +245,60 @@ def phase4_generate_report() -> str:
                  for i, (n, avg, std, _, _, s, b, raw) in enumerate(stats["peer_data"], 1)]
     r.append("\n## Final Peer Rankings (Shuffle + Blind mode)\n\nScores from peer evaluations (excluding self-ratings):\n" +
              format_table(["#", "Model", "Peer Score", "Std", "Raw"], peer_rows, ['c', 'l', 'r', 'r', 'r']))
+
+    # Elo Ratings section
+    if get_phase4_elo():
+        # Use shuffle_blind evaluations (same as peer scores) if available, else fallback
+        evaluations_by_mode = phase3.get("evaluations_by_mode", {})
+        elo_evaluations = evaluations_by_mode.get("shuffle_blind", phase3.get("evaluations", {}))
+
+        if elo_evaluations:
+            model_names = [n for _, _, n in MODELS]
+            elo_data = calculate_elo_ratings(elo_evaluations, model_names)
+
+            # Build peer score lookup for comparison
+            peer_score_lookup = {n: avg for n, avg, _, _, _, _, _, _ in stats["peer_data"]}
+            peer_rank_lookup = {n: i for i, (n, _, _, _, _, _, _, _) in enumerate(stats["peer_data"], 1)}
+
+            # Sort by Elo rating
+            elo_sorted = sorted(elo_data["ratings"].items(), key=lambda x: x[1], reverse=True)
+
+            r.append(f"\n## Elo Ratings\n\nPairwise comparisons from evaluation scores (K={ELO_K_FACTOR}).\n"
+                     f"Total matches: {elo_data['total_matches']:,}\n")
+
+            elo_rows = []
+            for elo_rank, (name, elo) in enumerate(elo_sorted, 1):
+                wins, losses, ties = elo_data["matches"].get(name, (0, 0, 0))
+                win_rate = elo_data["win_rates"].get(name, 0)
+                peer_score = peer_score_lookup.get(name, 0)
+                peer_rank = peer_rank_lookup.get(name, 0)
+                rank_diff = peer_rank - elo_rank  # positive = Elo ranks higher
+
+                elo_rows.append([
+                    str(elo_rank),
+                    name,
+                    str(elo),
+                    f"{win_rate:.1f}%",
+                    f"{wins}-{losses}-{ties}",
+                    f"{peer_score:.2f}",
+                    str(peer_rank),
+                    f"{rank_diff:+d}" if rank_diff != 0 else "—",
+                ])
+
+            r.append(format_table(
+                ["#", "Model", "Elo", "Win%", "W-L-T", "Peer", "P#", "Diff"],
+                elo_rows,
+                ['c', 'l', 'r', 'r', 'c', 'r', 'c', 'c']
+            ))
+
+            # Calculate correlation between peer scores and Elo ratings
+            peer_scores_list = [peer_score_lookup.get(name, 0) for name, _ in elo_sorted]
+            elo_ratings_list = [elo for _, elo in elo_sorted]
+            pearson_r = _pearson_correlation(peer_scores_list, elo_ratings_list)
+            spearman_r = _spearman_correlation(peer_scores_list, elo_ratings_list)
+
+            r.append(f"\nCorrelation with Peer Scores: **r={pearson_r:.3f}** (Pearson), **ρ={spearman_r:.3f}** (Spearman)")
+            r.append("\n*Diff = Peer rank − Elo rank (positive = Elo ranks model higher)*")
 
     # Consolidated Bias Analysis (all 3 bias types)
     bias_analysis = _calculate_bias_analysis(phase3)
