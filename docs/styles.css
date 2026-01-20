@@ -216,14 +216,15 @@ section {
 
 .card-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-lg);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+    padding: var(--space-md);
     border-bottom: 1px solid var(--border-color);
 }
 
 .card-header h3 {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
 }
 
@@ -255,8 +256,13 @@ section {
 /* Grids */
 .leaderboard-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-lg);
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-xs);
+}
+
+.card-narrow {
+    max-width: 260px;
+    margin-left: var(--space-md);
 }
 
 .bias-grid {
@@ -282,7 +288,7 @@ table {
 }
 
 th, td {
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
     text-align: left;
 }
 
@@ -322,7 +328,12 @@ tr:hover td {
 }
 
 .col-model {
-    min-width: 150px;
+    min-width: 120px;
+}
+
+.col-latency {
+    text-align: right;
+    width: 70px;
 }
 
 .col-score, .col-elo, .col-win, .col-std, .col-bias {
@@ -390,24 +401,34 @@ tr:hover td {
     color: var(--negative);
 }
 
-/* Judge Generosity Animation */
+/* Judge Generosity Table */
+.generosity-table th,
+.generosity-table td {
+    text-align: left !important;
+}
+
+.generosity-table .col-rank {
+    width: 40px;
+}
+
 .generosity-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-width: 150px;
+    gap: 8px;
 }
 
 .generosity-fill {
-    width: 100px;
-    height: 18px;
+    flex: 1;
+    min-width: 100px;
+    max-width: 140px;
+    height: 16px;
     background: #333;
     border-radius: 4px;
     overflow: hidden;
 }
 
 .generosity-fill-inner {
-    height: 18px;
+    height: 16px;
     background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e);
 }
 
@@ -415,10 +436,7 @@ tr:hover td {
     font-size: 0.875rem;
     font-weight: 600;
     color: #f0f0f5;
-}
-
-.generosity-row {
-    /* no animation for now */
+    min-width: 40px;
 }
 
 /* About Button */
@@ -739,6 +757,12 @@ footer a:hover {
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+    .leaderboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 1024px) {
     .leaderboard-grid,
     .questions-grid {
@@ -825,4 +849,61 @@ footer a:hover {
         height: 24px;
         font-size: 0.75rem;
     }
+}
+
+/* Latency Table */
+.performance-section {
+    margin-top: var(--space-2xl);
+}
+
+.latency-table .col-latency {
+    text-align: right;
+    min-width: 80px;
+}
+
+.latency-table .col-status {
+    text-align: center;
+    width: 60px;
+}
+
+.latency-fast {
+    color: #22c55e;
+}
+
+.latency-medium {
+    color: #eab308;
+}
+
+.latency-slow {
+    color: #ef4444;
+}
+
+.dot.latency-fast {
+    background: #22c55e;
+}
+
+.dot.latency-medium {
+    background: #eab308;
+}
+
+.dot.latency-slow {
+    background: #ef4444;
+}
+
+.status-ok {
+    color: #22c55e;
+}
+
+.status-nokey {
+    color: var(--text-muted);
+}
+
+.status-error {
+    color: #ef4444;
+}
+
+.loading {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-xl);
 }

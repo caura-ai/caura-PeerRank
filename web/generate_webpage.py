@@ -318,6 +318,9 @@ def generate_webpage():
     easiest = parse_question_autopsy(markdown_text, 'easiest')
     consensus = parse_question_autopsy(markdown_text, 'consensus')
 
+    # Create lookup dicts for templates
+    generosity_by_model = {g['model']: g for g in judge_generosity}
+
     # Set up Jinja2
     env = Environment(loader=FileSystemLoader(template_dir))
     template = env.get_template('template.html')
@@ -331,6 +334,7 @@ def generate_webpage():
         position_bias=position_bias,
         model_bias=model_bias,
         judge_generosity=judge_generosity,
+        generosity_by_model=generosity_by_model,
         hardest_questions=hardest,
         controversial_questions=controversial,
         easiest_questions=easiest,

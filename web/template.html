@@ -26,7 +26,6 @@
                     &#9432; About
                 </button>
             </div>
-            <p class="updated"><strong>Last updated:</strong> {{ metadata.generated }}</p>
         </div>
     </header>
 
@@ -42,7 +41,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h3>Rated by Peer LLMs</h3>
-                        <span class="card-badge">{{ total_matches }} matches</span>
+                        <span class="card-badge">{{ metadata.generated }}</span>
                     </div>
                     <div class="table-container">
                         <table class="rankings-table">
@@ -76,34 +75,72 @@
                     </div>
                 </div>
 
-                <!-- Judge Generosity -->
-                <div class="card">
+                <!-- Judge Generosity (Elo order, crowns for top 3 generous) -->
+                <div class="card card-narrow">
                     <div class="card-header">
                         <h3>Judge Generosity</h3>
-                        <span class="card-badge">Avg Score Given</span>
+                        <span class="card-badge">{{ metadata.generated }}</span>
                     </div>
                     <div class="table-container">
                         <table class="rankings-table generosity-table">
                             <thead>
                                 <tr>
                                     <th class="col-rank">#</th>
-                                    <th class="col-model">Model</th>
                                     <th class="col-score">Avg Given</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for row in judge_generosity %}
-                                <tr class="generosity-row" style="--delay: {{ loop.index0 * 0.1 }}s;">
-                                    <td class="col-rank">{{ row.rank }}</td>
-                                    <td class="col-model">{{ row.model }}</td>
+                                {% for row in elo_rankings %}
+                                {% set gen = generosity_by_model.get(row.model, {}) %}
+                                {% set gen_rank = gen.rank|default(99) %}
+                                <tr class="generosity-row {% if gen_rank == 1 %}rank-gold{% elif gen_rank == 2 %}rank-silver{% elif gen_rank == 3 %}rank-bronze{% endif %}">
+                                    <td class="col-rank">
+                                        {% if gen_rank == 1 %}
+                                        <span class="medal gold">&#128081;</span>
+                                        {% elif gen_rank == 2 %}
+                                        <span class="medal silver">&#129352;</span>
+                                        {% elif gen_rank == 3 %}
+                                        <span class="medal bronze">&#129353;</span>
+                                        {% else %}
+                                        {{ gen_rank }}
+                                        {% endif %}
+                                    </td>
                                     <td class="col-score">
                                         <div class="generosity-bar">
                                             <div class="generosity-fill">
-                                                <div class="generosity-fill-inner" style="width: {{ ((row.avg_given - 5) / 5 * 100)|int }}%; --delay: {{ loop.index0 * 0.1 }}s;"></div>
+                                                <div class="generosity-fill-inner" style="width: {{ ((gen.avg_given|default(7) - 5) / 5 * 100)|int }}%;"></div>
                                             </div>
-                                            <span class="generosity-value mono">{{ "%.2f"|format(row.avg_given) }}</span>
+                                            <span class="generosity-value mono">{{ "%.2f"|format(gen.avg_given|default(0)) }}</span>
                                         </div>
                                     </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- API Latency (Elo order, crowns for top 3 fastest) -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Response Time</h3>
+                        <span class="card-badge" id="latency-updated">Live</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="rankings-table latency-table" id="latency-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-rank">#</th>
+                                    <th class="col-model">Model</th>
+                                    <th class="col-latency">Latency</th>
+                                </tr>
+                            </thead>
+                            <tbody id="latency-body">
+                                {% for row in elo_rankings %}
+                                <tr data-model="{{ row.model }}">
+                                    <td class="col-rank">{{ row.rank }}</td>
+                                    <td class="col-model">{{ row.model }}</td>
+                                    <td class="col-latency mono">—</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -125,7 +162,7 @@
                 <div class="card card-wide">
                     <div class="card-header">
                         <h3>Model Bias</h3>
-                        <span class="card-badge">Self & Name Effects</span>
+                        <span class="card-badge">{{ metadata.generated }}</span>
                     </div>
                     <div class="table-container">
                         <table class="bias-table">
@@ -236,5 +273,73 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Load and display latency data (keeps Elo order, crowns 3 fastest)
+        async function loadLatencyData() {
+            const badge = document.getElementById('latency-updated');
+            const rows = document.querySelectorAll('#latency-body tr[data-model]');
+            try {
+                const response = await fetch('latency.json?' + Date.now());
+                if (!response.ok) throw new Error('No data');
+                const data = await response.json();
+
+                // Update timestamp badge
+                if (data.last_updated) {
+                    const ago = Math.round((Date.now() - new Date(data.last_updated).getTime()) / 1000);
+                    badge.textContent = ago < 60 ? `${ago}s ago` : `${Math.round(ago/60)}m ago`;
+                }
+
+                const results = data.current?.results || {};
+
+                // Rank ALL models by speed
+                const sorted = Object.entries(results)
+                    .filter(([_, info]) => info.latency_ms != null)
+                    .sort((a, b) => a[1].latency_ms - b[1].latency_ms);
+                const speedRanks = Object.fromEntries(sorted.map(([name], i) => [name, i + 1]));
+
+                const medals = {1: '&#128081;', 2: '&#129352;', 3: '&#129353;'};
+                const rankClasses = {1: 'rank-gold', 2: 'rank-silver', 3: 'rank-bronze'};
+                const medalClasses = {1: 'gold', 2: 'silver', 3: 'bronze'};
+
+                // Update each row
+                rows.forEach(row => {
+                    const model = row.dataset.model;
+                    const result = results[model];
+                    const latencyMs = result?.latency_ms;
+                    const speedRank = speedRanks[model];
+
+                    // Update latency cell
+                    const latCell = row.querySelector('.col-latency');
+                    if (latencyMs != null) {
+                        const str = latencyMs < 1000 ? `${latencyMs}ms` : `${(latencyMs/1000).toFixed(1)}s`;
+                        const cls = latencyMs < 1000 ? 'latency-fast' : latencyMs < 3000 ? 'latency-medium' : 'latency-slow';
+                        latCell.textContent = str;
+                        latCell.className = `col-latency mono ${cls}`;
+                    } else {
+                        latCell.textContent = '—';
+                        latCell.className = 'col-latency mono';
+                    }
+
+                    // Update rank cell - crowns for top 3, numbers for rest
+                    const rankCell = row.querySelector('.col-rank');
+                    row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
+                    if (speedRank && speedRank <= 3) {
+                        row.classList.add(rankClasses[speedRank]);
+                        rankCell.innerHTML = `<span class="medal ${medalClasses[speedRank]}">${medals[speedRank]}</span>`;
+                    } else if (speedRank) {
+                        rankCell.textContent = speedRank;
+                    } else {
+                        rankCell.textContent = '—';
+                    }
+                });
+            } catch (e) {
+                badge.textContent = 'Offline';
+            }
+        }
+
+        loadLatencyData();
+        setInterval(loadLatencyData, 30000);
+    </script>
 </body>
 </html>
