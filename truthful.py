@@ -21,7 +21,7 @@ from config import (
     set_revision, calculate_scores_from_evaluations,
     PROVIDER_CONCURRENCY,
 )
-from providers import call_llm
+from providers import call_llm, clear_clients
 
 # =============================================================================
 # CONFIGURATION
@@ -580,11 +580,11 @@ def interactive_menu():
     while True:
         choice = show_menu()
         if choice == "1": phase1_generate(NUM_QUESTIONS)
-        elif choice == "2": asyncio.run(phase2_answer())
-        elif choice == "3": asyncio.run(phase3_evaluate())
+        elif choice == "2": clear_clients(); asyncio.run(phase2_answer())
+        elif choice == "3": clear_clients(); asyncio.run(phase3_evaluate())
         elif choice == "4": phase4_ground_truth_score()
         elif choice == "5": phase5_correlation_analysis()
-        elif choice == "A": asyncio.run(run_all_phases(NUM_QUESTIONS))
+        elif choice == "A": clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
         elif choice == "N":
             try:
                 n = int(input("  Questions (1-500): "))
@@ -607,11 +607,11 @@ def main():
     if args.num_questions: set_num_questions(args.num_questions)
 
     if args.phase == 1: phase1_generate(NUM_QUESTIONS)
-    elif args.phase == 2: asyncio.run(phase2_answer())
-    elif args.phase == 3: asyncio.run(phase3_evaluate())
+    elif args.phase == 2: clear_clients(); asyncio.run(phase2_answer())
+    elif args.phase == 3: clear_clients(); asyncio.run(phase3_evaluate())
     elif args.phase == 4: phase4_ground_truth_score()
     elif args.phase == 5: phase5_correlation_analysis()
-    elif args.all: asyncio.run(run_all_phases(NUM_QUESTIONS))
+    elif args.all: clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
     else: interactive_menu()
 
 

@@ -26,6 +26,17 @@ from config import (
 _clients: dict = {}
 
 
+def clear_clients():
+    """Clear cached clients to avoid event loop issues.
+
+    Call this before asyncio.run() if previous async operations
+    used a different event loop. The Google genai client in particular
+    binds to the event loop at creation time.
+    """
+    global _clients
+    _clients.clear()
+
+
 def sanitize_prompt(text: str) -> str:
     """Replace known problematic characters for API compatibility.
 
