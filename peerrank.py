@@ -33,11 +33,11 @@ from config import (
     get_phase5_judge, set_phase5_judge,
 )
 from providers import health_check
-from phase1 import phase1_generate_questions
-from phase2 import phase2_answer_questions
-from phase3 import phase3_evaluate_answers
-from phase4 import phase4_generate_report
-from phase5 import phase5_final_analysis
+from peerrank_phase1 import phase1_generate_questions
+from peerrank_phase2 import phase2_answer_questions
+from peerrank_phase3 import phase3_evaluate_answers
+from peerrank_phase4 import phase4_generate_report
+from peerrank_phase5 import phase5_final_analysis
 
 # Phase functions indexed by phase number (1-5)
 PHASES = {

@@ -420,7 +420,7 @@ async def phase3_evaluate():
     Full bias analysis (3 modes) is unnecessary and triples the cost.
     """
     set_revision(VALIDATION_REVISION)
-    from phase3 import _run_evaluation_pass
+    from peerrank_phase3 import _run_evaluation_pass
 
     phase_start = time.time()
     seed = get_bias_test_config()["seed"]

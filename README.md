@@ -155,7 +155,7 @@ peerrank.py              # CLI entry point
 peerrank_ui.py           # Streamlit web interface
 config.py                # Settings, model configs, utilities
 providers.py             # LLM API implementations
-phase1.py - phase5.py    # Pipeline phases
+peerrank_phase1-5.py     # Pipeline phases
 generate_figures_*.py    # Publication figure generation
 truthful.py              # TruthfulQA validation
 peerrank_build_web/      # Website source files

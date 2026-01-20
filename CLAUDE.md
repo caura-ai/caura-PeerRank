@@ -104,11 +104,11 @@ peerrank.py          # CLI entry point
 peerrank_ui.py       # Streamlit UI (live comparison)
 config.py            # Settings, model configs, utilities
 providers.py         # LLM API calls with web search
-phase1.py            # Question generation
-phase2.py            # Answer questions (web search configurable)
-phase3.py            # Cross-evaluation (web search OFF, 3 bias modes)
-phase4.py            # Report generation
-phase5.py            # Final analysis by judge LLM
+peerrank_phase1.py   # Question generation
+peerrank_phase2.py   # Answer questions (web search configurable)
+peerrank_phase3.py   # Cross-evaluation (web search OFF, 3 bias modes)
+peerrank_phase4.py   # Report generation
+peerrank_phase5.py   # Final analysis by judge LLM
 generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
 generate_figures_TFQ.py      # TruthfulQA validation figures (Figs 10-14)
 truthful.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
@@ -470,7 +470,7 @@ UI_DISPLAY_MODES = [
     {"name": "shuffle_only", "display_name": "Shuffle (names visible)", "icon": "🔀", ...},
 ]
 
-# Shared score calculation (used by phase4.py and peerrank_ui.py)
+# Shared score calculation (used by peerrank_phase4.py and peerrank_ui.py)
 calculate_scores_from_evaluations(evaluations, model_names) -> {
     "peer_scores": {model: [scores]},
     "self_scores": {model: [scores]},
@@ -664,13 +664,13 @@ Core helper functions used across multiple files:
 - `calculate_scores_from_evaluations(evaluations, model_names)` - Central scoring function
   - Returns: `{peer_scores, self_scores, raw_scores, judge_given}`
   - Handles both Phase3 and UI data formats
-  - Used by: phase4.py, peerrank_ui.py, generate_figures_PeerRank.py
+  - Used by: peerrank_phase4.py, peerrank_ui.py, generate_figures_PeerRank.py
 - `calculate_judge_agreement(evaluations)` - Pairwise correlation between judges
   - Returns: `{matrix, pairs, judges}`
-  - Used by: phase4.py, generate_figures_PeerRank.py
+  - Used by: peerrank_phase4.py, generate_figures_PeerRank.py
 - `calculate_question_stats(evaluations, questions)` - Question difficulty/controversy analysis
   - Returns: `{questions, hardest, easiest, controversial, consensus}`
-  - Used by: phase4.py, generate_figures_PeerRank.py
+  - Used by: peerrank_phase4.py, generate_figures_PeerRank.py
 - `_record_score(score, model_name, evaluator, ...)` - Categorizes scores as peer/self/raw
 
 **Model Matching**:

@@ -17,7 +17,7 @@ from config import (
     calculate_scores_from_evaluations, calculate_elo_ratings,
 )
 from providers import call_llm
-from phase3 import EVAL_PROMPT, BLIND_LABELS
+from peerrank_phase3 import EVAL_PROMPT, BLIND_LABELS
 
 # BIAS_MODES and UI_DISPLAY_MODES imported from config.py
 
