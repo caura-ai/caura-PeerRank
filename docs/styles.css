@@ -292,6 +292,15 @@ th, td {
     text-align: left;
 }
 
+/* Fixed row height for leaderboard alignment */
+.leaderboard-grid tbody tr {
+    height: 48px;
+}
+
+.leaderboard-grid tbody td {
+    vertical-align: middle;
+}
+
 th {
     font-size: 0.75rem;
     font-weight: 600;
