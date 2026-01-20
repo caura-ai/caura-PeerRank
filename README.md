@@ -88,7 +88,7 @@ python peerrank.py --rev v2             # Set revision tag for output files
 
 # UI and figures
 streamlit run peerrank_ui.py                              # Launch web UI
-python generate_figures_phase4.py --revision v1           # Publication figures
+python generate_figures_PeerRank.py --revision v1           # Publication figures
 ```
 
 ## Supported Models
@@ -158,7 +158,24 @@ providers.py             # LLM API implementations
 phase1.py - phase5.py    # Pipeline phases
 generate_figures_*.py    # Publication figure generation
 truthful.py              # TruthfulQA validation
+peerrank_build_web/      # Website source files
+  build.py               # Build + serve + monitor
+  template.html          # Jinja2 template
+  styles.css             # CSS styles
+peerrank_hosted_website/ # Built output for hosting
 ```
+
+## Website
+
+Build and serve the PeerRank leaderboard website:
+
+```bash
+python peerrank_build_web/build.py              # Build only
+python peerrank_build_web/build.py --serve      # Build + local server at :8000
+python peerrank_build_web/build.py --watch      # Build + server + live latency monitor
+```
+
+Output goes to `peerrank_hosted_website/` for GitHub Pages or any static hosting.
 
 ## TruthfulQA Validation
 

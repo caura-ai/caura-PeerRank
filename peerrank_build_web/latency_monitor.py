@@ -4,9 +4,9 @@ Latency Monitor - Continuously checks model response times.
 Pings each model with a minimal query every minute and saves results to JSON.
 
 Usage:
-    python web/latency_monitor.py              # Run continuously
-    python web/latency_monitor.py --once       # Single check, then exit
-    python web/latency_monitor.py --interval 30  # Check every 30 seconds
+    python peerrank_build_web/latency_monitor.py              # Run continuously
+    python peerrank_build_web/latency_monitor.py --once       # Single check, then exit
+    python peerrank_build_web/latency_monitor.py --interval 30  # Check every 30 seconds
 """
 
 import asyncio
@@ -23,7 +23,7 @@ from config import MODELS, get_api_key
 from providers import call_llm, clear_clients
 
 # Output file for website
-OUTPUT_FILE = Path(__file__).parent.parent / "docs" / "latency.json"
+OUTPUT_FILE = Path(__file__).parent.parent / "peerrank_hosted_website" / "latency.json"
 
 # Minimal prompt for speed test
 TEST_PROMPT = "Reply with only the word 'OK'."

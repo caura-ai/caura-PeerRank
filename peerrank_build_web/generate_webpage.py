@@ -2,10 +2,11 @@
 """
 Generate static HTML webpage from PeerRank Phase 4 report.
 Reads markdown, parses tables, renders Jinja2 template to docs/index.html.
+Copies all assets (CSS, etc.) from web/ to docs/.
 """
 
 import re
-import os
+import shutil
 from pathlib import Path
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
@@ -291,8 +292,8 @@ def generate_webpage():
     # Paths
     project_root = Path(__file__).parent.parent
     data_file = project_root / 'data' / 'phase4_report_WEBPAGE.md'
-    template_dir = project_root / 'web'
-    output_file = project_root / 'docs' / 'index.html'
+    template_dir = project_root / 'peerrank_build_web'
+    output_file = project_root / 'peerrank_hosted_website' / 'index.html'
 
     # Read markdown
     if not data_file.exists():
@@ -343,9 +344,17 @@ def generate_webpage():
     )
 
     # Write output
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = output_file.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html)
+
+    # Copy CSS from web/ to docs/
+    css_src = template_dir / 'styles.css'
+    css_dst = output_dir / 'styles.css'
+    if css_src.exists():
+        shutil.copy2(css_src, css_dst)
+        print(f"Copied: {css_dst}")
 
     print(f"Generated: {output_file}")
     print(f"  - Peer Rankings: {len(peer_rankings)} models")

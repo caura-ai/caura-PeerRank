@@ -56,10 +56,13 @@ python peerrank.py --judge gpt-5.2   # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
 streamlit run peerrank_ui.py    # Launch Streamlit UI
-python generate_figures_phase4.py --revision v1 --output figures/  # Generate publication figures
+python generate_figures_PeerRank.py --revision v1 --output figures/  # Generate publication figures
 python generate_figures_TFQ.py --output figures/              # Generate TFQ validation figures
 python gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
 python gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
+python peerrank_build_web/build.py                            # Build website
+python peerrank_build_web/build.py --serve                    # Build + local server
+python peerrank_build_web/build.py --watch                    # Build + server + latency monitor
 ```
 
 ## Interactive Menu
@@ -106,10 +109,20 @@ phase2.py            # Answer questions (web search configurable)
 phase3.py            # Cross-evaluation (web search OFF, 3 bias modes)
 phase4.py            # Report generation
 phase5.py            # Final analysis by judge LLM
-generate_figures_phase4.py   # Publication-quality figure generation (Figs 4-6, 10-17)
+generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
 generate_figures_TFQ.py      # TruthfulQA validation figures (Figs 10-14)
 truthful.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
 gsm8k.py                     # GSM8K validation (correlate peer rankings with math accuracy)
+peerrank_build_web/          # Website source files
+  build.py                   # Unified build script (generate + serve + monitor)
+  generate_webpage.py        # HTML generator from Phase 4 report
+  latency_monitor.py         # Live latency checker for all models
+  template.html              # Jinja2 template
+  styles.css                 # CSS styles
+peerrank_hosted_website/     # Built output (for GitHub Pages or hosting)
+  index.html                 # Generated HTML
+  styles.css                 # Copied CSS
+  latency.json               # Live latency data
 data/
   phase1_questions_{rev}.json
   phase2_answers_{rev}.json
@@ -267,7 +280,7 @@ Phase 3 automatically runs **3 evaluation passes** to detect **3 types of bias**
 ```bash
 python peerrank.py --phase 3           # Run all 3 modes
 python peerrank.py --phase 3 --seed 42 # Reproducible ordering
-python generate_figures_phase4.py --revision v1  # Generate bias figures
+python generate_figures_PeerRank.py --revision v1  # Generate bias figures
 ```
 
 **Report output:**
@@ -548,7 +561,7 @@ python gsm8k.py --difficulty hard         # Only hard questions
 4. `\boxed{number}` - LaTeX format
 5. Last standalone number - Fallback
 
-### Figure Generation (`generate_figures_phase4.py`)
+### Figure Generation (`generate_figures_PeerRank.py`)
 Publication-quality figure generation for research papers:
 - PDF + 600 DPI PNG output
 - Matplotlib with Times New Roman serif font
@@ -557,7 +570,7 @@ Publication-quality figure generation for research papers:
 
 **Usage**:
 ```bash
-python generate_figures_phase4.py --revision v1 --output figures/
+python generate_figures_PeerRank.py --revision v1 --output figures/
 ```
 
 **Generates** (Figures 4-6, 10-18):
@@ -651,13 +664,13 @@ Core helper functions used across multiple files:
 - `calculate_scores_from_evaluations(evaluations, model_names)` - Central scoring function
   - Returns: `{peer_scores, self_scores, raw_scores, judge_given}`
   - Handles both Phase3 and UI data formats
-  - Used by: phase4.py, peerrank_ui.py, generate_figures_phase4.py
+  - Used by: phase4.py, peerrank_ui.py, generate_figures_PeerRank.py
 - `calculate_judge_agreement(evaluations)` - Pairwise correlation between judges
   - Returns: `{matrix, pairs, judges}`
-  - Used by: phase4.py, generate_figures_phase4.py
+  - Used by: phase4.py, generate_figures_PeerRank.py
 - `calculate_question_stats(evaluations, questions)` - Question difficulty/controversy analysis
   - Returns: `{questions, hardest, easiest, controversial, consensus}`
-  - Used by: phase4.py, generate_figures_phase4.py
+  - Used by: phase4.py, generate_figures_PeerRank.py
 - `_record_score(score, model_name, evaluator, ...)` - Categorizes scores as peer/self/raw
 
 **Model Matching**:
