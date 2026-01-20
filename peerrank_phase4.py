@@ -124,6 +124,123 @@ def _calculate_stats(phase2_data: dict, phase3_data: dict) -> dict:
     }
 
 
+# ============================================================================
+# Home Advantage Analysis - Statistical functions
+# ============================================================================
+
+def _cohens_d(group1: list, group2: list) -> float | None:
+    """Calculate Cohen's d effect size."""
+    import math
+    n1, n2 = len(group1), len(group2)
+    if n1 < 2 or n2 < 2:
+        return None
+    mean1, mean2 = sum(group1) / n1, sum(group2) / n2
+    var1 = sum((x - mean1) ** 2 for x in group1) / (n1 - 1)
+    var2 = sum((x - mean2) ** 2 for x in group2) / (n2 - 1)
+    pooled_std = math.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
+    return (mean1 - mean2) / pooled_std if pooled_std else None
+
+
+def _welch_ttest(group1: list, group2: list) -> tuple:
+    """Welch's t-test (unequal variances). Returns (t_stat, p_value)."""
+    import math
+    n1, n2 = len(group1), len(group2)
+    if n1 < 2 or n2 < 2:
+        return None, None
+    mean1, mean2 = sum(group1) / n1, sum(group2) / n2
+    var1 = sum((x - mean1) ** 2 for x in group1) / (n1 - 1)
+    var2 = sum((x - mean2) ** 2 for x in group2) / (n2 - 1)
+    se = math.sqrt(var1 / n1 + var2 / n2)
+    if se == 0:
+        return None, None
+    t_stat = (mean1 - mean2) / se
+    # Welch-Satterthwaite degrees of freedom
+    num = (var1 / n1 + var2 / n2) ** 2
+    denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
+    df = num / denom if denom else 100
+    # Approximate p-value (normal approximation for large df)
+    z = abs(t_stat)
+    p_value = 2 * (1 - 0.5 * (1 + math.erf(z / math.sqrt(2))))
+    return t_stat, p_value
+
+
+def _calculate_home_advantage(phase1_data: dict, evaluations: dict) -> dict | None:
+    """Calculate home advantage analysis - do models do better on their own questions?"""
+    # Build question -> source model mapping
+    question_source = {}
+    for model, questions in phase1_data.get("questions_by_model", {}).items():
+        for q in questions:
+            question_source[q["question"]] = model
+
+    if not question_source or not evaluations:
+        return None
+
+    # Collect raw scores by source
+    raw_scores = {}  # raw_scores[answering_model][source_model] = [scores]
+    all_models = set()
+    all_sources = set()
+
+    for evaluator, evals in evaluations.items():
+        for question, model_scores in evals.items():
+            source = question_source.get(question)
+            if not source:
+                continue
+            all_sources.add(source)
+            for answering_model, data in model_scores.items():
+                if evaluator == answering_model:
+                    continue  # Exclude self-evaluations
+                all_models.add(answering_model)
+                if answering_model not in raw_scores:
+                    raw_scores[answering_model] = {}
+                if source not in raw_scores[answering_model]:
+                    raw_scores[answering_model][source] = []
+                raw_scores[answering_model][source].append(data.get("score", 0))
+
+    models = sorted(all_models)
+    sources = sorted(all_sources)
+
+    # Calculate home advantage for each model
+    results = []
+    for model in models:
+        if model not in sources or model not in raw_scores:
+            continue
+        own_scores = raw_scores[model].get(model, [])
+        if len(own_scores) < 3:
+            continue
+        other_scores = []
+        for src in sources:
+            if src != model and src in raw_scores[model]:
+                other_scores.extend(raw_scores[model][src])
+        if len(other_scores) < 3:
+            continue
+
+        own_avg = sum(own_scores) / len(own_scores)
+        other_avg = sum(other_scores) / len(other_scores)
+        diff = own_avg - other_avg
+        t_stat, p_value = _welch_ttest(own_scores, other_scores)
+        d = _cohens_d(own_scores, other_scores)
+
+        results.append({
+            "model": model, "own_avg": own_avg, "other_avg": other_avg,
+            "diff": diff, "n_own": len(own_scores), "n_other": len(other_scores),
+            "t_stat": t_stat, "p_value": p_value, "cohens_d": d,
+        })
+
+    results.sort(key=lambda x: x["diff"], reverse=True)
+
+    # Calculate question difficulty by source
+    source_difficulty = {}
+    for src in sources:
+        scores = []
+        for model in models:
+            if model in raw_scores and src in raw_scores[model]:
+                scores.extend(raw_scores[model][src])
+        if scores:
+            source_difficulty[src] = sum(scores) / len(scores)
+
+    return {"results": results, "source_difficulty": source_difficulty, "models": models, "sources": sources}
+
+
 def phase4_generate_report() -> str:
     """Phase 4: Generate markdown report from evaluation data."""
     print(f"\n{'=' * 60}")
@@ -401,6 +518,62 @@ def phase4_generate_report() -> str:
             r.append("\n**Least similar judges:**")
             for j1, j2, corr, n in pairs[-3:]:
                 r.append(f"- {j1} ↔ {j2}: r={corr:.3f} (n={n})")
+
+    # Home Advantage Analysis
+    home_adv = _calculate_home_advantage(phase1, evaluations)
+    if home_adv and home_adv["results"]:
+        r.append("\n## Home Advantage Analysis\n")
+        r.append("Do models perform better on questions they generated? (Peer scores, excluding self-evaluation)\n")
+
+        # Short name helper
+        def short_name(m):
+            shortcuts = {"gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-thinking": "gem-3-flash",
+                         "claude-opus-4-5": "opus-4.5", "claude-sonnet-4-5": "sonnet-4.5",
+                         "llama-4-maverick": "llama-4", "deepseek-chat": "deepseek",
+                         "kimi-k2-0905": "kimi", "grok-4-1-fast": "grok-4", "mistral-large": "mistral"}
+            return shortcuts.get(m, m)[:12]
+
+        # Results table
+        ha_rows = []
+        for res in home_adv["results"]:
+            sig = ""
+            if res["p_value"] is not None:
+                if res["p_value"] < 0.001: sig = "***"
+                elif res["p_value"] < 0.01: sig = "**"
+                elif res["p_value"] < 0.05: sig = "*"
+            d_str = f"{res['cohens_d']:+.2f}" if res["cohens_d"] else "—"
+            ha_rows.append([
+                short_name(res["model"]),
+                f"{res['own_avg']:.2f}",
+                f"{res['other_avg']:.2f}",
+                f"{res['diff']:+.2f}",
+                str(res["n_own"]),
+                str(res["n_other"]),
+                d_str,
+                sig
+            ])
+        r.append(format_table(
+            ["Model", "Own Qs", "Other Qs", "Diff", "n_own", "n_other", "Cohen's d", "Sig"],
+            ha_rows, ['l', 'r', 'r', 'r', 'r', 'r', 'r', 'l']
+        ))
+
+        # Summary statistics
+        sig_pos = sum(1 for res in home_adv["results"] if res["p_value"] and res["p_value"] < 0.05 and res["diff"] > 0)
+        sig_neg = sum(1 for res in home_adv["results"] if res["p_value"] and res["p_value"] < 0.05 and res["diff"] < 0)
+        not_sig = len(home_adv["results"]) - sig_pos - sig_neg
+        all_diffs = [res["diff"] for res in home_adv["results"]]
+        avg_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
+
+        r.append(f"\n*Significance: \\* p<0.05, \\*\\* p<0.01, \\*\\*\\* p<0.001 | Cohen's d: |d|<0.2 negligible, 0.2-0.5 small, 0.5-0.8 medium, >0.8 large*")
+        r.append(f"\n**Summary:** {sig_pos} models better on own questions, {sig_neg} worse, {not_sig} not significant. Average home advantage: {avg_diff:+.3f} points.")
+
+        # Question difficulty by source
+        if home_adv["source_difficulty"]:
+            r.append("\n### Question Difficulty by Source\n")
+            r.append("Average peer score on questions from each model (lower = harder questions):\n")
+            sorted_diff = sorted(home_adv["source_difficulty"].items(), key=lambda x: x[1])
+            diff_rows = [[short_name(src), f"{score:.2f}"] for src, score in sorted_diff]
+            r.append(format_table(["Source Model", "Avg Score"], diff_rows, ['l', 'r']))
 
     # Question Autopsy - flatten questions_by_model into a list
     questions = []
