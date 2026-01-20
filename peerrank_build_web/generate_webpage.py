@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Generate static HTML webpage from PeerRank Phase 4 report.
-Reads markdown, parses tables, renders Jinja2 template to docs/index.html.
-Copies all assets (CSS, etc.) from web/ to docs/.
+Reads markdown, parses tables, renders Jinja2 template to peerrank_hosted_website/index.html.
+Copies all assets (CSS, etc.) from peerrank_build_web/ to peerrank_hosted_website/.
 """
 
 import re
@@ -349,7 +349,7 @@ def generate_webpage():
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html)
 
-    # Copy CSS from web/ to docs/
+    # Copy CSS to output directory
     css_src = template_dir / 'styles.css'
     css_dst = output_dir / 'styles.css'
     if css_src.exists():
