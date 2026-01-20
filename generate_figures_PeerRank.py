@@ -278,10 +278,10 @@ def generate_fig4_peer_rankings(data: dict, output_dir: Path):
     save_figure(fig, output_dir, 'fig4_peer_rankings')
 
 
-def generate_fig6_peer_score_vs_time(data: dict, output_dir: Path):
-    """Figure 6: Scatter plot of peer score vs response time (RESULTS)."""
+def generate_fig7_peer_score_vs_time(data: dict, output_dir: Path):
+    """Figure 7: Scatter plot of peer score vs response time (RESULTS)."""
 
-    print("\nGenerating Figure 6: Peer Score vs Response Time...")
+    print("\nGenerating Figure 7: Peer Score vs Response Time...")
 
     rankings = get_rankings(data)
     timing = get_timing_data(data)
@@ -439,7 +439,7 @@ def generate_fig6_peer_score_vs_time(data: dict, output_dir: Path):
     ax.set_title('Peer Score vs Response Time', fontweight='bold', fontsize=14, pad=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig6_peer_score_vs_time')
+    save_figure(fig, output_dir, 'fig7_peer_score_vs_time')
 
 
 def generate_fig5_cross_eval_heatmap(data: dict, output_dir: Path):
@@ -648,10 +648,10 @@ def calculate_name_bias(data: dict):
     return result
 
 
-def generate_fig13_judge_generosity(data: dict, output_dir: Path):
-    """Figure 13: Judge generosity - how lenient/strict each model judges (DISCUSSION)."""
+def generate_fig14_judge_generosity(data: dict, output_dir: Path):
+    """Figure 14: Judge generosity - how lenient/strict each model judges (DISCUSSION)."""
 
-    print("\nGenerating Figure 13: Judge Generosity...")
+    print("\nGenerating Figure 14: Judge Generosity...")
 
     rankings = get_rankings(data)
 
@@ -692,13 +692,13 @@ def generate_fig13_judge_generosity(data: dict, output_dir: Path):
             ax.text(label_x, i, f'{avg:.2f}', va='center', ha='left', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig13_judge_generosity')
+    save_figure(fig, output_dir, 'fig14_judge_generosity')
 
 
-def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
-    """Figure 14: Judge Generosity vs Peer Ranking scatter plot (DISCUSSION)."""
+def generate_fig15_judge_generosity_vs_peer(data: dict, output_dir: Path):
+    """Figure 15: Judge Generosity vs Peer Ranking scatter plot (DISCUSSION)."""
 
-    print("\nGenerating Figure 14: Judge Generosity vs Peer Ranking...")
+    print("\nGenerating Figure 15: Judge Generosity vs Peer Ranking...")
 
     rankings = get_rankings(data)
 
@@ -814,7 +814,7 @@ def generate_fig14_judge_generosity_vs_peer(data: dict, output_dir: Path):
            fontsize=12, verticalalignment='bottom', bbox=props)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig14_judge_generosity_vs_peer')
+    save_figure(fig, output_dir, 'fig15_judge_generosity_vs_peer')
 
 
 def generate_fig17_radar_chart(data: dict, output_dir: Path):
@@ -993,10 +993,10 @@ def generate_fig18_elo_vs_peer(data: dict, output_dir: Path):
     save_figure(fig, output_dir, 'fig18_elo_vs_peer')
 
 
-def generate_fig15_judge_agreement_matrix(data: dict, output_dir: Path):
-    """Figure 15: Judge Agreement Matrix - pairwise correlation heatmap (DISCUSSION)."""
+def generate_fig16_judge_agreement_matrix(data: dict, output_dir: Path):
+    """Figure 16: Judge Agreement Matrix - pairwise correlation heatmap (DISCUSSION)."""
 
-    print("\nGenerating Figure 15: Judge Agreement Matrix...")
+    print("\nGenerating Figure 16: Judge Agreement Matrix...")
 
     evaluations = data['phase3'].get('evaluations', {})
     if not evaluations:
@@ -1071,13 +1071,13 @@ def generate_fig15_judge_agreement_matrix(data: dict, output_dir: Path):
     cbar.ax.tick_params(labelsize=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig15_judge_agreement_matrix')
+    save_figure(fig, output_dir, 'fig16_judge_agreement_matrix')
 
 
-def generate_fig16_question_autopsy(data: dict, output_dir: Path):
-    """Figure 16: Question Autopsy - Difficulty vs Controversy scatter (DISCUSSION)."""
+def generate_fig6_question_autopsy(data: dict, output_dir: Path):
+    """Figure 6: Question Autopsy - Difficulty vs Controversy scatter (RESULTS)."""
 
-    print("\nGenerating Figure 16: Question Autopsy...")
+    print("\nGenerating Figure 6: Question Autopsy...")
 
     evaluations = data['phase3'].get('evaluations', {})
 
@@ -1168,13 +1168,13 @@ def generate_fig16_question_autopsy(data: dict, output_dir: Path):
     ax.set_ylim(0, max(stds) + 0.3)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig16_question_autopsy')
+    save_figure(fig, output_dir, 'fig6_question_autopsy')
 
 
-def generate_fig10_self_bias(data: dict, output_dir: Path):
-    """Figure 10: Self Bias - tendency to rate own responses higher, with 95% CI."""
+def generate_fig11_self_bias(data: dict, output_dir: Path):
+    """Figure 11: Self Bias - tendency to rate own responses higher, with 95% CI."""
 
-    print("\nGenerating Figure 10: Self Bias...")
+    print("\nGenerating Figure 11: Self Bias...")
 
     name_data = calculate_name_bias(data)
     if not name_data:
@@ -1211,13 +1211,13 @@ def generate_fig10_self_bias(data: dict, output_dir: Path):
             ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig10_self_bias')
+    save_figure(fig, output_dir, 'fig11_self_bias')
 
 
-def generate_fig11_name_bias(data: dict, output_dir: Path):
-    """Figure 11: Name Bias - effect of revealing model identity, with 95% CI."""
+def generate_fig12_name_bias(data: dict, output_dir: Path):
+    """Figure 12: Name Bias - effect of revealing model identity, with 95% CI."""
 
-    print("\nGenerating Figure 11: Name Bias...")
+    print("\nGenerating Figure 12: Name Bias...")
 
     name_data = calculate_name_bias(data)
     if not name_data:
@@ -1254,13 +1254,13 @@ def generate_fig11_name_bias(data: dict, output_dir: Path):
             ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig11_name_bias')
+    save_figure(fig, output_dir, 'fig12_name_bias')
 
 
-def generate_fig12_position_bias(data: dict, output_dir: Path):
-    """Figure 12: Position Bias - effect of presentation order with 95% CI."""
+def generate_fig13_position_bias(data: dict, output_dir: Path):
+    """Figure 13: Position Bias - effect of presentation order with 95% CI."""
 
-    print("\nGenerating Figure 12: Position Bias...")
+    print("\nGenerating Figure 13: Position Bias...")
 
     pos_data = calculate_position_bias(data)
     if not pos_data:
@@ -1290,7 +1290,7 @@ def generate_fig12_position_bias(data: dict, output_dir: Path):
         ax.text(i, bias + offset, f'{bias:+.2f}', ha='center', va=va, fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig12_position_bias')
+    save_figure(fig, output_dir, 'fig13_position_bias')
 
 
 # =============================================================================
@@ -1348,40 +1348,43 @@ def main():
     # ==========================================================================
     # Fig 1: Pipeline diagram (user-created, not generated here)
     #
-    # RESULTS SECTION (Figures 3-5)
-    # Fig 3: Main rankings - the primary finding
-    # Fig 4: Cross-evaluation matrix - who rated whom
-    # Fig 5: Peer score vs time - efficiency trade-off
+    # RESULTS SECTION (Figures 4-7, 18)
+    # Fig 4: Main rankings - the primary finding
+    # Fig 5: Cross-evaluation matrix - who rated whom
+    # Fig 6: Question autopsy - difficulty vs controversy
+    # Fig 7: Peer score vs time - efficiency trade-off
+    # Fig 18: Elo vs Peer ranking - slope graph comparison
     #
-    # DISCUSSION SECTION (Figures 6-9) - Bias Analysis
-    # Fig 6: Comprehensive bias summary - main bias finding (3-panel)
-    # Fig 7: Judge generosity - how lenient/strict each model judges
-    # Fig 8: Judge generosity vs peer ranking - correlation analysis
-    # Fig 9: Radar chart - multi-dimensional summary
+    # DISCUSSION SECTION (Figures 11-17) - Bias Analysis
+    # Fig 11: Self bias - tendency to overrate own responses
+    # Fig 12: Name bias - effect of revealing model identity
+    # Fig 13: Position bias - effect of presentation order
+    # Fig 14: Judge generosity - how lenient/strict each model judges
+    # Fig 15: Judge generosity vs peer ranking - correlation analysis
+    # Fig 16: Judge agreement matrix - pairwise correlation heatmap
+    # Fig 17: Radar chart - multi-dimensional summary
     # ==========================================================================
 
     print("\n--- RESULTS SECTION ---")
     generate_fig4_peer_rankings(data, output_dir)
     generate_fig5_cross_eval_heatmap(data, output_dir)
-    generate_fig6_peer_score_vs_time(data, output_dir)
+    generate_fig6_question_autopsy(data, output_dir)
+    generate_fig7_peer_score_vs_time(data, output_dir)
     generate_fig18_elo_vs_peer(data, output_dir)
 
     # Bias analysis figures (require multi-mode data)
     if has_multimode_data(data):
         print("\n--- DISCUSSION SECTION (Bias Analysis) ---")
-        generate_fig10_self_bias(data, output_dir)
-        generate_fig11_name_bias(data, output_dir)
-        generate_fig12_position_bias(data, output_dir)
-        generate_fig13_judge_generosity(data, output_dir)
-        generate_fig14_judge_generosity_vs_peer(data, output_dir)
-        generate_fig15_judge_agreement_matrix(data, output_dir)
-        generate_fig16_question_autopsy(data, output_dir)
+        generate_fig11_self_bias(data, output_dir)
+        generate_fig12_name_bias(data, output_dir)
+        generate_fig13_position_bias(data, output_dir)
+        generate_fig14_judge_generosity(data, output_dir)
+        generate_fig15_judge_generosity_vs_peer(data, output_dir)
+        generate_fig16_judge_agreement_matrix(data, output_dir)
         generate_fig17_radar_chart(data, output_dir)
     else:
-        print("\n[Note: Figures 10-15, 17 skipped - requires multi-mode bias data]")
+        print("\n[Note: Figures 11-17 skipped - requires multi-mode bias data]")
         print("  Run Phase 3 with all 3 modes to generate bias analysis figures.")
-        # Fig 16 doesn't require multi-mode, only basic evaluations
-        generate_fig16_question_autopsy(data, output_dir)
 
     print(f"\n{'=' * 40}")
     print(f"Done! Figures saved to: {output_dir}/")
@@ -1456,8 +1459,8 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %%
 %% FIGURE ORGANIZATION:
 %% - Fig 1: Pipeline diagram (user-created, in Methodology)
-%% - Figs 3-5: Results section
-%% - Figs 6-9: Discussion section (Bias Analysis)
+%% - Figs 4-7, 18: Results section
+%% - Figs 11-17: Discussion section (Bias Analysis)
 
 \usepackage{graphicx}
 \usepackage{subcaption}  % For subfigures
@@ -1477,7 +1480,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% RESULTS SECTION
 %% ============================================================================
 
-%% FIGURE 2: Peer Rankings (Main Result)
+%% FIGURE 4: Peer Rankings (Main Result)
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{figures/fig4_peer_rankings.pdf}
@@ -1485,7 +1488,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
     \label{fig:peer-rankings}
 \end{figure}
 
-%% FIGURE 3: Cross-Evaluation Heatmap
+%% FIGURE 5: Cross-Evaluation Heatmap
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\linewidth]{figures/fig5_cross_eval_heatmap.pdf}
@@ -1493,10 +1496,18 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
     \label{fig:cross-eval}
 \end{figure}
 
-%% FIGURE 4: Peer Score vs Speed Trade-off
+%% FIGURE 6: Question Autopsy
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig6_peer_score_vs_time.pdf}
+    \includegraphics[width=\linewidth]{figures/fig6_question_autopsy.pdf}
+    \caption{Question difficulty versus controversy scatter plot. Each point represents a question, with x-axis showing average score (lower = harder) and y-axis showing score standard deviation (higher = more judge disagreement). Points are colored by question category.}
+    \label{fig:question-autopsy}
+\end{figure}
+
+%% FIGURE 7: Peer Score vs Speed Trade-off
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig7_peer_score_vs_time.pdf}
     \caption{Peer score versus response time trade-off across evaluated models. The upper-left quadrant represents optimal performance (high peer score, low latency). Dashed lines indicate median values for each axis.}
     \label{fig:peer-score-speed}
 \end{figure}
@@ -1517,60 +1528,52 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% DISCUSSION SECTION - Bias Analysis
 %% ============================================================================
 
-%% FIGURE 10: Self Bias
+%% FIGURE 11: Self Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig10_self_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig11_self_bias.pdf}
     \caption{Self bias across models. Bars show the difference between self-ratings and peer ratings (Self $-$ Peer). Positive values (orange) indicate models that overrate their own responses; negative values (blue) indicate models that underrate themselves.}
     \label{fig:self-bias}
 \end{figure}
 
-%% FIGURE 11: Name Bias
+%% FIGURE 12: Name Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig11_name_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig12_name_bias.pdf}
     \caption{Name bias across models. Bars show score change when model identity is revealed (Shuffle $-$ Peer). Positive values (green) indicate brand recognition helped; negative values (red) indicate name hurt scores.}
     \label{fig:name-bias}
 \end{figure}
 
-%% FIGURE 12: Position Bias
+%% FIGURE 13: Position Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig12_position_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig13_position_bias.pdf}
     \caption{Position bias by presentation order. Bars show score change due to fixed position in blind evaluation (Blind $-$ Peer). Positive values indicate the position helped; negative values indicate the position hurt scores.}
     \label{fig:position-bias}
 \end{figure}
 
-%% FIGURE 13: Judge Generosity
+%% FIGURE 14: Judge Generosity
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig13_judge_generosity.pdf}
+    \includegraphics[width=\linewidth]{figures/fig14_judge_generosity.pdf}
     \caption{Judge generosity across models. Bars show average score given by each model when evaluating peers, with error bars indicating standard deviation. Higher values indicate more lenient judging; the dashed line marks the overall mean.}
     \label{fig:judge-generosity}
 \end{figure}
 
-%% FIGURE 14: Judge Generosity vs Peer Ranking
+%% FIGURE 15: Judge Generosity vs Peer Ranking
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig14_judge_generosity_vs_peer.pdf}
+    \includegraphics[width=\linewidth]{figures/fig15_judge_generosity_vs_peer.pdf}
     \caption{Relationship between peer ranking and judge generosity. Each point represents a model (numbered by rank), showing its performance (peer score) on the x-axis and its judging leniency (average score given) on the y-axis.}
     \label{fig:judge-vs-peer}
 \end{figure}
 
-%% FIGURE 15: Judge Agreement Matrix
+%% FIGURE 16: Judge Agreement Matrix
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\linewidth]{figures/fig15_judge_agreement_matrix.pdf}
+    \includegraphics[width=0.9\linewidth]{figures/fig16_judge_agreement_matrix.pdf}
     \caption{Judge agreement matrix showing pairwise Pearson correlation between models' scoring patterns. Higher values (green) indicate judges that rate responses similarly; lower values (red) indicate divergent evaluation criteria.}
     \label{fig:judge-agreement}
-\end{figure}
-
-%% FIGURE 16: Question Autopsy
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{figures/fig16_question_autopsy.pdf}
-    \caption{Question difficulty versus controversy scatter plot. Each point represents a question, with x-axis showing average score (lower = harder) and y-axis showing score standard deviation (higher = more judge disagreement). Points are colored by question category.}
-    \label{fig:question-autopsy}
 \end{figure}
 
 %% FIGURE 17: Radar Chart (multi-dimensional summary)
@@ -1594,15 +1597,15 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% fig:pipeline          | 1      | Methodology
 %% fig:peer-rankings     | 4      | Results
 %% fig:cross-eval        | 5      | Results
-%% fig:peer-score-speed  | 6      | Results
+%% fig:question-autopsy  | 6      | Results
+%% fig:peer-score-speed  | 7      | Results
 %% fig:elo-vs-peer       | 18     | Results
-%% fig:self-bias         | 10     | Discussion
-%% fig:name-bias         | 11     | Discussion
-%% fig:position-bias     | 12     | Discussion
-%% fig:judge-generosity  | 13     | Discussion
-%% fig:judge-vs-peer     | 14     | Discussion
-%% fig:judge-agreement   | 15     | Discussion
-%% fig:question-autopsy  | 16     | Discussion
+%% fig:self-bias         | 11     | Discussion
+%% fig:name-bias         | 12     | Discussion
+%% fig:position-bias     | 13     | Discussion
+%% fig:judge-generosity  | 14     | Discussion
+%% fig:judge-vs-peer     | 15     | Discussion
+%% fig:judge-agreement   | 16     | Discussion
 %% fig:radar-chart       | 17     | Discussion
 """
 

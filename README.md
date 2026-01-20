@@ -157,7 +157,7 @@ config.py                # Settings, model configs, utilities
 providers.py             # LLM API implementations
 peerrank_phase1-5.py     # Pipeline phases
 generate_figures_*.py    # Publication figure generation
-truthful.py              # TruthfulQA validation
+validate_truthfulqa.py              # TruthfulQA validation
 peerrank_build_web/      # Website source files
   build.py               # Build + serve + monitor
   template.html          # Jinja2 template
@@ -182,7 +182,7 @@ Output goes to `peerrank_hosted_website/` for GitHub Pages or any static hosting
 Validate peer rankings against ground truth:
 
 ```bash
-python truthful.py --all              # Run validation pipeline
+python validate_truthfulqa.py --all              # Run validation pipeline
 python generate_figures_TFQ.py        # Generate correlation figures
 ```
 

@@ -58,8 +58,8 @@ python peerrank.py --health     # API health check
 streamlit run peerrank_ui.py    # Launch Streamlit UI
 python generate_figures_PeerRank.py --revision v1 --output figures/  # Generate publication figures
 python generate_figures_TFQ.py --output figures/              # Generate TFQ validation figures
-python gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
-python gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
+python validate_gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
+python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
 python peerrank_build_web/build.py                            # Build website
 python peerrank_build_web/build.py --serve                    # Build + local server
 python peerrank_build_web/build.py --watch                    # Build + server + latency monitor
@@ -111,8 +111,8 @@ peerrank_phase4.py   # Report generation
 peerrank_phase5.py   # Final analysis by judge LLM
 generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
 generate_figures_TFQ.py      # TruthfulQA validation figures (Figs 10-14)
-truthful.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
-gsm8k.py                     # GSM8K validation (correlate peer rankings with math accuracy)
+validate_truthfulqa.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
+validate_gsm8k.py                     # GSM8K validation (correlate peer rankings with math accuracy)
 peerrank_build_web/          # Website source files
   build.py                   # Unified build script (generate + serve + monitor)
   generate_webpage.py        # HTML generator from Phase 4 report
@@ -497,7 +497,7 @@ Live comparison interface with bias analysis. Structure mirrors Phase 4 report.
 - **Position Bias**: By position number (1-10), not model name. Shows `Blind − Peer` (positive = position helped)
 - **Self-Bias by Mode**: Average self-favoritism across all 3 modes (positive = overrates self)
 
-## TruthfulQA Validation (`truthful.py`)
+## TruthfulQA Validation (`validate_truthfulqa.py`)
 Correlates peer rankings with TruthfulQA ground truth to validate the peer evaluation methodology:
 - 5-phase pipeline mirroring main PeerRank system
 - Uses multiple choice questions with known correct answers
@@ -505,10 +505,10 @@ Correlates peer rankings with TruthfulQA ground truth to validate the peer evalu
 
 **Usage**:
 ```bash
-python truthful.py                    # Interactive menu
-python truthful.py --all              # Run all phases
-python truthful.py --phase 1-5        # Run specific phase
-python truthful.py --num-questions 50 # Set question count
+python validate_truthfulqa.py                    # Interactive menu
+python validate_truthfulqa.py --all              # Run all phases
+python validate_truthfulqa.py --phase 1-5        # Run specific phase
+python validate_truthfulqa.py --num-questions 50 # Set question count
 ```
 
 **Output files** (in `data/TRUTH/`):
@@ -520,7 +520,7 @@ python truthful.py --num-questions 50 # Set question count
 - `TFQ_analysis_TFQ.json` - Correlation analysis
 - `TFQ_validation_report_TFQ.md` - Final report
 
-## GSM8K Validation (`gsm8k.py`)
+## GSM8K Validation (`validate_gsm8k.py`)
 Correlates peer rankings with GSM8K (Grade School Math 8K) ground truth to validate peer evaluation on mathematical reasoning:
 - 5-phase pipeline mirroring main PeerRank system
 - Uses open-ended math problems with numerical answers (not multiple choice)
@@ -532,12 +532,12 @@ Correlates peer rankings with GSM8K (Grade School Math 8K) ground truth to valid
 
 **Usage**:
 ```bash
-python gsm8k.py                           # Interactive menu
-python gsm8k.py --all                     # Run all phases
-python gsm8k.py --phase 1-5               # Run specific phase
-python gsm8k.py --num-questions 50        # Set question count
-python gsm8k.py --difficulty easy,medium  # Filter by difficulty
-python gsm8k.py --difficulty hard         # Only hard questions
+python validate_gsm8k.py                           # Interactive menu
+python validate_gsm8k.py --all                     # Run all phases
+python validate_gsm8k.py --phase 1-5               # Run specific phase
+python validate_gsm8k.py --num-questions 50        # Set question count
+python validate_gsm8k.py --difficulty easy,medium  # Filter by difficulty
+python validate_gsm8k.py --difficulty hard         # Only hard questions
 ```
 
 **Difficulty levels** (based on solution step count):
@@ -573,17 +573,17 @@ Publication-quality figure generation for research papers:
 python generate_figures_PeerRank.py --revision v1 --output figures/
 ```
 
-**Generates** (Figures 4-6, 10-18):
+**Generates** (Figures 4-7, 11-18):
 - Fig 4: Peer score rankings with error bars
 - Fig 5: Cross-evaluation heatmap
-- Fig 6: Peer score vs response time
-- Fig 10: Self bias analysis
-- Fig 11: Name bias analysis
-- Fig 12: Position bias analysis
-- Fig 13: Judge generosity
-- Fig 14: Judge generosity vs peer ranking
-- Fig 15: Judge agreement matrix (pairwise correlation heatmap)
-- Fig 16: Question autopsy (difficulty vs controversy scatter)
+- Fig 6: Question autopsy (difficulty vs controversy scatter)
+- Fig 7: Peer score vs response time
+- Fig 11: Self bias analysis
+- Fig 12: Name bias analysis
+- Fig 13: Position bias analysis
+- Fig 14: Judge generosity
+- Fig 15: Judge generosity vs peer ranking
+- Fig 16: Judge agreement matrix (pairwise correlation heatmap)
 - Fig 17: Radar chart (multi-dimensional comparison)
 - Fig 18: Elo vs Peer ranking (slope graph with correlation stats)
 
@@ -600,12 +600,10 @@ python generate_figures_TFQ.py --output figures/  # Custom output directory
 python generate_figures_TFQ.py --stats-only       # Print stats without figures
 ```
 
-**Generates** (Figures 10-14 for TFQ validation):
-- `fig10_peerrank_correlation` - Scatter plot of peer vs truth scores with Pearson/Spearman correlation
-- `fig11_score_comparison` - Side-by-side bar chart comparing peer and truth scores
-- `fig12_rank_agreement` - Slope graph showing rank changes between methods
-- `fig13_accuracy_ranking` - Horizontal bar chart of TruthfulQA accuracy by model
-- `fig14_residual_analysis` - Over/under-rated models by peer evaluation
+**Generates** (Figures 8-10 for TFQ validation):
+- `fig8_peerrank_correlation` - Scatter plot of peer vs truth scores with Pearson/Spearman correlation
+- `fig9_rank_agreement` - Slope graph showing rank changes between methods
+- `fig10_score_comparison` - Side-by-side bar chart comparing peer and truth scores
 
 **Reports**:
 - `TFQ_stats_report.txt` - Full statistical analysis with correlation, rank agreement, accuracy summary

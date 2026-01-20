@@ -2,9 +2,9 @@
 TruthfulQA Validation Figure Generator
 
 Generates publication-quality figures from TruthfulQA validation data:
-- Fig 11: Correlation scatter (peer scores vs ground truth accuracy)
-- Fig 12: Rank agreement visualization
-- Fig 13: Score comparison bar chart
+- Fig 8: Correlation scatter (peer scores vs ground truth accuracy)
+- Fig 9: Rank agreement visualization
+- Fig 10: Score comparison bar chart
 - Statistical analysis reports
 
 Output: PDF (vector) + PNG (600 DPI) for Overleaf/LaTeX compatibility.
@@ -246,9 +246,9 @@ def save_figure(fig, output_dir: Path, name: str):
     plt.close(fig)
 
 
-def generate_fig11_correlation_scatter(data: dict, output_dir: Path):
-    """Figure 11: Correlation scatter plot - Peer Score vs Ground Truth Accuracy."""
-    print("\nGenerating Figure 11: Peer vs Truth Correlation...")
+def generate_fig8_correlation_scatter(data: dict, output_dir: Path):
+    """Figure 8: Correlation scatter plot - Peer Score vs Ground Truth Accuracy."""
+    print("\nGenerating Figure 8: Peer vs Truth Correlation...")
 
     comparison = get_comparison_data(data)
     correlation = get_correlation_stats(data)
@@ -325,12 +325,12 @@ def generate_fig11_correlation_scatter(data: dict, output_dir: Path):
     ax.set_ylim(min(peer_scores) - 0.8, max(peer_scores) + 0.8)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig11_peerrank_correlation')
+    save_figure(fig, output_dir, 'fig8_peerrank_correlation')
 
 
-def generate_fig13_score_comparison(data: dict, output_dir: Path):
-    """Figure 13: Side-by-side bar chart comparing Peer vs Truth scores."""
-    print("\nGenerating Figure 13: Score Comparison Bars...")
+def generate_fig10_score_comparison(data: dict, output_dir: Path):
+    """Figure 10: Side-by-side bar chart comparing Peer vs Truth scores."""
+    print("\nGenerating Figure 10: Score Comparison Bars...")
 
     comparison = get_comparison_data(data)
     if not comparison:
@@ -373,12 +373,12 @@ def generate_fig13_score_comparison(data: dict, output_dir: Path):
     ax.legend(loc='upper right')
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig13_score_comparison')
+    save_figure(fig, output_dir, 'fig10_score_comparison')
 
 
-def generate_fig12_rank_agreement(data: dict, output_dir: Path):
-    """Figure 12: Rank agreement visualization - peer rank vs truth rank."""
-    print("\nGenerating Figure 12: Rank Agreement...")
+def generate_fig9_rank_agreement(data: dict, output_dir: Path):
+    """Figure 9: Rank agreement visualization - peer rank vs truth rank."""
+    print("\nGenerating Figure 9: Rank Agreement...")
 
     comparison = get_comparison_data(data)
     if not comparison:
@@ -433,7 +433,7 @@ def generate_fig12_rank_agreement(data: dict, output_dir: Path):
     ax.legend(handles=[green_patch, orange_patch], loc='lower right', fontsize=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig12_rank_agreement')
+    save_figure(fig, output_dir, 'fig9_rank_agreement')
 
 
 # =============================================================================
@@ -649,29 +649,29 @@ def generate_latex_templates(output_dir: Path):
 \usepackage{subcaption}
 
 %% ============================================================================
-%% VALIDATION SECTION - TruthfulQA Analysis (Figures 11-13)
+%% VALIDATION SECTION - TruthfulQA Analysis (Figures 8-10)
 %% ============================================================================
 
-%% FIGURE 11: Correlation Scatter Plot (Main Validation Result)
+%% FIGURE 8: Correlation Scatter Plot (Main Validation Result)
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig11_peerrank_correlation.pdf}
+    \includegraphics[width=\linewidth]{figures/fig8_peerrank_correlation.pdf}
     \caption{Correlation between peer evaluation scores and ground truth accuracy on TruthfulQA. Each point represents a model, numbered by peer rank. The strong positive correlation (r = 0.88, p < 0.001) validates that peer evaluation can serve as a proxy for factual accuracy.}
     \label{fig:tfq-correlation}
 \end{figure}
 
-%% FIGURE 12: Rank Agreement
+%% FIGURE 9: Rank Agreement
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\linewidth]{figures/fig12_rank_agreement.pdf}
+    \includegraphics[width=0.8\linewidth]{figures/fig9_rank_agreement.pdf}
     \caption{Rank agreement between peer evaluation and ground truth rankings. Lines connect each model's peer rank (left) to its truth rank (right). Green arrows indicate models underrated by peers; orange arrows indicate overrated models.}
     \label{fig:tfq-rank-agreement}
 \end{figure}
 
-%% FIGURE 13: Score Comparison Bars
+%% FIGURE 10: Score Comparison Bars
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig13_score_comparison.pdf}
+    \includegraphics[width=\linewidth]{figures/fig10_score_comparison.pdf}
     \caption{Side-by-side comparison of peer evaluation scores (blue) and ground truth accuracy scores (green) for each model. Both metrics use a 0--10 scale for direct comparison.}
     \label{fig:tfq-score-comparison}
 \end{figure}
@@ -683,9 +683,9 @@ def generate_latex_templates(output_dir: Path):
 %%
 %% Label                    | Figure | Description
 %% -------------------------|--------|---------------------------
-%% fig:tfq-correlation      | 11     | Main correlation scatter
-%% fig:tfq-rank-agreement   | 12     | Rank slope graph
-%% fig:tfq-score-comparison | 13     | Peer vs truth bar chart
+%% fig:tfq-correlation      | 8      | Main correlation scatter
+%% fig:tfq-rank-agreement   | 9      | Rank slope graph
+%% fig:tfq-score-comparison | 10     | Peer vs truth bar chart
 """
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -735,10 +735,10 @@ def main():
         return 0
 
     # Generate all figures
-    print("\n--- VALIDATION FIGURES (11-13) ---")
-    generate_fig11_correlation_scatter(data, output_dir)
-    generate_fig12_rank_agreement(data, output_dir)
-    generate_fig13_score_comparison(data, output_dir)
+    print("\n--- VALIDATION FIGURES (8-10) ---")
+    generate_fig8_correlation_scatter(data, output_dir)
+    generate_fig9_rank_agreement(data, output_dir)
+    generate_fig10_score_comparison(data, output_dir)
 
     # Generate statistical report
     generate_stats_report(data, output_dir)

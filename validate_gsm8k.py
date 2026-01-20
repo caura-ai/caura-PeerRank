@@ -6,12 +6,12 @@ Unlike TruthfulQA (multiple choice), GSM8K uses open-ended problems with
 numerical answers extracted via the #### pattern.
 
 Usage:
-    python gsm8k.py                           # Interactive menu
-    python gsm8k.py --all                     # Run all phases
-    python gsm8k.py --phase 1-5               # Run specific phase
-    python gsm8k.py --num-questions 50        # Set question count
-    python gsm8k.py --difficulty easy,medium  # Filter by difficulty
-    python gsm8k.py --difficulty hard         # Only hard questions
+    python validate_gsm8k.py                           # Interactive menu
+    python validate_gsm8k.py --all                     # Run all phases
+    python validate_gsm8k.py --phase 1-5               # Run specific phase
+    python validate_gsm8k.py --num-questions 50        # Set question count
+    python validate_gsm8k.py --difficulty easy,medium  # Filter by difficulty
+    python validate_gsm8k.py --difficulty hard         # Only hard questions
 """
 
 import argparse
