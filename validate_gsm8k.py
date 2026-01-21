@@ -430,13 +430,37 @@ async def phase2_answer():
     phase_start = time.time()
     questions = load_validation_json("phase1_questions.json")["questions_by_model"]["GSM8K"]
     model_names = [n for _, _, n in MODELS]
+
+    # Check for existing progress to resume
+    output_questions = []
+    start_idx = 0
+    try:
+        existing = load_validation_json("phase2_answers.json")
+        if existing and "questions" in existing:
+            saved_count = len(existing["questions"])
+            # Check if saved data matches current question set
+            if saved_count < len(questions):
+                # Verify first question matches to ensure same dataset
+                if saved_count > 0 and existing["questions"][0]["text"] == questions[0]["question"]:
+                    output_questions = existing["questions"]
+                    start_idx = saved_count
+                    print(f"  Resuming from question {start_idx + 1}/{len(questions)}")
+                else:
+                    print(f"  Found saved progress ({saved_count} questions) but dataset changed. Starting fresh.")
+            elif saved_count >= len(questions):
+                print(f"  Found complete/larger saved data ({saved_count} questions). Starting fresh for {len(questions)} questions.")
+    except Exception:
+        pass
+
     total = len(questions) * len(model_names)
-    completed = 0
+    completed = start_idx * len(model_names)
     lock = asyncio.Lock()
 
     print(f"  Models: {len(model_names)} | Questions: {len(questions)} | Total: {total}")
 
-    async def answer_one(provider, model_id, model_name, question, semaphore):
+    SAVE_INTERVAL = 5  # Save every N questions
+
+    async def answer_one(provider, model_id, model_name, question, q_idx, semaphore):
         nonlocal completed
 
         prompt = f"""You are a careful math solver. Solve word problems with explicit arithmetic and unit tracking.
@@ -455,6 +479,7 @@ Output rules:
 Problem:
 {question["question"]}"""
 
+        start_time = time.time()
         try:
             async with semaphore:
                 response, duration, in_tok, out_tok = await call_llm(
@@ -479,17 +504,18 @@ Problem:
                 "output_tokens": 0
             }
 
+        elapsed = time.time() - start_time
         async with lock:
             completed += 1
-            print(f"\r  {progress_bar(completed, total)}    ", end="", flush=True)
+            # Show which model just completed
+            print(f"\r  {progress_bar(completed, total)} | Q{q_idx+1} {model_name[:15]:<15} ({elapsed:.1f}s)    ", end="", flush=True)
         return model_name, result
 
-    # Process all questions
-    output_questions = []
+    # Process remaining questions
     semaphores = {p: asyncio.Semaphore(PROVIDER_CONCURRENCY.get(p, 5)) for p, _, _ in MODELS}
 
-    for question in questions:
-        tasks = [answer_one(p, m, n, question, semaphores[p]) for p, m, n in MODELS]
+    for q_idx, question in enumerate(questions[start_idx:], start=start_idx):
+        tasks = [answer_one(p, m, n, question, q_idx, semaphores[p]) for p, m, n in MODELS]
         results = await asyncio.gather(*tasks)
         output_questions.append({
             "text": question["question"],
@@ -497,99 +523,30 @@ Problem:
             "answers": {name: result for name, result in results}
         })
 
+        # Incremental save every SAVE_INTERVAL questions
+        if (q_idx + 1) % SAVE_INTERVAL == 0 or q_idx == len(questions) - 1:
+            save_validation_json("phase2_answers.json", {
+                "revision": VALIDATION_REVISION,
+                "timestamp": datetime.now().isoformat(),
+                "phase": 2,
+                "duration_seconds": round(time.time() - phase_start, 2),
+                "questions": output_questions
+            })
+            print(f"\n  [Saved progress: {len(output_questions)}/{len(questions)} questions]")
+
     print()
-    save_validation_json("phase2_answers.json", {
-        "revision": VALIDATION_REVISION,
-        "timestamp": datetime.now().isoformat(),
-        "phase": 2,
-        "duration_seconds": round(time.time() - phase_start, 2),
-        "questions": output_questions
-    })
     print(f"  Complete in {format_duration(time.time() - phase_start)}")
     print(f"{'=' * 60}")
 
 
 # =============================================================================
-# PHASE 3: Peer Evaluation (Math-specific with gold answer)
+# PHASE 3: Peer Evaluation (Math-specific, NO gold answer exposed to evaluators)
 # =============================================================================
 
 def _format_math_responses(question: dict, shuffle: bool, blind: bool, seed: int | None) -> tuple[str, dict]:
     """Format responses for math evaluation, returns (text, label_to_model mapping)."""
     from peerrank_phase3 import format_responses_for_eval
     return format_responses_for_eval(question, shuffle, blind, seed)
-
-
-async def _run_math_evaluation_pass(questions: list, seed: int | None) -> tuple[dict, dict]:
-    """Run math-specific evaluation with rubric emphasizing correctness verification."""
-    from config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL, extract_json
-
-    evaluations = {n: {} for _, _, n in MODELS}
-    timing = {n: [] for _, _, n in MODELS}
-
-    total = len(MODELS) * len(questions)
-    completed = 0
-    lock = asyncio.Lock()
-
-    async def evaluate(provider, model_id, name, q, semaphore):
-        nonlocal completed
-
-        responses_text, label_to_model = _format_math_responses(q, shuffle=True, blind=True, seed=seed)
-        label_example = "Response A"
-
-        prompt = MATH_EVAL_PROMPT.format(
-            question=q["text"],
-            responses=responses_text,
-            label_example=label_example
-        )
-
-        try:
-            async with semaphore:
-                response, duration, _, _ = await call_llm(
-                    provider, model_id, prompt,
-                    max_tokens=MAX_TOKENS_EVAL,
-                    use_web_search=False,
-                    temperature=TEMPERATURE_EVAL
-                )
-            scores = extract_json(response)
-            if scores and isinstance(scores, dict):
-                # Remap labels to model names
-                remapped = {}
-                for label, score_data in scores.items():
-                    model_name = label_to_model.get(label)
-                    if model_name:
-                        remapped[model_name] = score_data
-                    else:
-                        for full_label, model in label_to_model.items():
-                            if label in full_label or full_label in label:
-                                remapped[model] = score_data
-                                break
-                result = (name, q["text"], remapped, duration)
-            else:
-                result = (name, q["text"], {}, duration)
-        except Exception as e:
-            print(f"      [ERROR] {name}: {e}", flush=True)
-            result = (name, q["text"], {}, 0)
-
-        async with lock:
-            completed += 1
-            if completed % 20 == 0 or completed == total:
-                print(f"\r  Progress: {completed}/{total} ({100*completed//total}%)", end="", flush=True)
-
-        return result
-
-    # Process all evaluators
-    semaphores = {p: asyncio.Semaphore(PROVIDER_CONCURRENCY.get(p, 5)) for p, _, _ in MODELS}
-
-    for q in questions:
-        tasks = [evaluate(p, m, n, q, semaphores[p]) for p, m, n in MODELS]
-        results = await asyncio.gather(*tasks)
-
-        for name, q_text, scores, duration in results:
-            evaluations[name][q_text] = scores
-            timing[name].append(duration)
-
-    print()
-    return evaluations, timing
 
 
 async def phase3_evaluate():
@@ -600,6 +557,8 @@ async def phase3_evaluate():
     - Prioritize final answer correctness
     - Not penalize brevity
     """
+    from config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL, extract_json
+
     set_revision(VALIDATION_REVISION)
 
     phase_start = time.time()
@@ -611,18 +570,105 @@ async def phase3_evaluate():
     print(f"{'=' * 60}")
     print(f"  Evaluators instructed to verify arithmetic themselves")
 
-    evaluations, timing = await _run_math_evaluation_pass(questions, seed)
+    # Check for existing progress to resume
+    evaluations = {n: {} for _, _, n in MODELS}
+    timing = {n: [] for _, _, n in MODELS}
+    start_idx = 0
 
-    save_validation_json("phase3_rankings.json", {
-        "revision": VALIDATION_REVISION,
-        "timestamp": datetime.now().isoformat(),
-        "phase": 3,
-        "duration_seconds": round(time.time() - phase_start, 2),
-        "evaluations_by_mode": {"shuffle_blind": evaluations},
-        "evaluations": evaluations,
-        "timing_stats": calculate_timing_stats(timing),
-        "eval_mode": "math_verify_correctness",
-    })
+    try:
+        existing = load_validation_json("phase3_rankings.json")
+        if existing and "evaluations_by_mode" in existing and "_progress_idx" in existing:
+            saved_idx = existing["_progress_idx"]
+            # Verify same dataset
+            if saved_idx < len(questions):
+                evaluations = existing["evaluations_by_mode"].get("shuffle_blind", {})
+                # Note: timing can't be fully recovered (only summary stats saved), start fresh
+                timing = {n: [] for n in evaluations}
+                start_idx = saved_idx
+                print(f"  Resuming from question {start_idx + 1}/{len(questions)}")
+    except Exception:
+        pass
+
+    total = len(MODELS) * len(questions)
+    completed = start_idx * len(MODELS)
+    lock = asyncio.Lock()
+    SAVE_INTERVAL = 10
+
+    print(f"  Models: {len(MODELS)} | Questions: {len(questions)} | Total: {total}")
+
+    async def evaluate(provider, model_id, name, q, q_idx, semaphore):
+        nonlocal completed
+
+        responses_text, label_to_model = _format_math_responses(q, shuffle=True, blind=True, seed=seed)
+        label_example = "Response A"
+
+        prompt = MATH_EVAL_PROMPT.format(
+            question=q["text"],
+            responses=responses_text,
+            label_example=label_example
+        )
+
+        start_time = time.time()
+        try:
+            async with semaphore:
+                response, duration, _, _ = await call_llm(
+                    provider, model_id, prompt,
+                    max_tokens=MAX_TOKENS_EVAL,
+                    use_web_search=False,
+                    temperature=TEMPERATURE_EVAL
+                )
+            scores = extract_json(response)
+            if scores and isinstance(scores, dict):
+                remapped = {}
+                for label, score_data in scores.items():
+                    model_name = label_to_model.get(label)
+                    if model_name:
+                        remapped[model_name] = score_data
+                    else:
+                        for full_label, model in label_to_model.items():
+                            if label in full_label or full_label in label:
+                                remapped[model] = score_data
+                                break
+                result = (name, q_idx, remapped, duration)
+            else:
+                result = (name, q_idx, {}, duration)
+        except Exception as e:
+            print(f"\n      [ERROR] {name}: {e}", flush=True)
+            result = (name, q_idx, {}, 0)
+
+        elapsed = time.time() - start_time
+        async with lock:
+            completed += 1
+            print(f"\r  {progress_bar(completed, total)} | Q{q_idx+1} {name[:15]:<15} ({elapsed:.1f}s)    ", end="", flush=True)
+
+        return result
+
+    # Process remaining questions
+    semaphores = {p: asyncio.Semaphore(PROVIDER_CONCURRENCY.get(p, 5)) for p, _, _ in MODELS}
+
+    for q_idx, q in enumerate(questions[start_idx:], start=start_idx):
+        tasks = [evaluate(p, m, n, q, q_idx, semaphores[p]) for p, m, n in MODELS]
+        results = await asyncio.gather(*tasks)
+
+        for name, idx, scores, duration in results:
+            evaluations[name][str(idx)] = scores  # Use index as key (much smaller than full question text)
+            timing[name].append(duration)
+
+        # Incremental save
+        if (q_idx + 1) % SAVE_INTERVAL == 0 or q_idx == len(questions) - 1:
+            save_validation_json("phase3_rankings.json", {
+                "revision": VALIDATION_REVISION,
+                "timestamp": datetime.now().isoformat(),
+                "phase": 3,
+                "duration_seconds": round(time.time() - phase_start, 2),
+                "evaluations_by_mode": {"shuffle_blind": evaluations},
+                "timing_stats": calculate_timing_stats(timing),
+                "eval_mode": "math_verify_correctness",
+                "_progress_idx": q_idx + 1,
+            })
+            print(f"\n  [Saved progress: {q_idx + 1}/{len(questions)} questions]")
+
+    print()
     print(f"  Complete in {format_duration(time.time() - phase_start)}")
     print(f"{'=' * 60}")
 

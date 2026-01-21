@@ -474,30 +474,41 @@ async def health_check() -> dict:
     print(f"\n{'=' * 60}\nLLM API Health Check\n{'=' * 60}\nTesting {len(MODELS)} providers...\n")
 
     results = {}
+    completed = 0
+    lock = asyncio.Lock()
+    google_auth = get_google_auth_method()
 
     async def check(provider: str, model_id: str, name: str):
+        nonlocal completed
         extra = list_google_models() if provider == "google" else []
+        print(f"  [{name}] Testing...", flush=True)
         try:
             _, duration, _, _ = await call_llm(provider, model_id, "Say 'OK'.", max_tokens=1024, timeout=60, use_web_search=False)
-            return (name, True, f"{duration:.1f}s", "", extra)
+            result = (name, True, f"{duration:.1f}s", "", extra)
         except Exception as e:
             msg = str(e)
             if "<html>" in msg.lower():
                 msg = "401 Auth error"
-            return (name, False, "", msg[:100], extra)
+            result = (name, False, "", msg[:100], extra)
+
+        # Print result immediately
+        async with lock:
+            completed += 1
+            is_google = provider == "google"
+            auth_info = f" [{google_auth}]" if is_google else ""
+            if result[1]:
+                print(f"  [{completed}/{len(MODELS)}] [OK] {name} ({result[2]}){auth_info}")
+            else:
+                print(f"  [{completed}/{len(MODELS)}] [FAIL] {name}: {result[3]}{auth_info}")
+            if extra:
+                print(f"           Google models: {len(extra)} available")
+        return result
 
     responses = await asyncio.gather(*[check(p, m, n) for p, m, n in MODELS])
 
     working = 0
-    google_auth = get_google_auth_method()
     for name, ok, duration, error, extra in responses:
         results[name] = {"success": ok, "message": error or f"OK ({duration})"}
-        is_google = any(p == "google" and n == name for p, _, n in MODELS)
-        auth_info = f" [{google_auth}]" if is_google else ""
-        status = f"[OK] {name} ({duration}){auth_info}" if ok else f"[FAIL] {name}: {error}{auth_info}"
-        print(f"  {status}")
-        if extra:
-            print(f"         Google models: {len(extra)} available")
         working += ok
 
     print(f"\n{'=' * 60}\nResult: {working}/{len(MODELS)} providers OK\n{'=' * 60}")
