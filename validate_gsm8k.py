@@ -338,15 +338,38 @@ def phase1_generate(num_questions: int = 50):
             "steps": count_solution_steps(solution),
         })
 
-    # Stratified sampling - try to balance across active difficulties
+    # Stratified sampling with redistribution - fill quotas, redistribute overflow
     questions = []
     difficulties_with_data = [d for d in DIFFICULTIES if by_difficulty.get(d)]
-    per_difficulty = num_questions // len(difficulties_with_data) if difficulties_with_data else 0
-    remainder = num_questions % len(difficulties_with_data) if difficulties_with_data else 0
 
-    for i, difficulty in enumerate(difficulties_with_data):
-        take = min(per_difficulty + (1 if i < remainder else 0), len(by_difficulty[difficulty]))
-        questions.extend(random.sample(by_difficulty[difficulty], take))
+    # Calculate total available across selected difficulties
+    total_available = sum(len(by_difficulty[d]) for d in difficulties_with_data)
+    target = min(num_questions, total_available)
+
+    # First pass: calculate fair share and track available
+    available = {d: len(by_difficulty[d]) for d in difficulties_with_data}
+    to_take = {d: 0 for d in difficulties_with_data}
+    remaining = target
+
+    # Iteratively distribute - handles cases where some difficulties have fewer than quota
+    while remaining > 0 and any(available[d] > to_take[d] for d in difficulties_with_data):
+        active = [d for d in difficulties_with_data if available[d] > to_take[d]]
+        if not active:
+            break
+        per_round = remaining // len(active)
+        if per_round == 0:
+            per_round = 1
+        for d in active:
+            can_take = min(per_round, available[d] - to_take[d], remaining)
+            to_take[d] += can_take
+            remaining -= can_take
+            if remaining == 0:
+                break
+
+    # Sample from each difficulty
+    for difficulty in difficulties_with_data:
+        if to_take[difficulty] > 0:
+            questions.extend(random.sample(by_difficulty[difficulty], to_take[difficulty]))
 
     random.shuffle(questions)
 
@@ -905,8 +928,8 @@ def interactive_menu():
         elif choice == "A": clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
         elif choice == "N":
             try:
-                n = int(input("  Questions (1-500): "))
-                if 1 <= n <= 500: set_num_questions(n)
+                n = int(input("  Questions (1-1000): "))
+                if 1 <= n <= 1000: set_num_questions(n)
             except ValueError: pass
         elif choice == "D":
             print(f"  Current: {get_difficulties_display()}")

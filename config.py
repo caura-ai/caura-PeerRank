@@ -195,7 +195,7 @@ GOOGLE_LOCATION = "global"
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 2,  # Reduced to avoid 429 rate limits
+    "google": 4,  # Reduced to avoid 429 rate limits
     "grok": 8,
     "deepseek": 8,
     "together": 8,
