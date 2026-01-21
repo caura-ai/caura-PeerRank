@@ -20,7 +20,8 @@ import json
 import re
 import time
 from datetime import datetime
-from statistics import mean
+from statistics import mean, stdev
+from math import sqrt
 import random
 
 from config import (
@@ -29,6 +30,41 @@ from config import (
     PROVIDER_CONCURRENCY, calculate_timing_stats, get_bias_test_config,
 )
 from providers import call_llm, clear_clients
+
+# =============================================================================
+# MATH-SPECIFIC EVALUATION PROMPT
+# =============================================================================
+
+MATH_EVAL_PROMPT = """You are grading MATH problem responses. You must verify correctness yourself.
+
+Scoring rubric (1-10 integer):
+- 10: Correct final answer with valid, verifiable reasoning.
+- 8-9: Correct answer, reasoning mostly sound with minor gaps.
+- 6-7: Likely correct OR wrong answer with sound method and small arithmetic slip.
+- 4-5: Wrong answer but shows partial understanding of the approach.
+- 1-3: Wrong answer, fundamentally flawed reasoning.
+
+CRITICAL RULES FOR MATH:
+1. YOU MUST verify the arithmetic yourself - check each calculation step.
+2. The FINAL NUMERICAL ANSWER is what matters most. Trace back from it.
+3. A SHORT correct answer scores the SAME as a VERBOSE correct answer.
+4. Do NOT reward eloquent explanations if the final number is wrong.
+5. Do NOT penalize brevity - concise and correct is ideal.
+6. If unsure, re-compute the problem yourself to verify.
+
+Question:
+{question}
+
+Responses:
+{responses}
+
+Output format (STRICT):
+- Return ONLY a single JSON object (no markdown, no extra text).
+- Include an entry for EVERY label in Responses.
+- Each entry: {{"score": <1-10>, "reason": "<brief justification>", "flags": []}}
+
+Example: {{"{label_example}": {{"score": 9, "reason": "Correct answer (42), clear steps", "flags": []}}}}
+"""
 
 # =============================================================================
 # CONFIGURATION
@@ -211,6 +247,62 @@ def categorize_difficulty(solution: str) -> str:
 
 
 # =============================================================================
+# CONFIDENCE INTERVAL HELPERS
+# =============================================================================
+
+def correlation_ci(r: float, n: int, alpha: float = 0.05) -> tuple[float, float]:
+    """Compute CI for Pearson r using Fisher z-transformation."""
+    from scipy.stats import norm
+    import math
+
+    if abs(r) >= 1.0 or n < 4:
+        return (r, r)
+
+    z = 0.5 * math.log((1 + r) / (1 - r))  # Fisher z
+    se = 1 / math.sqrt(n - 3)
+    z_crit = norm.ppf(1 - alpha / 2)
+
+    z_lo, z_hi = z - z_crit * se, z + z_crit * se
+    r_lo = (math.exp(2 * z_lo) - 1) / (math.exp(2 * z_lo) + 1)
+    r_hi = (math.exp(2 * z_hi) - 1) / (math.exp(2 * z_hi) + 1)
+
+    return (round(r_lo, 4), round(r_hi, 4))
+
+
+def wilson_ci(correct: int, total: int, alpha: float = 0.05) -> tuple[float, float]:
+    """Wilson score interval for binomial proportion (accuracy)."""
+    from scipy.stats import norm
+
+    if total == 0:
+        return (0.0, 0.0)
+
+    p = correct / total
+    z = norm.ppf(1 - alpha / 2)
+
+    denom = 1 + z**2 / total
+    center = (p + z**2 / (2 * total)) / denom
+    margin = z * sqrt((p * (1 - p) + z**2 / (4 * total)) / total) / denom
+
+    return (round(max(0, center - margin), 4), round(min(1, center + margin), 4))
+
+
+def peer_score_ci(scores: list[float], alpha: float = 0.05) -> tuple[float, float]:
+    """CI for mean peer score using t-distribution."""
+    from scipy.stats import t
+
+    if len(scores) < 2:
+        m = scores[0] if scores else 0
+        return (m, m)
+
+    n = len(scores)
+    m = mean(scores)
+    se = stdev(scores) / sqrt(n)
+    t_crit = t.ppf(1 - alpha / 2, n - 1)
+
+    return (round(m - t_crit * se, 2), round(m + t_crit * se, 2))
+
+
+# =============================================================================
 # PHASE 1: Load Questions from GSM8K
 # =============================================================================
 
@@ -324,7 +416,7 @@ async def phase2_answer():
     async def answer_one(provider, model_id, model_name, question, semaphore):
         nonlocal completed
 
-        prompt =f"""You are a careful math solver. Solve word problems with explicit arithmetic and unit tracking.
+        prompt = f"""You are a careful math solver. Solve word problems with explicit arithmetic and unit tracking.
 Do not skip multipliers (people, days, items). Avoid unnecessary algebra.
 Before finalizing, do a quick sanity check for common mistakes (missing factors, reversed comparisons, off-by-one).
 You MUST end with the final answer in the exact format: '#### <number>'.
@@ -338,22 +430,7 @@ Output rules:
 #### <number>
 
 Problem:
-{question}
-"""
-        
-
-        
-        prompt = f"""Solve this math problem step by step.
-
-Show your reasoning clearly, then provide your final numerical answer.
-
-IMPORTANT: End your response with the final answer in this exact format:
-#### <number>
-
-For example, if the answer is 42, end with:
-#### 42
-
-Question: {question["question"]}"""
+{question["question"]}"""
 
         try:
             async with semaphore:
@@ -410,29 +487,108 @@ Question: {question["question"]}"""
 
 
 # =============================================================================
-# PHASE 3: Peer Evaluation (shuffle_blind only - bias analysis not needed)
+# PHASE 3: Peer Evaluation (Math-specific with gold answer)
 # =============================================================================
 
-async def phase3_evaluate():
-    """Run peer evaluation (shuffle_blind mode only).
+def _format_math_responses(question: dict, shuffle: bool, blind: bool, seed: int | None) -> tuple[str, dict]:
+    """Format responses for math evaluation, returns (text, label_to_model mapping)."""
+    from peerrank_phase3 import format_responses_for_eval
+    return format_responses_for_eval(question, shuffle, blind, seed)
 
-    For validation, we only need peer scores to correlate with accuracy.
-    Full bias analysis (3 modes) is unnecessary and triples the cost.
+
+async def _run_math_evaluation_pass(questions: list, seed: int | None) -> tuple[dict, dict]:
+    """Run math-specific evaluation with rubric emphasizing correctness verification."""
+    from config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL, extract_json
+
+    evaluations = {n: {} for _, _, n in MODELS}
+    timing = {n: [] for _, _, n in MODELS}
+
+    total = len(MODELS) * len(questions)
+    completed = 0
+    lock = asyncio.Lock()
+
+    async def evaluate(provider, model_id, name, q, semaphore):
+        nonlocal completed
+
+        responses_text, label_to_model = _format_math_responses(q, shuffle=True, blind=True, seed=seed)
+        label_example = "Response A"
+
+        prompt = MATH_EVAL_PROMPT.format(
+            question=q["text"],
+            responses=responses_text,
+            label_example=label_example
+        )
+
+        try:
+            async with semaphore:
+                response, duration, _, _ = await call_llm(
+                    provider, model_id, prompt,
+                    max_tokens=MAX_TOKENS_EVAL,
+                    use_web_search=False,
+                    temperature=TEMPERATURE_EVAL
+                )
+            scores = extract_json(response)
+            if scores and isinstance(scores, dict):
+                # Remap labels to model names
+                remapped = {}
+                for label, score_data in scores.items():
+                    model_name = label_to_model.get(label)
+                    if model_name:
+                        remapped[model_name] = score_data
+                    else:
+                        for full_label, model in label_to_model.items():
+                            if label in full_label or full_label in label:
+                                remapped[model] = score_data
+                                break
+                result = (name, q["text"], remapped, duration)
+            else:
+                result = (name, q["text"], {}, duration)
+        except Exception as e:
+            print(f"      [ERROR] {name}: {e}", flush=True)
+            result = (name, q["text"], {}, 0)
+
+        async with lock:
+            completed += 1
+            if completed % 20 == 0 or completed == total:
+                print(f"\r  Progress: {completed}/{total} ({100*completed//total}%)", end="", flush=True)
+
+        return result
+
+    # Process all evaluators
+    semaphores = {p: asyncio.Semaphore(PROVIDER_CONCURRENCY.get(p, 5)) for p, _, _ in MODELS}
+
+    for q in questions:
+        tasks = [evaluate(p, m, n, q, semaphores[p]) for p, m, n in MODELS]
+        results = await asyncio.gather(*tasks)
+
+        for name, q_text, scores, duration in results:
+            evaluations[name][q_text] = scores
+            timing[name].append(duration)
+
+    print()
+    return evaluations, timing
+
+
+async def phase3_evaluate():
+    """Run math-specific peer evaluation with improved rubric.
+
+    Uses math-focused rubric that instructs evaluators to:
+    - Verify arithmetic themselves
+    - Prioritize final answer correctness
+    - Not penalize brevity
     """
     set_revision(VALIDATION_REVISION)
-    from peerrank_phase3 import _run_evaluation_pass
 
     phase_start = time.time()
     seed = get_bias_test_config()["seed"]
     questions = load_validation_json("phase2_answers.json")["questions"]
 
     print(f"\n{'=' * 60}")
-    print("  PHASE 3: Peer Evaluation")
+    print("  PHASE 3: Math Peer Evaluation (verify correctness)")
     print(f"{'=' * 60}")
+    print(f"  Evaluators instructed to verify arithmetic themselves")
 
-    evaluations, timing = await _run_evaluation_pass(
-        questions, shuffle=True, blind=True, seed=seed, mode_name="shuffle_blind"
-    )
+    evaluations, timing = await _run_math_evaluation_pass(questions, seed)
 
     save_validation_json("phase3_rankings.json", {
         "revision": VALIDATION_REVISION,
@@ -442,6 +598,7 @@ async def phase3_evaluate():
         "evaluations_by_mode": {"shuffle_blind": evaluations},
         "evaluations": evaluations,
         "timing_stats": calculate_timing_stats(timing),
+        "eval_mode": "math_verify_correctness",
     })
     print(f"  Complete in {format_duration(time.time() - phase_start)}")
     print(f"{'=' * 60}")
@@ -554,11 +711,13 @@ def phase5_correlation_analysis():
         print(f"  Cannot compute correlation. Try more questions for variance.")
         pearson_r, pearson_p = 0, 1
         spearman_r, spearman_p = 0, 1
+        pearson_ci = (0, 0)
     else:
         pearson_r, pearson_p = pearsonr(peer_arr, truth_arr)
         spearman_r, spearman_p = spearmanr(peer_arr, truth_arr)
+        pearson_ci = correlation_ci(pearson_r, len(common))
 
-    print(f"\n  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f})")
+    print(f"\n  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f}) 95% CI [{pearson_ci[0]:.3f}, {pearson_ci[1]:.3f}]")
     print(f"  Spearman:   {spearman_r:.4f} (p={spearman_p:.4f})")
 
     # Build comparison with proper tie handling
@@ -582,25 +741,39 @@ def phase5_correlation_analysis():
 
     peer_ranks = {m: i + 1 for i, m in enumerate(peer_ranked)}
 
-    # Build report
+    # Build report with CIs
     comparison = []
     for m in common:
+        # Peer score CI
+        peer_scores_list = scores_result["peer_scores"].get(m, [])
+        p_ci = peer_score_ci(peer_scores_list) if len(peer_scores_list) >= 2 else (peer_means[m], peer_means[m])
+
+        # Truth (accuracy) CI - Wilson interval
+        truth_stats = truth_data["summary"].get(m, {})
+        correct = truth_stats.get("correct", 0)
+        total = truth_stats.get("total", 0)
+        t_ci_pct = wilson_ci(correct, total)
+        t_ci = (round(t_ci_pct[0] * 10, 2), round(t_ci_pct[1] * 10, 2))  # Convert to 0-10 scale
+
         comparison.append({
             "model": m,
             "peer_score": round(peer_means[m], 2),
+            "peer_ci": p_ci,
             "truth_score": round(truth_means[m], 2),
+            "truth_ci": t_ci,
             "peer_rank": peer_ranks[m],
             "truth_rank": truth_ranks[m],
             "rank_diff": peer_ranks[m] - truth_ranks[m],
         })
     comparison.sort(key=lambda x: x["peer_rank"])
 
-    # Print comparison table
-    print(f"\n  {'Model':<22} {'Peer':>6} {'Truth':>6} {'P.Rank':>7} {'T.Rank':>7}")
-    print(f"  {'-' * 50}")
+    # Print comparison table with CIs
+    print(f"\n  {'Model':<22} {'Peer':>6} {'95% CI':>14} {'Truth':>6} {'95% CI':>14}")
+    print(f"  {'-' * 64}")
     for row in comparison:
-        tr = f"{row['truth_rank']:.1f}" if row['truth_rank'] != int(row['truth_rank']) else f"{int(row['truth_rank'])}"
-        print(f"  {row['model']:<22} {row['peer_score']:>6.2f} {row['truth_score']:>6.2f} {row['peer_rank']:>7} {tr:>7}")
+        p_ci_str = f"[{row['peer_ci'][0]:.2f},{row['peer_ci'][1]:.2f}]"
+        t_ci_str = f"[{row['truth_ci'][0]:.2f},{row['truth_ci'][1]:.2f}]"
+        print(f"  {row['model']:<22} {row['peer_score']:>6.2f} {p_ci_str:>14} {row['truth_score']:>6.2f} {t_ci_str:>14}")
 
     # Interpret correlation
     def interpret(r):
@@ -622,19 +795,20 @@ Questions: {num_q}
 
 ## Correlation
 
-  Metric       Value    p-value   Interpretation
-  ----------   ------   -------   --------------
-  Pearson r    {pearson_r:>6.4f}   {pearson_p:>7.4f}   {interp}
-  Spearman     {spearman_r:>6.4f}   {spearman_p:>7.4f}   {interpret(spearman_r)}
+  Metric       Value    95% CI              p-value   Interpretation
+  ----------   ------   -----------------   -------   --------------
+  Pearson r    {pearson_r:>6.4f}   [{pearson_ci[0]:.3f}, {pearson_ci[1]:.3f}]      {pearson_p:>7.4f}   {interp}
+  Spearman     {spearman_r:>6.4f}   -                   {spearman_p:>7.4f}   {interpret(spearman_r)}
 
 ## Score Comparison
 
-  Rank  Model                      Peer   Truth  T.Rank
-  ----  -------------------------  -----  -----  ------
+  Rank  Model                      Peer   Peer 95% CI       Truth  Truth 95% CI
+  ----  -------------------------  -----  ----------------  -----  ----------------
 """
     for row in comparison:
-        tr = f"{row['truth_rank']:.1f}" if row['truth_rank'] != int(row['truth_rank']) else str(int(row['truth_rank']))
-        report += f"  {row['peer_rank']:>4}  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['truth_score']:>5.2f}  {tr:>6}\n"
+        p_ci = f"[{row['peer_ci'][0]:.2f}, {row['peer_ci'][1]:.2f}]"
+        t_ci = f"[{row['truth_ci'][0]:.2f}, {row['truth_ci'][1]:.2f}]"
+        report += f"  {row['peer_rank']:>4}  {row['model']:<25}  {row['peer_score']:>5.2f}  {p_ci:<16}  {row['truth_score']:>5.2f}  {t_ci:<16}\n"
 
     report += f"\n## Conclusion\n\n"
     if pearson_r >= 0.7 and pearson_p < 0.05:
@@ -657,6 +831,7 @@ Questions: {num_q}
         "correlation": {
             "pearson_r": round(pearson_r, 4),
             "pearson_p": round(pearson_p, 4),
+            "pearson_ci_95": list(pearson_ci),
             "spearman_r": round(spearman_r, 4),
             "spearman_p": round(spearman_p, 4)
         },
