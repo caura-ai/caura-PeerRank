@@ -5,14 +5,14 @@ config.py - Configuration constants and utilities for PeerRank.ai
 import json
 import os
 from pathlib import Path
-from statistics import mean
+from statistics import mean, stdev
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Paths and constants
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 
 REVISION = "v1"
@@ -569,8 +569,6 @@ def calculate_question_stats(evaluations: dict, questions: list = None) -> dict:
         - 'controversial': Top 5 highest std (most disagreement)
         - 'consensus': Top 5 lowest std (most agreement)
     """
-    from statistics import stdev
-
     # Build question metadata lookup (use full question text as key to match evaluations)
     q_meta = {}
     if questions:
