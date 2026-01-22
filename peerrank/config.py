@@ -185,7 +185,7 @@ ALL_MODELS = [
 MODELS = ALL_MODELS.copy()
 
 # Google service account config
-GOOGLE_SERVICE_ACCOUNT_FILE = Path(__file__).parent / "alpine-theory-469016-c8-2a7f2f635a03.json"
+GOOGLE_SERVICE_ACCOUNT_FILE = Path(__file__).parent.parent / "alpine-theory-469016-c8-2a7f2f635a03.json"
 GOOGLE_PROJECT_ID = "alpine-theory-469016-c8"
 GOOGLE_LOCATION = "global"
 
