@@ -19,9 +19,9 @@
 
 ```bash
 # Clone and install
-git clone https://github.com/caura-ai/peerrank.git
-cd peerrank
-pip install -r requirements.txt
+git clone https://github.com/caura-ai/caura-PeerRank.git
+cd caura-PeerRank
+pip install -e .
 
 # Configure API keys
 # Create a .env file with your API keys (see API Keys section below)
@@ -151,15 +151,16 @@ data/
 ## Project Structure
 
 ```
+peerrank/                # Core package (pip installable)
+  __init__.py            # Package exports
+  config.py              # Settings, model configs, utilities
+  providers.py           # LLM API implementations
 peerrank.py              # CLI entry point
 peerrank_ui.py           # Streamlit web interface
-config.py                # Settings, model configs, utilities
-providers.py             # LLM API implementations
 peerrank_phase1-5.py     # Pipeline phases
 generate_figures_*.py    # Publication figure generation
 validate_truthfulqa.py   # TruthfulQA validation
 pyproject.toml           # Package configuration
-__init__.py              # Package exports
 ```
 
 ## Installation as Package
@@ -196,9 +197,9 @@ Contributions welcome! Please:
 
 ### Adding a New Provider
 
-1. Add model config to `ALL_MODELS` in `config.py`
-2. Implement `call_{provider}()` in `providers.py`
-3. Add token costs to `TOKEN_COSTS` in `config.py`
+1. Add model config to `ALL_MODELS` in `peerrank/config.py`
+2. Implement `call_{provider}()` in `peerrank/providers.py`
+3. Add token costs to `TOKEN_COSTS` in `peerrank/config.py`
 
 ## License
 
@@ -211,6 +212,6 @@ MIT License - see [LICENSE](LICENSE) for details.
   title = {PeerRank: LLM Peer Evaluation System},
   author = {Caura AI},
   year = {2026},
-  url = {https://github.com/caura-ai/peerrank}
+  url = {https://github.com/caura-ai/caura-PeerRank}
 }
 ```

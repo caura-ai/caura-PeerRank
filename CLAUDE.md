@@ -22,10 +22,15 @@
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/peerrank.git
-cd peerrank
-pip install -r requirements.txt
-cp .env.example .env  # Add your API keys
+git clone https://github.com/caura-ai/caura-PeerRank.git
+cd caura-PeerRank
+pip install -e .       # Install as package
+cp .env.example .env   # Add your API keys
+```
+
+Or install directly from GitHub:
+```bash
+pip install git+https://github.com/caura-ai/caura-PeerRank.git
 ```
 
 ## Quick Start
@@ -97,29 +102,30 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 ## Architecture
 
 ```
-peerrank.py          # CLI entry point
-peerrank_ui.py       # Streamlit UI (live comparison)
-config.py            # Settings, model configs, utilities
-providers.py         # LLM API calls with web search
-peerrank_phase1.py   # Question generation
-peerrank_phase2.py   # Answer questions (web search configurable)
-peerrank_phase3.py   # Cross-evaluation (web search OFF, 3 bias modes)
-peerrank_phase4.py   # Report generation
-peerrank_phase5.py   # Final analysis by judge LLM
+peerrank/                      # Core package (pip installable)
+  __init__.py                  # Package exports (config, providers)
+  config.py                    # Settings, model configs, utilities
+  providers.py                 # LLM API calls with web search
+peerrank.py                    # CLI entry point
+peerrank_ui.py                 # Streamlit UI (live comparison)
+peerrank_phase1.py             # Question generation
+peerrank_phase2.py             # Answer questions (web search configurable)
+peerrank_phase3.py             # Cross-evaluation (web search OFF, 3 bias modes)
+peerrank_phase4.py             # Report generation
+peerrank_phase5.py             # Final analysis by judge LLM
 generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
 generate_figures_TFQ.py        # TruthfulQA validation figures (Figs 10-14)
 validate_truthfulqa.py         # TruthfulQA validation (correlate peer rankings with ground truth)
 validate_gsm8k.py              # GSM8K validation (correlate peer rankings with math accuracy)
 pyproject.toml                 # Package configuration for pip install
-__init__.py                    # Package exports (config, providers)
 data/
   phase1_questions_{rev}.json
   phase2_answers_{rev}.json
   phase3_rankings_{rev}.json
   phase4_report_{rev}.md
   phase5_analysis_{rev}.md
-  TRUTH/                     # TruthfulQA validation output files
-  GSM8K/                     # GSM8K validation output files
+  TRUTH/                       # TruthfulQA validation output files
+  GSM8K/                       # GSM8K validation output files
 ```
 
 ## Revision System
@@ -209,7 +215,7 @@ Filter by keyword: `--categories factual,logic` matches categories containing th
 
 ## Provider Implementations
 
-All calls route through `call_llm()` in providers.py:
+All calls route through `call_llm()` in `peerrank/providers.py`:
 - **OpenAI**: Responses API for web search, Chat Completions otherwise
 - **Anthropic**: web-search-2025-03-05 beta header
 - **Google**: Vertex AI (service account) or API key with google_search tool
@@ -299,7 +305,7 @@ Model Bias table:
 
 ## Cost Tracking (Jan 2026)
 
-**Token Costs**: Defined in `config.py` - `TOKEN_COSTS` dictionary with input/output pricing per million tokens
+**Token Costs**: Defined in `peerrank/config.py` - `TOKEN_COSTS` dictionary with input/output pricing per million tokens
 
 Updated Jan 2026 pricing for all models:
 ```python
@@ -350,7 +356,7 @@ TOKEN_COSTS = {
 **Phase 4 Report**:
 - **Answering API Cost Analysis**: Total costs, tokens, avg cost per question
 - **Performance vs. Cost**: Efficiency metric `(Score ^ EXPONENT) / Cost_cents`
-  - `EFFICIENCY_QUALITY_EXPONENT` in config.py (default 2.0)
+  - `EFFICIENCY_QUALITY_EXPONENT` in `peerrank/config.py` (default 2.0)
   - Higher exponent = stronger quality weighting
   - Formula: Points²/¢ rewards high-quality models
   - Dynamic superscript display in report headers (², ¹·⁵, etc.)
@@ -366,7 +372,7 @@ Returns total cost in USD using TOKEN_COSTS pricing table
 ## Web Search Control (Phase 2)
 
 **Configuration**:
-- `PHASE2_WEB_SEARCH` global setting in config.py (default: True)
+- `PHASE2_WEB_SEARCH` global setting in `peerrank/config.py` (default: True)
 - Functions: `get_phase2_web_search()` / `set_phase2_web_search(enabled: bool)`
 - CLI: `python peerrank.py --web-search on/off`
 - Menu: `[W] Web Search - Toggle Phase 2 grounding`
@@ -383,7 +389,7 @@ Returns total cost in USD using TOKEN_COSTS pricing table
 Alternative ranking methodology using pairwise comparisons from evaluation scores.
 
 **Configuration**:
-- `PHASE4_ELO` global setting in config.py (default: True)
+- `PHASE4_ELO` global setting in `peerrank/config.py` (default: True)
 - Functions: `get_phase4_elo()` / `set_phase4_elo(enabled: bool)`
 - CLI: `python peerrank.py --elo on/off`
 - Menu: `[E] Elo - Toggle Phase 4 Elo ratings`
@@ -417,7 +423,7 @@ For each (evaluator, question), scores are converted to C(N,2) pairwise matches:
 - 12 evaluators × 60 questions × C(10,2) = ~32,400 pairwise matches
 - Sufficient for Elo convergence
 
-**Functions** (in config.py):
+**Functions** (in `peerrank/config.py`):
 ```python
 calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
                       k_factor=32, exclude_self=True, seed=None)
@@ -430,14 +436,14 @@ calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
 - Models: 3-tuples `(provider, model_id, display_name)`
 - Iterate: `for provider, model_id, name in MODELS`
 - 130s timeout, 3 retries with exponential backoff
-- Revision: `get_revision()` / `set_revision(rev)` in config.py
-- Phase 3 seed: `set_bias_test_config(seed=N)` / `get_bias_test_config()` in config.py
-- Phase 5 judge: `set_phase5_judge(provider, model_id, name)` / `get_phase5_judge()` in config.py
-- Answer length: `MAX_ANSWER_WORDS` in config.py (default 200) limits Phase 2 response length
+- Revision: `get_revision()` / `set_revision(rev)` in `peerrank/config.py`
+- Phase 3 seed: `set_bias_test_config(seed=N)` / `get_bias_test_config()` in `peerrank/config.py`
+- Phase 5 judge: `set_phase5_judge(provider, model_id, name)` / `get_phase5_judge()` in `peerrank/config.py`
+- Answer length: `MAX_ANSWER_WORDS` in `peerrank/config.py` (default 200) limits Phase 2 response length
 - Phase 3 progress: Shows batch completion with avg time per question
 - Temperature overrides: `MODEL_TEMPERATURE_OVERRIDES` for model-specific adjustments
 
-## Shared Constants & Functions (config.py)
+## Shared Constants & Functions (peerrank/config.py)
 
 ```python
 # Bias modes (tuples for backend)
@@ -599,7 +605,7 @@ python generate_figures_TFQ.py --stats-only       # Print stats without figures
 - `TFQ_stats_summary.json` - Machine-readable summary for further analysis
 - `TFQ_figures_latex.tex` - LaTeX templates for Overleaf integration
 
-## Advanced Configuration (config.py)
+## Advanced Configuration (peerrank/config.py)
 
 ### Token Limits
 Model-specific maximum token limits for API calls:
@@ -697,9 +703,9 @@ Contributions are welcome! Please:
 
 ### Adding a New Provider
 
-1. Add provider config to `ALL_MODELS` in `config.py`
-2. Implement `call_{provider}()` in `providers.py`
-3. Add token costs to `TOKEN_COSTS` in `config.py`
+1. Add provider config to `ALL_MODELS` in `peerrank/config.py`
+2. Implement `call_{provider}()` in `peerrank/providers.py`
+3. Add token costs to `TOKEN_COSTS` in `peerrank/config.py`
 4. Update the health check in `peerrank.py`
 
 ## License
@@ -713,7 +719,8 @@ If you use PeerRank in your research, please cite:
 ```bibtex
 @software{peerrank2026,
   title = {PeerRank: LLM Peer Evaluation System},
+  author = {Caura AI},
   year = {2026},
-  url = {https://github.com/yourusername/peerrank}
+  url = {https://github.com/caura-ai/caura-PeerRank}
 }
 ```
