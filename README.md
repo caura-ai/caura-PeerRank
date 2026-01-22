@@ -157,25 +157,21 @@ config.py                # Settings, model configs, utilities
 providers.py             # LLM API implementations
 peerrank_phase1-5.py     # Pipeline phases
 generate_figures_*.py    # Publication figure generation
-validate_truthfulqa.py              # TruthfulQA validation
-peerrank_build_web/      # Website source files
-  build.py               # Build + serve + monitor
-  template.html          # Jinja2 template
-  styles.css             # CSS styles
-peerrank_hosted_website/ # Built output for hosting
+validate_truthfulqa.py   # TruthfulQA validation
+pyproject.toml           # Package configuration
+__init__.py              # Package exports
 ```
 
-## Website
+## Installation as Package
 
-Build and serve the PeerRank leaderboard website:
+PeerRank can be installed as a Python package:
 
 ```bash
-python peerrank_build_web/build.py              # Build only
-python peerrank_build_web/build.py --serve      # Build + local server at :8000
-python peerrank_build_web/build.py --watch      # Build + server + live latency monitor
+pip install -e .                    # Install in editable mode
+pip install .[ui]                   # Include Streamlit UI
+pip install .[figures]              # Include figure generation
+pip install .[all]                  # All optional dependencies
 ```
-
-Output goes to `peerrank_hosted_website/` for GitHub Pages or any static hosting.
 
 ## TruthfulQA Validation
 

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "peerrank"
+version = "1.0.0"
+description = "LLM Peer Evaluation System"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0",
+    "anthropic>=0.18",
+    "google-genai>=1.0",
+    "mistralai>=1.0",
+    "together>=1.0",
+    "python-dotenv>=1.0",
+    "aiohttp>=3.8",
+    "tavily-python>=0.3",
+    "xai_sdk>=0.1",
+    "datasets>=2.0",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.0"]
+figures = ["matplotlib>=3.0", "seaborn>=0.12", "scipy>=1.0"]
+all = ["streamlit>=1.0", "matplotlib>=3.0", "seaborn>=0.12", "scipy>=1.0"]

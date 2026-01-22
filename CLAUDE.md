@@ -60,9 +60,6 @@ python generate_figures_PeerRank.py --revision v1 --output figures/  # Generate 
 python generate_figures_TFQ.py --output figures/              # Generate TFQ validation figures
 python validate_gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
 python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
-python peerrank_build_web/build.py                            # Build website
-python peerrank_build_web/build.py --serve                    # Build + local server
-python peerrank_build_web/build.py --watch                    # Build + server + latency monitor
 ```
 
 ## Interactive Menu
@@ -110,19 +107,11 @@ peerrank_phase3.py   # Cross-evaluation (web search OFF, 3 bias modes)
 peerrank_phase4.py   # Report generation
 peerrank_phase5.py   # Final analysis by judge LLM
 generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
-generate_figures_TFQ.py      # TruthfulQA validation figures (Figs 10-14)
-validate_truthfulqa.py                  # TruthfulQA validation (correlate peer rankings with ground truth)
-validate_gsm8k.py                     # GSM8K validation (correlate peer rankings with math accuracy)
-peerrank_build_web/          # Website source files
-  build.py                   # Unified build script (generate + serve + monitor)
-  generate_webpage.py        # HTML generator from Phase 4 report
-  latency_monitor.py         # Live latency checker for all models
-  template.html              # Jinja2 template
-  styles.css                 # CSS styles
-peerrank_hosted_website/     # Built output (for GitHub Pages or hosting)
-  index.html                 # Generated HTML
-  styles.css                 # Copied CSS
-  latency.json               # Live latency data
+generate_figures_TFQ.py        # TruthfulQA validation figures (Figs 10-14)
+validate_truthfulqa.py         # TruthfulQA validation (correlate peer rankings with ground truth)
+validate_gsm8k.py              # GSM8K validation (correlate peer rankings with math accuracy)
+pyproject.toml                 # Package configuration for pip install
+__init__.py                    # Package exports (config, providers)
 data/
   phase1_questions_{rev}.json
   phase2_answers_{rev}.json
