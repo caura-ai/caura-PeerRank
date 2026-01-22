@@ -16,12 +16,12 @@ from datetime import datetime
 from statistics import mean
 import random
 
-from config import (
+from peerrank.config import (
     MODELS, DATA_DIR, format_duration, CATEGORIES,
     set_revision, calculate_scores_from_evaluations,
     PROVIDER_CONCURRENCY,
 )
-from providers import call_llm, clear_clients
+from peerrank.providers import call_llm, clear_clients
 
 # =============================================================================
 # CONFIGURATION

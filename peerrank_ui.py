@@ -11,12 +11,12 @@ from statistics import mean
 
 import pandas as pd
 
-from config import (
+from peerrank.config import (
     MODELS, ALL_MODELS, extract_json, MAX_TOKENS_ANSWER, MAX_TOKENS_EVAL,
     TEMPERATURE_EVAL, match_model_name, BIAS_MODES, BIAS_CONFIGS, UI_DISPLAY_MODES,
     calculate_scores_from_evaluations, calculate_elo_ratings,
 )
-from providers import call_llm
+from peerrank.providers import call_llm
 from peerrank_phase3 import EVAL_PROMPT, BLIND_LABELS
 
 # BIAS_MODES and UI_DISPLAY_MODES imported from config.py

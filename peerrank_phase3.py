@@ -8,12 +8,12 @@ import time
 from datetime import datetime
 from statistics import mean
 
-from config import (
+from peerrank.config import (
     MODELS, MAX_TOKENS_EVAL, TEMPERATURE_EVAL, BIAS_MODES, PROVIDER_CONCURRENCY,
     extract_json, save_json, load_json, format_duration,
     get_revision, calculate_timing_stats, get_bias_test_config,
 )
-from providers import call_llm
+from peerrank.providers import call_llm
 
 EVAL_PROMPT = """You are grading responses for a benchmark. Score EACH response independently.
 

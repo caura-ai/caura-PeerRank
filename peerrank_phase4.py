@@ -5,7 +5,7 @@ phases/phase4.py - Report Generation
 from datetime import datetime
 from statistics import mean, stdev
 
-from config import (
+from peerrank.config import (
     MODELS, ALL_MODELS, DATA_DIR, load_json, format_duration, get_revision,
     format_table, match_model_name, calculate_scores_from_evaluations,
     calculate_judge_agreement, calculate_question_stats,

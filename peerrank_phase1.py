@@ -6,9 +6,9 @@ import asyncio
 import time
 from datetime import datetime
 
-import config
-from config import MODELS, CATEGORIES, MAX_TOKENS_SHORT, MAX_RETRIES, extract_json, save_json, format_duration, get_revision
-from providers import call_llm
+from peerrank import config
+from peerrank.config import MODELS, CATEGORIES, MAX_TOKENS_SHORT, MAX_RETRIES, extract_json, save_json, format_duration, get_revision
+from peerrank.providers import call_llm
 
 
 def get_question_prompt() -> str:

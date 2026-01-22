@@ -19,7 +19,7 @@ import numpy as np
 import seaborn as sns
 from scipy import stats
 
-from config import (
+from peerrank.config import (
     calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats,
     calculate_elo_ratings, _pearson_correlation, _spearman_correlation,
 )

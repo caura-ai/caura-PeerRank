@@ -14,7 +14,7 @@ from xai_sdk.chat import user as xai_user
 from xai_sdk.tools import web_search as xai_web_search, x_search as xai_x_search
 from mistralai import Mistral
 
-from config import (
+from .config import (
     MODELS,
     MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK, MAX_TOKENS_GOOGLE,
     DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_DELAY,

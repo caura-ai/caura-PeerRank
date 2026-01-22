@@ -20,8 +20,8 @@ Usage:
 import asyncio
 import argparse
 
-import config
-from config import (
+from peerrank import config
+from peerrank.config import (
     MODELS, ALL_MODELS, CATEGORIES, ALL_CATEGORIES,
     get_last_completed_phase,
     set_active_models, list_available_models,
@@ -32,7 +32,7 @@ from config import (
     get_phase4_elo, set_phase4_elo,
     get_phase5_judge, set_phase5_judge,
 )
-from providers import health_check
+from peerrank.providers import health_check
 from peerrank_phase1 import phase1_generate_questions
 from peerrank_phase2 import phase2_answer_questions
 from peerrank_phase3 import phase3_evaluate_answers

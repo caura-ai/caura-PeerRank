@@ -24,12 +24,12 @@ from statistics import mean, stdev
 from math import sqrt
 import random
 
-from config import (
+from peerrank.config import (
     MODELS, DATA_DIR, format_duration,
     set_revision, calculate_scores_from_evaluations,
     PROVIDER_CONCURRENCY, calculate_timing_stats, get_bias_test_config,
 )
-from providers import call_llm, clear_clients
+from peerrank.providers import call_llm, clear_clients
 
 # =============================================================================
 # MATH-SPECIFIC EVALUATION PROMPT

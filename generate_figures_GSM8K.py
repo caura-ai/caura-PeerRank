@@ -31,7 +31,7 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-from config import DATA_DIR, calculate_scores_from_evaluations, MODELS
+from peerrank.config import DATA_DIR, calculate_scores_from_evaluations, MODELS
 
 # =============================================================================
 # Configuration

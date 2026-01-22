@@ -8,12 +8,12 @@ from datetime import datetime
 
 from statistics import mean
 
-from config import (
+from peerrank.config import (
     DATA_DIR, MODELS, get_revision, format_duration, load_json, format_table,
     get_phase5_judge, MAX_TOKENS_EVAL, EFFICIENCY_QUALITY_EXPONENT,
     calculate_scores_from_evaluations,
 )
-from providers import call_llm
+from peerrank.providers import call_llm
 
 
 def _estimate_tokens(text: str) -> int:

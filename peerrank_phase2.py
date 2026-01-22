@@ -7,8 +7,8 @@ import time
 from datetime import datetime
 from statistics import mean
 
-from config import MODELS, MAX_TOKENS_ANSWER, MAX_ANSWER_WORDS, PROVIDER_CONCURRENCY, save_json, load_json, format_duration, get_revision, calculate_timing_stats, get_phase2_web_search, calculate_cost
-from providers import call_llm
+from peerrank.config import MODELS, MAX_TOKENS_ANSWER, MAX_ANSWER_WORDS, PROVIDER_CONCURRENCY, save_json, load_json, format_duration, get_revision, calculate_timing_stats, get_phase2_web_search, calculate_cost
+from peerrank.providers import call_llm
 
 ANSWER_PROMPT = f"""Answer this question directly and concisely in {MAX_ANSWER_WORDS} words or less. Do not start with "Based on..." or similar preambles.
 
