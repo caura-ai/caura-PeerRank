@@ -209,6 +209,27 @@ async def phase3_evaluate_answers() -> dict:
 
     questions = load_json("phase2_answers.json")["questions"]
 
+    # Check for existing checkpoint to resume from
+    all_evaluations = {}
+    all_timing = {}
+    mode_durations = {}
+    resumed_from = None
+
+    try:
+        existing = load_json("phase3_rankings.json")
+        if existing and not existing.get("complete", True):
+            # Found incomplete checkpoint - resume from it
+            all_evaluations = existing.get("evaluations_by_mode", {})
+            all_timing = existing.get("timing_stats_by_mode", {})
+            mode_durations = existing.get("mode_durations", {})
+            completed_modes = list(all_evaluations.keys())
+            if completed_modes:
+                resumed_from = completed_modes
+                print(f"\n  [RESUME] Found checkpoint with {len(completed_modes)}/3 modes complete")
+                print(f"           Completed: {', '.join(completed_modes)}")
+    except Exception:
+        pass  # No checkpoint or invalid - start fresh
+
     print(f"\n{'=' * 60}")
     print("  PHASE 3: Cross-Evaluation (Bias Analysis)")
     print(f"{'-' * 60}")
@@ -217,13 +238,16 @@ async def phase3_evaluate_answers() -> dict:
     print(f"  Questions:   {len(questions)}")
     print("  Passes:      3 (shuffle_only, blind_only, shuffle_blind)")
     print("  Web search:  OFF")
+    if resumed_from:
+        print(f"  Resuming:    Skipping {len(resumed_from)} completed mode(s)")
     print(f"{'=' * 60}")
 
-    all_evaluations = {}
-    all_timing = {}
-    mode_durations = {}
-
     for mode_name, shuffle, blind in BIAS_MODES:
+        # Skip already-completed modes (from checkpoint)
+        if mode_name in all_evaluations:
+            print(f"\n  [{mode_name}] SKIPPED (already complete from checkpoint)")
+            continue
+
         mode_start = time.time()
         mode_desc = []
         if shuffle:
