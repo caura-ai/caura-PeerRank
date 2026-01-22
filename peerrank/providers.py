@@ -120,9 +120,6 @@ async def _call_openai(model: str, prompt: str, api_key: str, max_tokens: int, t
                   "temperature": effective_temp, "max_completion_tokens": max_tokens}
         if response_format:
             kwargs["response_format"] = response_format
-        # GPT-5-mini defaults to reasoning mode which can exhaust tokens before producing output
-        if "gpt-5-mini" in model:
-            kwargs["reasoning_effort"] = "low"
         response = await client.chat.completions.create(**kwargs)
         content = response.choices[0].message.content
         # Extract token usage from response
@@ -159,21 +156,14 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
                        use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
     client = _get_google_client()
 
-    # Handle gemini-3-flash-thinking variant (maps to gemini-2.5-flash which supports thinking)
+    # Handle gemini-3-flash-preview variant (maps to gemini-2.5-flash)
     actual_model = model
-    use_thinking = False
-    if model == "gemini-3-flash-thinking":
-        actual_model = "gemini-2.5-flash"  # gemini-2.5 supports thinking_config
-        use_thinking = True
+    if model == "gemini-3-flash-preview":
+        actual_model = "gemini-2.5-flash"
 
-    # Gemini 2.5 "thinking" models use ~90% of tokens for internal reasoning
-    # Multiply requested tokens to ensure enough for actual output
-    effective_max_tokens = min(max_tokens * 10, MAX_TOKENS_GOOGLE)
+    # Note: thinking/reasoning mode disabled for all models
+    effective_max_tokens = min(max_tokens, MAX_TOKENS_GOOGLE)
     config = {"temperature": temperature, "max_output_tokens": effective_max_tokens}
-
-    # Add thinking config for thinking variant (high thinking budget)
-    if use_thinking:
-        config["thinking_config"] = {"thinking_budget": 8192}
 
     if use_web_search:
         config["tools"] = [{"google_search": {}}]
@@ -188,7 +178,7 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
     except Exception:
         pass
 
-    # Fallback: extract from candidates
+    # Fallback: extract from candidates (handles MAX_TOKENS truncation)
     candidates = getattr(response, 'candidates', None) or []
     if not content and candidates:
         for candidate in candidates:
@@ -197,9 +187,18 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
                 if hasattr(part, 'text') and part.text:
                     content += part.text
 
+    # Check finish reason for diagnostics
+    finish_reason = None
+    if candidates:
+        finish_reason = getattr(candidates[0], 'finish_reason', None)
+
     if not content:
-        reason = getattr(candidates[0], 'finish_reason', 'unknown') if candidates else 'no_candidates'
+        reason = finish_reason or 'no_candidates'
         raise ValueError(f"Google API empty response (reason={reason})")
+
+    # Warn if truncated but still return partial content
+    if finish_reason and 'MAX_TOKENS' in str(finish_reason) and content:
+        print(f"      [WARN] Google response truncated (MAX_TOKENS), using partial content", flush=True)
 
     # Extract token usage (include thinking tokens for models that use them)
     input_tokens = 0
@@ -469,6 +468,24 @@ def get_google_auth_method() -> str:
     return os.getenv("GOOGLE_AUTH_METHOD", "api_key").lower()
 
 
+def _get_reasoning_mode(provider: str, model_id: str) -> str:
+    """Get the reasoning/thinking mode description for a model."""
+    if provider == "google":
+        if "thinking" in model_id:
+            return "thinking: OFF (disabled)"
+        return "standard"
+    elif provider == "openai":
+        if "nano" in model_id or "mini" in model_id:
+            return "reasoning: default (may use internal CoT)"
+        return "standard"
+    elif provider == "anthropic":
+        return "extended thinking: OFF"
+    elif provider == "deepseek":
+        return "reasoning: default (may use internal CoT)"
+    else:
+        return "standard"
+
+
 async def health_check() -> dict:
     """Check API health for all configured providers."""
     print(f"\n{'=' * 60}\nLLM API Health Check\n{'=' * 60}\nTesting {len(MODELS)} providers...\n")
@@ -483,13 +500,14 @@ async def health_check() -> dict:
         extra = list_google_models() if provider == "google" else []
         print(f"  [{name}] Testing...", flush=True)
         try:
-            _, duration, _, _ = await call_llm(provider, model_id, "Say 'OK'.", max_tokens=1024, timeout=60, use_web_search=False)
-            result = (name, True, f"{duration:.1f}s", "", extra)
+            content, duration, in_tok, out_tok = await call_llm(provider, model_id, "Say 'OK'.", max_tokens=1024, timeout=60, use_web_search=False)
+            reasoning = _get_reasoning_mode(provider, model_id)
+            result = (name, True, f"{duration:.1f}s", "", extra, in_tok, out_tok, reasoning, provider, content)
         except Exception as e:
             msg = str(e)
             if "<html>" in msg.lower():
                 msg = "401 Auth error"
-            result = (name, False, "", msg[:100], extra)
+            result = (name, False, "", msg[:100], extra, 0, 0, "", provider, "")
 
         # Print result immediately
         async with lock:
@@ -497,7 +515,12 @@ async def health_check() -> dict:
             is_google = provider == "google"
             auth_info = f" [{google_auth}]" if is_google else ""
             if result[1]:
-                print(f"  [{completed}/{len(MODELS)}] [OK] {name} ({result[2]}){auth_info}")
+                tok_str = f"in={result[5]:,}/out={result[6]:,}" if result[5] or result[6] else "tokens=N/A"
+                print(f"  [{completed}/{len(MODELS)}] [OK] {name} ({result[2]}, {tok_str}){auth_info}")
+                print(f"           Mode: {result[7]}")
+                # Show response content (truncated)
+                response_preview = result[9][:100].replace('\n', ' ') if result[9] else "(empty)"
+                print(f"           Response: {response_preview}")
             else:
                 print(f"  [{completed}/{len(MODELS)}] [FAIL] {name}: {result[3]}{auth_info}")
             if extra:
@@ -507,8 +530,14 @@ async def health_check() -> dict:
     responses = await asyncio.gather(*[check(p, m, n) for p, m, n in MODELS])
 
     working = 0
-    for name, ok, duration, error, extra in responses:
-        results[name] = {"success": ok, "message": error or f"OK ({duration})"}
+    for name, ok, dur, error, extra, in_tok, out_tok, reasoning, prov, content in responses:
+        results[name] = {
+            "success": ok,
+            "message": error or f"OK ({dur})",
+            "input_tokens": in_tok,
+            "output_tokens": out_tok,
+            "reasoning_mode": reasoning
+        }
         working += ok
 
     print(f"\n{'=' * 60}\nResult: {working}/{len(MODELS)} providers OK\n{'=' * 60}")

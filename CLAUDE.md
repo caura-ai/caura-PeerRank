@@ -439,6 +439,8 @@ calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
 # Returns: {ratings, matches, win_rates, total_matches}
 ```
 
+**Match Shuffling**: Matches are always shuffled before Elo processing to avoid order-dependent bias. Without shuffling, deterministic match order can cause 10+ rank differences vs shuffled results. Default seed is 42 for reproducibility; pass custom seed to vary.
+
 ## Key Patterns
 
 - Async batch processing: `asyncio.gather()`, batch size 5
@@ -640,9 +642,9 @@ MODEL_TEMPERATURE_OVERRIDES = {
 
 ### Retry & Timeout
 ```python
-DEFAULT_TIMEOUT = 180           # API call timeout (seconds)
-MAX_RETRIES = 4                 # Number of retry attempts
-RETRY_DELAY = 3                 # Base delay between retries (exponential backoff)
+DEFAULT_TIMEOUT = 200           # API call timeout (seconds)
+MAX_RETRIES = 5                 # Number of retry attempts
+RETRY_DELAY = 4                 # Base delay between retries (exponential backoff)
 ```
 
 ### Debug Flags

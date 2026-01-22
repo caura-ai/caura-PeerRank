@@ -42,16 +42,16 @@ def get_bias_test_config() -> dict:
 # Token limits
 MAX_TOKENS_SHORT = 2048
 MAX_TOKENS_ANSWER = 8192
-MAX_TOKENS_EVAL = 12000
+MAX_TOKENS_EVAL = 16000
 MAX_TOKENS_DEEPSEEK = 8192
-MAX_TOKENS_GOOGLE = 16000
+MAX_TOKENS_GOOGLE = 26000
 MAX_ANSWER_WORDS = 200
-DEFAULT_TIMEOUT = 180
-MAX_RETRIES = 4
-RETRY_DELAY = 3
+DEFAULT_TIMEOUT = 200
+MAX_RETRIES = 5
+RETRY_DELAY =  4
 
 # Temperature settings
-TEMPERATURE_DEFAULT = 0.7
+TEMPERATURE_DEFAULT = 0.5
 TEMPERATURE_EVAL = 0
 
 # Model-specific temperature overrides (for models that don't support certain values)
@@ -76,8 +76,8 @@ TOKEN_COSTS = {
 
     # Google Gemini
     "gemini-3-pro-preview": (2.00, 12.00),  # Base price, up to $4/$18 for long context
-    "gemini-3-flash-preview": (0.50, 3.00),
-    "gemini-3-flash-thinking": (0.50, 3.00),  # Flash with thinking=high (same pricing, more tokens)
+    "gemini-3-flash-thinking": (0.50, 3.00),
+    "gemini-3-flash-preview": (0.50, 3.00),  # Flash with thinking=high (same pricing, more tokens)
     "gemini-2.5-pro": (1.25, 10.00),   # Smart "Thinking" model (Input $1.25 / Output $10.00)
     "gemini-2.5-flash": (0.15, 0.60),  # Fast "Workhorse" model (Input $0.15 / Output $0.60)
 
@@ -172,7 +172,7 @@ ALL_MODELS = [
     ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
     ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
     #("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),
-    ("google", "gemini-3-flash-thinking", "gemini-3-flash-thinking"),  # Flash with thinking=high
+    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),  # Flash with thinking=high
     #("google", "gemini-2.5-pro", "gemini-2.5-pro"),
     #("google", "gemini-2.5-flash", "gemini-2.5-flash"),
     ("grok", "grok-4-1-fast", "grok-4-1-fast"),
@@ -196,7 +196,7 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 5,  # Reduced to avoid 429 rate limits
+    "google": 4,  # Reduced to avoid 429 rate limits
     "grok": 8,
     "deepseek": 8,
     "together": 8,
@@ -771,10 +771,11 @@ def calculate_elo_ratings(
     # Convert evaluations to pairwise matches
     pairwise_matches = _convert_to_pairwise_matches(evaluations, model_names, exclude_self)
 
-    # Optionally shuffle for reproducibility testing
-    if seed is not None:
-        random.seed(seed)
-        random.shuffle(pairwise_matches)
+    # Always shuffle matches to avoid order-dependent bias
+    # Use provided seed for reproducibility, or default seed for consistency
+    shuffle_seed = seed if seed is not None else 42
+    random.seed(shuffle_seed)
+    random.shuffle(pairwise_matches)
 
     # Process each match
     for model_a, model_b, outcome_a, outcome_b in pairwise_matches:
