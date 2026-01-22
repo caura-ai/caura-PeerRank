@@ -183,12 +183,12 @@ Configuration:
 ```python
 ALL_MODELS = [
     ("openai", "gpt-5.2", "gpt-5.2"),
-    ("openai", "gpt-4.1-mini", "gpt-4.1-mini"),
+    ("openai", "gpt-5-mini", "gpt-5-mini"),
     ("anthropic", "claude-opus-4-5", "claude-opus-4-5"),
     ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
-    ("google", "gemini-2.5-pro", "gemini-2.5-pro"),
-    ("google", "gemini-2.5-flash", "gemini-2.5-flash"),
-    ("grok", "grok-4", "grok-4"),
+    ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
+    ("google", "gemini-3-flash-thinking", "gemini-3-flash-thinking"),
+    ("grok", "grok-4-1-fast", "grok-4-1-fast"),
     ("deepseek", "deepseek-chat", "deepseek-chat"),
     ("together", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "llama-4-maverick"),
     ("perplexity", "sonar-pro", "sonar-pro"),
@@ -299,9 +299,17 @@ Model Bias table:
     "blind_only": {...},
     "shuffle_blind": {...}
   },
-  "evaluations": {...}  // backward compat (uses shuffle_blind)
+  "evaluations": {...},  // backward compat (uses shuffle_blind)
+  "complete": true       // false if interrupted mid-run
 }
 ```
+
+**Crash Recovery:**
+Phase 3 saves checkpoints after each mode completes. If interrupted:
+- Checkpoint includes `"complete": false` and completed modes in `evaluations_by_mode`
+- On restart, Phase 3 detects incomplete checkpoint and resumes from next mode
+- Already-completed modes are skipped (e.g., if `shuffle_only` finished, resumes with `blind_only`)
+- Progress shown: `[RESUME] Found checkpoint with 1/3 modes complete`
 
 ## Cost Tracking (Jan 2026)
 
@@ -312,20 +320,21 @@ Updated Jan 2026 pricing for all models:
 TOKEN_COSTS = {
     # OpenAI
     "gpt-5.2": (1.75, 14.00),
-    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-5-mini": (0.25, 2.00),
 
     # Anthropic (with prompt caching, cache reads are 90% off)
     "claude-opus-4-5": (5.00, 25.00),
     "claude-sonnet-4-5": (3.00, 15.00),
 
     # Google Gemini
-    "gemini-2.0-flash": (0.10, 0.40),    # Very fast, huge quotas
-    "gemini-2.0-pro": (2.00, 12.00),     # High intelligence
+    "gemini-3-pro-preview": (2.00, 12.00),  # Base price
+    "gemini-3-flash-preview": (0.50, 3.00),
+    "gemini-3-flash-thinking": (0.50, 3.00),  # Flash with thinking=high
     "gemini-2.5-pro": (1.25, 10.00),     # Smart "Thinking" model
     "gemini-2.5-flash": (0.15, 0.60),    # Fast "Workhorse" model
 
     # xAI
-    "grok-4": (3.00, 15.00),
+    "grok-4-1-fast": (0.60, 3.00),
 
     # DeepSeek (with auto caching)
     "deepseek-chat": (0.28, 0.42),
@@ -435,7 +444,7 @@ calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
 - Async batch processing: `asyncio.gather()`, batch size 5
 - Models: 3-tuples `(provider, model_id, display_name)`
 - Iterate: `for provider, model_id, name in MODELS`
-- 130s timeout, 3 retries with exponential backoff
+- 180s timeout, 4 retries with exponential backoff
 - Revision: `get_revision()` / `set_revision(rev)` in `peerrank/config.py`
 - Phase 3 seed: `set_bias_test_config(seed=N)` / `get_bias_test_config()` in `peerrank/config.py`
 - Phase 5 judge: `set_phase5_judge(provider, model_id, name)` / `get_phase5_judge()` in `peerrank/config.py`
@@ -614,7 +623,7 @@ MAX_TOKENS_SHORT = 2048         # Short responses
 MAX_TOKENS_ANSWER = 8192        # Phase 2 answers
 MAX_TOKENS_EVAL = 12000         # Phase 3 evaluations
 MAX_TOKENS_DEEPSEEK = 8192      # DeepSeek-specific limit
-MAX_TOKENS_GOOGLE = 12000       # Google models limit
+MAX_TOKENS_GOOGLE = 16000       # Google models limit
 MAX_ANSWER_WORDS = 200          # Phase 2 answer word limit
 ```
 
@@ -631,9 +640,9 @@ MODEL_TEMPERATURE_OVERRIDES = {
 
 ### Retry & Timeout
 ```python
-DEFAULT_TIMEOUT = 130           # API call timeout (seconds)
-MAX_RETRIES = 3                 # Number of retry attempts
-RETRY_DELAY = 2                 # Base delay between retries (exponential backoff)
+DEFAULT_TIMEOUT = 180           # API call timeout (seconds)
+MAX_RETRIES = 4                 # Number of retry attempts
+RETRY_DELAY = 3                 # Base delay between retries (exponential backoff)
 ```
 
 ### Debug Flags
