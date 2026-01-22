@@ -40,7 +40,7 @@ def get_bias_test_config() -> dict:
     return {"seed": BIAS_TEST_SEED}
 
 # Token limits
-MAX_TOKENS_SHORT = 2048
+MAX_TOKENS_SHORT = 4096  # Phase 1 question generation (increased for verbose models)
 MAX_TOKENS_ANSWER = 8192
 MAX_TOKENS_EVAL = 16000
 MAX_TOKENS_DEEPSEEK = 8192
