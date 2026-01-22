@@ -143,11 +143,13 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
                 return (name, q["text"], remapped_scores, duration)
             return (name, q["text"], {}, duration)
         except Exception as e:
-            print(f"      [ERROR] {name}: {type(e).__name__}: {str(e)[:200]}", flush=True)
+            q_idx = questions.index(q) + 1 if q in questions else "?"
+            print(f"      [ERROR] {name} Q#{q_idx}: {type(e).__name__}: {str(e)[:200]}", flush=True)
             return (name, q["text"], {}, 0)
 
     async def process_evaluator(provider, model_id, name, semaphore):
         """Process all questions for a single evaluator model."""
+        print(f"      {name}: starting", flush=True)
         model_start = time.time()
         model_evaluations = {}
         model_timing = []
@@ -239,21 +241,27 @@ async def phase3_evaluate_answers() -> dict:
 
         print(f"  Pass complete: {format_duration(mode_durations[mode_name])}")
 
-    revision = get_revision()
-    output = {
-        "revision": revision,
-        "timestamp": datetime.now().isoformat(),
-        "phase": 3,
-        "duration_seconds": round(time.time() - phase_start, 2),
-        "mode_durations": mode_durations,
-        "bias_test_config": {"seed": seed, "modes": [m[0] for m in BIAS_MODES]},
-        "timing_stats_by_mode": all_timing,
-        "evaluations_by_mode": all_evaluations,
-        # Keep primary evaluations as shuffle_blind for backward compatibility
-        "evaluations": all_evaluations["shuffle_blind"],
-        "timing_stats": all_timing["shuffle_blind"],
-    }
-    save_json("phase3_rankings.json", output)
+        # Incremental save after each mode for crash recovery
+        revision = get_revision()
+        partial_output = {
+            "revision": revision,
+            "timestamp": datetime.now().isoformat(),
+            "phase": 3,
+            "duration_seconds": round(time.time() - phase_start, 2),
+            "mode_durations": mode_durations,
+            "bias_test_config": {"seed": seed, "modes": [m[0] for m in BIAS_MODES]},
+            "timing_stats_by_mode": all_timing,
+            "evaluations_by_mode": all_evaluations,
+            "complete": mode_name == "shuffle_blind",
+        }
+        # Add backward-compat fields only when shuffle_blind is done
+        if "shuffle_blind" in all_evaluations:
+            partial_output["evaluations"] = all_evaluations["shuffle_blind"]
+            partial_output["timing_stats"] = all_timing["shuffle_blind"]
+        save_json("phase3_rankings.json", partial_output)
+        print(f"  Saved checkpoint ({len(all_evaluations)}/3 modes)", flush=True)
+
+    output = partial_output  # Final output is the last checkpoint
 
     print(f"\n{'=' * 60}")
     print(f"  Phase 3 complete in {format_duration(time.time() - phase_start)}")

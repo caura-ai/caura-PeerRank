@@ -47,6 +47,7 @@ async def phase1_generate_questions() -> dict:
                 if isinstance(questions, list):
                     normalized = [{"category": q.get("category", "general"), "question": q["question"]}
                                   for q in questions if isinstance(q, dict) and "question" in q]
+                    normalized = normalized[:config.NUM_QUESTIONS]
                     if normalized:
                         return (name, normalized, duration, f"{len(normalized)} questions in {duration:.1f}s")
             except Exception as e:
