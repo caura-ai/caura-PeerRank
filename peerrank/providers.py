@@ -78,8 +78,8 @@ def _get_google_client() -> genai.Client:
         auth_method = os.getenv("GOOGLE_AUTH_METHOD", "api_key").lower()
 
         if auth_method == "service_account":
-            if not GOOGLE_SERVICE_ACCOUNT_FILE.exists():
-                raise ValueError(f"Service account file not found: {GOOGLE_SERVICE_ACCOUNT_FILE}")
+            if not GOOGLE_SERVICE_ACCOUNT_FILE or not GOOGLE_SERVICE_ACCOUNT_FILE.exists():
+                raise ValueError(f"GOOGLE_SERVICE_ACCOUNT_FILE not set or file not found: {GOOGLE_SERVICE_ACCOUNT_FILE}")
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(GOOGLE_SERVICE_ACCOUNT_FILE)
             _clients["google"] = genai.Client(vertexai=True, project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
         else:  # api_key (default)

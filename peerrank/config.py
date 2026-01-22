@@ -184,10 +184,11 @@ ALL_MODELS = [
 ]
 MODELS = ALL_MODELS.copy()
 
-# Google service account config
-GOOGLE_SERVICE_ACCOUNT_FILE = Path(__file__).parent.parent / "alpine-theory-469016-c8-2a7f2f635a03.json"
-GOOGLE_PROJECT_ID = "alpine-theory-469016-c8"
-GOOGLE_LOCATION = "global"
+# Google service account config (set via environment variables)
+_google_sa_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+GOOGLE_SERVICE_ACCOUNT_FILE = Path(_google_sa_path) if _google_sa_path else None
+GOOGLE_PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID", "")
+GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 
 
 # Provider concurrency limits (max concurrent requests per provider)
@@ -256,7 +257,7 @@ def get_api_key(provider: str) -> str:
     # Fallback for grok: try GROK_API_KEY if XAI_API_KEY not set
     if not key and provider == "grok":
         key = os.getenv("GROK_API_KEY")
-    if not key and provider == "google" and GOOGLE_SERVICE_ACCOUNT_FILE.exists():
+    if not key and provider == "google" and GOOGLE_SERVICE_ACCOUNT_FILE and GOOGLE_SERVICE_ACCOUNT_FILE.exists():
         return ""
     if not key:
         raise ValueError(f"{env_var} not set")
