@@ -194,7 +194,10 @@ def _calculate_home_advantage(phase1_data: dict, evaluations: dict) -> dict | No
                     raw_scores[answering_model] = {}
                 if source not in raw_scores[answering_model]:
                     raw_scores[answering_model][source] = []
-                raw_scores[answering_model][source].append(data.get("score", 0))
+                # Only append numeric scores (skip malformed responses)
+                score = data.get("score") if isinstance(data, dict) else data
+                if isinstance(score, (int, float)):
+                    raw_scores[answering_model][source].append(score)
 
     models = sorted(all_models)
     sources = sorted(all_sources)

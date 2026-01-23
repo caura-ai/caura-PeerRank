@@ -444,14 +444,21 @@ def calculate_scores_from_evaluations(evaluations: dict, model_names: list[str] 
     }
 
 
-def _record_score(score: float, model_name: str, evaluator: str,
+def _record_score(score, model_name: str, evaluator: str,
                   peer_scores: dict, self_scores: dict, raw_scores: dict, judge_given: dict):
     """Helper to record a score in the appropriate buckets."""
     # Convert score to float in case it's a string or int
     try:
-        score = float(score)
+        if isinstance(score, (int, float)):
+            score = float(score)
+        elif isinstance(score, str) and score.strip().replace('.', '').isdigit():
+            score = float(score.strip())
+        else:
+            print(f"  [WARN] Malformed score for {model_name} by {evaluator}: {str(score)[:50]}", flush=True)
+            return
     except (ValueError, TypeError):
-        return  # Skip invalid scores
+        print(f"  [WARN] Invalid score for {model_name} by {evaluator}: {str(score)[:50]}", flush=True)
+        return
 
     matched = match_model_name(model_name)
     if matched:
@@ -709,7 +716,18 @@ def _convert_to_pairwise_matches(evaluations: dict, model_names: list[str], excl
                         # Skip self-evaluations if requested
                         if exclude_self and matched == matched_evaluator:
                             continue
-                        scores[matched] = float(score_data["score"])
+                        # Safely convert score to float (handle malformed responses)
+                        try:
+                            score_val = score_data["score"]
+                            if isinstance(score_val, (int, float)):
+                                scores[matched] = float(score_val)
+                            elif isinstance(score_val, str) and score_val.strip().isdigit():
+                                scores[matched] = float(score_val.strip())
+                            else:
+                                # Non-numeric score value
+                                print(f"  [WARN] Malformed score from {evaluator_name} for {model_name}: {str(score_val)[:50]}", flush=True)
+                        except (ValueError, TypeError) as e:
+                            print(f"  [WARN] Invalid score from {evaluator_name} for {model_name}: {e}", flush=True)
 
             # Generate pairwise comparisons
             scored_models = list(scores.keys())
