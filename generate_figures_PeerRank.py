@@ -648,7 +648,7 @@ def calculate_name_bias(data: dict):
     return result
 
 
-def generate_fig14_judge_generosity(data: dict, output_dir: Path):
+def generate_fig15_judge_generosity(data: dict, output_dir: Path):
     """Figure 14: Judge generosity - how lenient/strict each model judges (DISCUSSION)."""
 
     print("\nGenerating Figure 14: Judge Generosity...")
@@ -692,10 +692,10 @@ def generate_fig14_judge_generosity(data: dict, output_dir: Path):
             ax.text(label_x, i, f'{avg:.2f}', va='center', ha='left', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig14_judge_generosity')
+    save_figure(fig, output_dir, 'fig15_judge_generosity')
 
 
-def generate_fig15_judge_generosity_vs_peer(data: dict, output_dir: Path):
+def generate_fig16_judge_generosity_vs_peer(data: dict, output_dir: Path):
     """Figure 15: Judge Generosity vs Peer Ranking scatter plot (DISCUSSION)."""
 
     print("\nGenerating Figure 15: Judge Generosity vs Peer Ranking...")
@@ -814,10 +814,10 @@ def generate_fig15_judge_generosity_vs_peer(data: dict, output_dir: Path):
            fontsize=12, verticalalignment='bottom', bbox=props)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig15_judge_generosity_vs_peer')
+    save_figure(fig, output_dir, 'fig16_judge_generosity_vs_peer')
 
 
-def generate_fig17_radar_chart(data: dict, output_dir: Path):
+def generate_fig19_radar_chart(data: dict, output_dir: Path):
     """Figure 17: Radar/spider chart for multi-dimensional model comparison (DISCUSSION)."""
 
     print("\nGenerating Figure 17: Radar Chart...")
@@ -885,7 +885,7 @@ def generate_fig17_radar_chart(data: dict, output_dir: Path):
     ax.set_title('Multi-Dimensional Model Comparison', fontweight='bold', pad=20, fontsize=16)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig17_radar_chart')
+    save_figure(fig, output_dir, 'fig19_radar_chart')
 
 
 def generate_fig18_elo_vs_peer(data: dict, output_dir: Path):
@@ -993,7 +993,7 @@ def generate_fig18_elo_vs_peer(data: dict, output_dir: Path):
     save_figure(fig, output_dir, 'fig18_elo_vs_peer')
 
 
-def generate_fig16_judge_agreement_matrix(data: dict, output_dir: Path):
+def generate_fig17_judge_agreement_matrix(data: dict, output_dir: Path):
     """Figure 16: Judge Agreement Matrix - pairwise correlation heatmap (DISCUSSION)."""
 
     print("\nGenerating Figure 16: Judge Agreement Matrix...")
@@ -1071,7 +1071,7 @@ def generate_fig16_judge_agreement_matrix(data: dict, output_dir: Path):
     cbar.ax.tick_params(labelsize=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig16_judge_agreement_matrix')
+    save_figure(fig, output_dir, 'fig17_judge_agreement_matrix')
 
 
 def generate_fig6_question_autopsy(data: dict, output_dir: Path):
@@ -1171,7 +1171,7 @@ def generate_fig6_question_autopsy(data: dict, output_dir: Path):
     save_figure(fig, output_dir, 'fig6_question_autopsy')
 
 
-def generate_fig11_self_bias(data: dict, output_dir: Path):
+def generate_fig12_self_bias(data: dict, output_dir: Path):
     """Figure 11: Self Bias - tendency to rate own responses higher, with 95% CI."""
 
     print("\nGenerating Figure 11: Self Bias...")
@@ -1211,10 +1211,10 @@ def generate_fig11_self_bias(data: dict, output_dir: Path):
             ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig11_self_bias')
+    save_figure(fig, output_dir, 'fig12_self_bias')
 
 
-def generate_fig12_name_bias(data: dict, output_dir: Path):
+def generate_fig13_name_bias(data: dict, output_dir: Path):
     """Figure 12: Name Bias - effect of revealing model identity, with 95% CI."""
 
     print("\nGenerating Figure 12: Name Bias...")
@@ -1254,10 +1254,10 @@ def generate_fig12_name_bias(data: dict, output_dir: Path):
             ax.text(bias - err - 0.03, i, f'{bias:+.2f}', va='center', ha='right', fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig12_name_bias')
+    save_figure(fig, output_dir, 'fig13_name_bias')
 
 
-def generate_fig13_position_bias(data: dict, output_dir: Path):
+def generate_fig14_position_bias(data: dict, output_dir: Path):
     """Figure 13: Position Bias - effect of presentation order with 95% CI."""
 
     print("\nGenerating Figure 13: Position Bias...")
@@ -1290,7 +1290,7 @@ def generate_fig13_position_bias(data: dict, output_dir: Path):
         ax.text(i, bias + offset, f'{bias:+.2f}', ha='center', va=va, fontsize=9)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig13_position_bias')
+    save_figure(fig, output_dir, 'fig14_position_bias')
 
 
 # =============================================================================
@@ -1375,13 +1375,13 @@ def main():
     # Bias analysis figures (require multi-mode data)
     if has_multimode_data(data):
         print("\n--- DISCUSSION SECTION (Bias Analysis) ---")
-        generate_fig11_self_bias(data, output_dir)
-        generate_fig12_name_bias(data, output_dir)
-        generate_fig13_position_bias(data, output_dir)
-        generate_fig14_judge_generosity(data, output_dir)
-        generate_fig15_judge_generosity_vs_peer(data, output_dir)
-        generate_fig16_judge_agreement_matrix(data, output_dir)
-        generate_fig17_radar_chart(data, output_dir)
+        generate_fig12_self_bias(data, output_dir)
+        generate_fig13_name_bias(data, output_dir)
+        generate_fig14_position_bias(data, output_dir)
+        generate_fig15_judge_generosity(data, output_dir)
+        generate_fig16_judge_generosity_vs_peer(data, output_dir)
+        generate_fig17_judge_agreement_matrix(data, output_dir)
+        generate_fig19_radar_chart(data, output_dir)
     else:
         print("\n[Note: Figures 11-17 skipped - requires multi-mode bias data]")
         print("  Run Phase 3 with all 3 modes to generate bias analysis figures.")
@@ -1531,7 +1531,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 11: Self Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig11_self_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig12_self_bias.pdf}
     \caption{Self bias across models. Bars show the difference between self-ratings and peer ratings (Self $-$ Peer). Positive values (orange) indicate models that overrate their own responses; negative values (blue) indicate models that underrate themselves.}
     \label{fig:self-bias}
 \end{figure}
@@ -1539,7 +1539,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 12: Name Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig12_name_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig13_name_bias.pdf}
     \caption{Name bias across models. Bars show score change when model identity is revealed (Shuffle $-$ Peer). Positive values (green) indicate brand recognition helped; negative values (red) indicate name hurt scores.}
     \label{fig:name-bias}
 \end{figure}
@@ -1547,7 +1547,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 13: Position Bias
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig13_position_bias.pdf}
+    \includegraphics[width=\linewidth]{figures/fig14_position_bias.pdf}
     \caption{Position bias by presentation order. Bars show score change due to fixed position in blind evaluation (Blind $-$ Peer). Positive values indicate the position helped; negative values indicate the position hurt scores.}
     \label{fig:position-bias}
 \end{figure}
@@ -1555,7 +1555,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 14: Judge Generosity
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig14_judge_generosity.pdf}
+    \includegraphics[width=\linewidth]{figures/fig15_judge_generosity.pdf}
     \caption{Judge generosity across models. Bars show average score given by each model when evaluating peers, with error bars indicating standard deviation. Higher values indicate more lenient judging; the dashed line marks the overall mean.}
     \label{fig:judge-generosity}
 \end{figure}
@@ -1563,7 +1563,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 15: Judge Generosity vs Peer Ranking
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig15_judge_generosity_vs_peer.pdf}
+    \includegraphics[width=\linewidth]{figures/fig16_judge_generosity_vs_peer.pdf}
     \caption{Relationship between peer ranking and judge generosity. Each point represents a model (numbered by rank), showing its performance (peer score) on the x-axis and its judging leniency (average score given) on the y-axis.}
     \label{fig:judge-vs-peer}
 \end{figure}
@@ -1571,7 +1571,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 16: Judge Agreement Matrix
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\linewidth]{figures/fig16_judge_agreement_matrix.pdf}
+    \includegraphics[width=0.9\linewidth]{figures/fig17_judge_agreement_matrix.pdf}
     \caption{Judge agreement matrix showing pairwise Pearson correlation between models' scoring patterns. Higher values (green) indicate judges that rate responses similarly; lower values (red) indicate divergent evaluation criteria.}
     \label{fig:judge-agreement}
 \end{figure}
@@ -1579,7 +1579,7 @@ def generate_latex_templates(output_dir: Path, has_bias_figs: bool):
 %% FIGURE 17: Radar Chart (multi-dimensional summary)
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\linewidth]{figures/fig17_radar_chart.pdf}
+    \includegraphics[width=0.85\linewidth]{figures/fig19_radar_chart.pdf}
     \caption{Multi-dimensional model comparison across five normalized metrics: Peer Score, Consistency (inverse of score variance), Speed (inverse of response time), Humility (inverse of self-bias), and Strictness (inverse of judge generosity). All metrics scaled to 0--1.}
     \label{fig:radar-chart}
 \end{figure}

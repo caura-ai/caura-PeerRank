@@ -246,7 +246,7 @@ def save_figure(fig, output_dir: Path, name: str):
     plt.close(fig)
 
 
-def generate_fig20_correlation_scatter(data: dict, output_dir: Path):
+def generate_fig11_correlation_scatter(data: dict, output_dir: Path):
     """Figure 20: Correlation scatter plot - Peer Score vs Ground Truth Math Accuracy."""
     print("\nGenerating Figure 20: Peer vs Truth Correlation...")
 
@@ -325,10 +325,10 @@ def generate_fig20_correlation_scatter(data: dict, output_dir: Path):
     ax.set_ylim(min(peer_scores) - 0.3, max(peer_scores) + 0.3)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig20_gsm8k_correlation')
+    save_figure(fig, output_dir, 'fig11_gsm8k_correlation')
 
 
-def generate_fig22_score_comparison(data: dict, output_dir: Path):
+def generate_fig101_score_comparison(data: dict, output_dir: Path):
     """Figure 22: Side-by-side bar chart comparing Peer vs Truth scores."""
     print("\nGenerating Figure 22: Score Comparison Bars...")
 
@@ -373,10 +373,10 @@ def generate_fig22_score_comparison(data: dict, output_dir: Path):
     ax.legend(loc='upper right')
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig22_gsm8k_score_comparison')
+    save_figure(fig, output_dir, 'fig101_gsm8k_score_comparison')
 
 
-def generate_fig21_rank_agreement(data: dict, output_dir: Path):
+def generate_fig100_rank_agreement(data: dict, output_dir: Path):
     """Figure 21: Rank agreement visualization - peer rank vs truth rank."""
     print("\nGenerating Figure 21: Rank Agreement...")
 
@@ -433,7 +433,7 @@ def generate_fig21_rank_agreement(data: dict, output_dir: Path):
     ax.legend(handles=[green_patch, orange_patch], loc='lower right', fontsize=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig21_gsm8k_rank_agreement')
+    save_figure(fig, output_dir, 'fig100_gsm8k_rank_agreement')
 
 
 # =============================================================================
@@ -655,7 +655,7 @@ def generate_latex_templates(output_dir: Path):
 %% FIGURE 20: Correlation Scatter Plot (Main Validation Result)
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig20_gsm8k_correlation.pdf}
+    \includegraphics[width=\linewidth]{figures/fig11_gsm8k_correlation.pdf}
     \caption{Correlation between peer evaluation scores and ground truth accuracy on GSM8K math problems. Each point represents a model, numbered by peer rank. The strong positive correlation validates that peer evaluation can assess mathematical reasoning ability.}
     \label{fig:gsm8k-correlation}
 \end{figure}
@@ -663,7 +663,7 @@ def generate_latex_templates(output_dir: Path):
 %% FIGURE 21: Rank Agreement
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\linewidth]{figures/fig21_gsm8k_rank_agreement.pdf}
+    \includegraphics[width=0.8\linewidth]{figures/fig100_gsm8k_rank_agreement.pdf}
     \caption{Rank agreement between peer evaluation and ground truth rankings on GSM8K. Lines connect each model's peer rank (left) to its truth rank (right). Green arrows indicate models underrated by peers; orange arrows indicate overrated models.}
     \label{fig:gsm8k-rank-agreement}
 \end{figure}
@@ -671,7 +671,7 @@ def generate_latex_templates(output_dir: Path):
 %% FIGURE 22: Score Comparison Bars
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{figures/fig22_gsm8k_score_comparison.pdf}
+    \includegraphics[width=\linewidth]{figures/fig101_gsm8k_score_comparison.pdf}
     \caption{Side-by-side comparison of peer evaluation scores (blue) and ground truth math accuracy scores (green) for each model on GSM8K. Both metrics use a 0--10 scale for direct comparison.}
     \label{fig:gsm8k-score-comparison}
 \end{figure}
@@ -736,9 +736,9 @@ def main():
 
     # Generate all figures
     print("\n--- GSM8K VALIDATION FIGURES (20-22) ---")
-    generate_fig20_correlation_scatter(data, output_dir)
-    generate_fig21_rank_agreement(data, output_dir)
-    generate_fig22_score_comparison(data, output_dir)
+    generate_fig11_correlation_scatter(data, output_dir)
+    generate_fig100_rank_agreement(data, output_dir)
+    generate_fig101_score_comparison(data, output_dir)
 
     # Generate statistical report
     generate_stats_report(data, output_dir)

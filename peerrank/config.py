@@ -42,9 +42,9 @@ def get_bias_test_config() -> dict:
 # Token limits
 MAX_TOKENS_SHORT = 4096  # Phase 1 question generation (increased for verbose models)
 MAX_TOKENS_ANSWER = 8192
-MAX_TOKENS_EVAL = 16000
+MAX_TOKENS_EVAL = 20000
 MAX_TOKENS_DEEPSEEK = 8192
-MAX_TOKENS_GOOGLE = 26000
+MAX_TOKENS_GOOGLE = 32000
 MAX_ANSWER_WORDS = 200
 DEFAULT_TIMEOUT = 200
 MAX_RETRIES = 5
@@ -196,7 +196,7 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 4,  # Reduced to avoid 429 rate limits
+    "google": 3,  # Reduced to avoid 429 rate limits
     "grok": 8,
     "deepseek": 8,
     "together": 8,
