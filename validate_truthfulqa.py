@@ -287,7 +287,7 @@ async def phase3_evaluate():
     """
     set_revision(VALIDATION_REVISION)
     from peerrank_phase3 import _run_evaluation_pass
-    from config import get_bias_test_config, calculate_timing_stats
+    from peerrank.config import get_bias_test_config, calculate_timing_stats
 
     phase_start = time.time()
     seed = get_bias_test_config()["seed"]

@@ -68,7 +68,7 @@ STYLE_CONFIG = {
 
 # Colorblind-safe palette for 12 models (expanded Paul Tol palette)
 MODEL_COLORS = {
-    'gpt-5.2': '#0173B2',              # Blue
+    'gpt-5.2': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',           # Light Blue
     'claude-opus-4-5': '#029E73',      # Green
     'claude-sonnet-4-5': '#78C679',    # Light Green
@@ -283,160 +283,74 @@ def generate_fig7_peer_score_vs_time(data: dict, output_dir: Path):
 
     print("\nGenerating Figure 7: Peer Score vs Response Time...")
 
-    rankings = get_rankings(data)
-    timing = get_timing_data(data)
+    plt.close('all')
 
-    if 'answer' not in timing:
+    # Get timing directly from phase2
+    if 'phase2' not in data or 'timing_stats' not in data['phase2']:
         print("  Skipping: No timing data available")
         return
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    timing = {m: s['avg'] for m, s in data['phase2']['timing_stats'].items()}
 
-    # Collect all points first
+    # Get scores directly from phase3 evaluations
+    evaluations = data['phase3'].get('evaluations', {})
+    models = list(evaluations.keys())
+    scores = calculate_scores_from_evaluations(evaluations, models)
+
+    # Build points
     points = []
-    for r in rankings:
-        model = r['model']
-        if model not in timing['answer']:
-            continue
-        x = timing['answer'][model]
-        y = r['peer_score']
-        points.append({'model': model, 'x': x, 'y': y, 'color': get_color(model)})
+    for model in models:
+        peer = scores['peer_scores'].get(model, [])
+        if model in timing and peer:
+            points.append({
+                'model': model,
+                'x': timing[model],
+                'y': np.mean(peer),
+                'color': get_color(model)
+            })
 
-    # Sort by x position for consistent labeling
     points.sort(key=lambda p: p['x'])
 
-    # Detect and fix overlapping points (jitter them slightly)
-    for i, p1 in enumerate(points):
-        for j, p2 in enumerate(points):
-            if i >= j:
-                continue
-            # Check if points are too close
-            x_dist = abs(p1['x'] - p2['x'])
-            y_dist = abs(p1['y'] - p2['y'])
-            if x_dist < 0.5 and y_dist < 0.15:
-                # Jitter the second point slightly
-                p2['y'] += 0.12
-                p2['jittered'] = True
+    fig, ax = plt.subplots(figsize=(9, 6))
 
-    # Plot all points
-    for i, p in enumerate(points):
+    # Plot points
+    for p in points:
         ax.scatter(p['x'], p['y'], s=150, c=p['color'],
-                   edgecolor='white', linewidth=1.5, zorder=3 + i)  # Increment zorder
+                   edgecolor='white', linewidth=1.5, zorder=3)
 
-    # Get axis limits for boundary checking
-    x_values = [p['x'] for p in points]
-    x_min, x_max = min(x_values), max(x_values)
-    x_range = x_max - x_min
-    x_pad = x_range * 0.15
-    ax.set_xlim(max(0, x_min - x_pad), x_max + x_pad)  # Tight fit with small padding
-
-    # Smart label placement - alternate above/below and use connecting lines
-    placed_labels = []  # Track (x, y, width, height) of placed labels
-    right_edge = x_max + x_pad * 2  # Don't place labels past this
-
-    for i, p in enumerate(points):
-        x, y, model = p['x'], p['y'], p['model']
-
-        # Check if point is near edges
-        near_right_edge = x > (x_max - x_range * 0.2)
-        near_left_edge = x < (x_min + x_range * 0.2)
-
-        # Base offset scales with data range
-        x_off = x_range * 0.08
-        y_off = 0.15
-
-        # Try different positions based on location
-        if near_right_edge:
-            positions = [
-                (x - x_off, y, 'right', 'center'),           # left
-                (x, y + y_off, 'center', 'bottom'),          # above
-                (x, y - y_off, 'center', 'top'),             # below
-                (x - x_off, y + y_off, 'right', 'bottom'),   # left-above
-                (x - x_off, y - y_off, 'right', 'top'),      # left-below
-                (x - x_off*1.5, y, 'right', 'center'),       # far left
-                (x, y + y_off*2, 'center', 'bottom'),        # far above
-                (x, y - y_off*2, 'center', 'top'),           # far below
-            ]
-        elif near_left_edge:
-            positions = [
-                (x + x_off, y, 'left', 'center'),            # right
-                (x, y + y_off, 'center', 'bottom'),          # above
-                (x, y - y_off, 'center', 'top'),             # below
-                (x + x_off, y + y_off, 'left', 'bottom'),    # right-above
-                (x + x_off, y - y_off, 'left', 'top'),       # right-below
-                (x + x_off*1.5, y, 'left', 'center'),        # far right
-                (x, y + y_off*2, 'center', 'bottom'),        # far above
-                (x, y - y_off*2, 'center', 'top'),           # far below
-            ]
+    # Add labels with smart placement for edge cases
+    x_max = max(p['x'] for p in points)
+    for p in points:
+        # Place label to the left for rightmost points
+        if p['x'] > x_max - 1:
+            xytext = (-80, 5)
+            ha = 'left'
         else:
-            positions = [
-                (x + x_off, y, 'left', 'center'),            # right
-                (x - x_off, y, 'right', 'center'),           # left
-                (x, y + y_off, 'center', 'bottom'),          # above
-                (x, y - y_off, 'center', 'top'),             # below
-                (x + x_off, y + y_off, 'left', 'bottom'),    # right-above
-                (x + x_off, y - y_off, 'left', 'top'),       # right-below
-                (x - x_off, y + y_off, 'right', 'bottom'),   # left-above
-                (x - x_off, y - y_off, 'right', 'top'),      # left-below
-                (x + x_off*1.5, y, 'left', 'center'),        # far right
-                (x - x_off*1.5, y, 'right', 'center'),       # far left
-                (x, y + y_off*2, 'center', 'bottom'),        # far above
-                (x, y - y_off*2, 'center', 'top'),           # far below
-            ]
+            xytext = (8, 5)
+            ha = 'left'
+        ax.annotate(p['model'], (p['x'], p['y']),
+                    fontsize=12, color='black', fontweight='medium',
+                    xytext=xytext, textcoords='offset points', ha=ha,
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.9))
 
-        # Find best position (least overlap with other labels AND points)
-        best_pos = positions[-1]  # Default to last (furthest)
-        for tx, ty, ha, va in positions:
-            overlap = False
-            # Check overlap with existing labels
-            for lx, ly, lw, lh in placed_labels:
-                if abs(tx - lx) < x_range * 0.12 and abs(ty - ly) < 0.22:
-                    overlap = True
-                    break
-            # Check overlap with other points
-            if not overlap:
-                for other in points:
-                    if other['model'] != model:
-                        if abs(tx - other['x']) < x_range * 0.06 and abs(ty - other['y']) < 0.18:
-                            overlap = True
-                            break
-            if not overlap:
-                best_pos = (tx, ty, ha, va)
-                break
-
-        tx, ty, ha, va = best_pos
-
-        ax.annotate(model, (x, y),
-                    xytext=(tx, ty),
-                    fontsize=12, ha=ha, va=va,
-                    arrowprops=dict(arrowstyle='-', color='gray', alpha=0.4, lw=0.5,
-                                   shrinkA=0, shrinkB=3),
-                    bbox=dict(boxstyle='round,pad=0.15', facecolor='white',
-                             edgecolor='none', alpha=0.8),
-                    zorder=4)
-
-        # Track this label position (approximate)
-        placed_labels.append((tx, ty, 2, 0.2))
-
-    ax.set_xlabel('Response Time (seconds)', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Peer Score', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Response Time (seconds)', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Peer Score', fontsize=14, fontweight='bold')
     ax.set_ylim(6, 10)
-    ax.tick_params(axis='both', labelsize=11)
+    ax.tick_params(axis='both', labelsize=12)
 
-    # Add quadrant shading
+    # Quadrant lines
     mid_x = np.median([p['x'] for p in points])
     mid_y = np.median([p['y'] for p in points])
-
     ax.axhline(mid_y, color='gray', linestyle=':', alpha=0.5, zorder=1)
     ax.axvline(mid_x, color='gray', linestyle=':', alpha=0.5, zorder=1)
 
     # Quadrant labels
     ax.text(0.02, 0.98, 'Fast & High Quality', transform=ax.transAxes,
-            fontsize=11, va='top', ha='left', color='#009988', alpha=0.8, fontweight='bold')
+            fontsize=13, va='top', ha='left', color='#009988', alpha=0.8, fontweight='bold')
     ax.text(0.98, 0.02, 'Slow & Low Quality', transform=ax.transAxes,
-            fontsize=11, va='bottom', ha='right', color='#CC3311', alpha=0.8)
+            fontsize=13, va='bottom', ha='right', color='#CC3311', alpha=0.8)
 
-    ax.set_title('Peer Score vs Response Time', fontweight='bold', fontsize=14, pad=10)
+    ax.set_title('Peer Score vs Response Time', fontweight='bold', fontsize=16, pad=10)
 
     plt.tight_layout()
     save_figure(fig, output_dir, 'fig7_peer_score_vs_time')
@@ -784,7 +698,7 @@ def generate_fig16_judge_generosity_vs_peer(data: dict, output_dir: Path):
         tx, ty, ha, va = best_pos
 
         ax.annotate(model, xy=(x, y), xytext=(tx, ty),
-                   fontsize=14, ha=ha, va=va,
+                   fontsize=14, ha=ha, va=va, color='black', fontweight='medium',
                    arrowprops=dict(arrowstyle='-', color='gray', alpha=0.4, lw=0.5),
                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
                             edgecolor='gray', alpha=0.9),

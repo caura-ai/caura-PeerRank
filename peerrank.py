@@ -152,38 +152,19 @@ def change_seed():
             print("  Invalid: enter a number or 'random'")
 
 
-def change_web_search():
-    """Toggle web search for Phase 2."""
-    current = get_phase2_web_search()
-    print(f"\n  Current Phase 2 web search: {'ON' if current else 'OFF'}")
-    print("  Web search enables models to access current information.")
-    print("  Without it, models rely only on their training data.\n")
+def toggle_setting(name, getter, setter, description):
+    """Generic toggle for boolean settings."""
+    current = getter()
+    print(f"\n  Current {name}: {'ON' if current else 'OFF'}")
+    print(f"  {description}\n")
 
-    choice = input("  Enable web search? (y/n): ").strip().lower()
+    choice = input(f"  Enable {name}? (y/n): ").strip().lower()
     if choice in ("y", "yes"):
-        set_phase2_web_search(True)
-        print("  Phase 2 web search: ON")
+        setter(True)
+        print(f"  {name}: ON")
     elif choice in ("n", "no"):
-        set_phase2_web_search(False)
-        print("  Phase 2 web search: OFF")
-    else:
-        print("  Unchanged")
-
-
-def change_elo():
-    """Toggle Elo ratings for Phase 4."""
-    current = get_phase4_elo()
-    print(f"\n  Current Phase 4 Elo ratings: {'ON' if current else 'OFF'}")
-    print("  Elo ratings derive rankings from pairwise comparisons.")
-    print("  Provides alternative ranking methodology alongside peer scores.\n")
-
-    choice = input("  Enable Elo ratings? (y/n): ").strip().lower()
-    if choice in ("y", "yes"):
-        set_phase4_elo(True)
-        print("  Phase 4 Elo ratings: ON")
-    elif choice in ("n", "no"):
-        set_phase4_elo(False)
-        print("  Phase 4 Elo ratings: OFF")
+        setter(False)
+        print(f"  {name}: OFF")
     else:
         print("  Unchanged")
 
@@ -220,14 +201,11 @@ def select_judge():
         print("  Invalid input")
 
 
-def select_models():
-    """Interactive model selection."""
-    all_names = list_available_models()
-    active_names = [m[2] for m in MODELS]
-
-    print("\n  Available models:")
-    for i, name in enumerate(all_names, 1):
-        print(f"    {i}. {'[x]' if name in active_names else '[ ]'} {name}")
+def select_items(name, all_items, active_items, set_func, all_count, format_active):
+    """Generic interactive selection for models/categories."""
+    print(f"\n  Available {name}:")
+    for i, item in enumerate(all_items, 1):
+        print(f"    {i}. {'[x]' if item in active_items else '[ ]'} {item}")
 
     print("\n  Enter numbers to toggle, 'all', 'none', or Enter to keep:")
     choice = input("  Selection: ").strip().lower()
@@ -235,61 +213,24 @@ def select_models():
     if not choice:
         return
     if choice == "all":
-        set_active_models()
-        print(f"  Selected all {len(ALL_MODELS)} models")
+        set_func()
+        print(f"  Selected all {all_count} {name}")
         return
     if choice == "none":
-        set_active_models(include=["__none__"])
+        set_func(include=["__none__"])
         print("  Cleared selection")
         return
 
     try:
         for n in [int(x) for x in choice.replace(",", " ").split()]:
-            if 1 <= n <= len(all_names):
-                name = all_names[n - 1]
-                active_names.remove(name) if name in active_names else active_names.append(name)
-        if active_names:
-            set_active_models(include=active_names)
-            print(f"  Active: {', '.join(m[2] for m in MODELS)}")
+            if 1 <= n <= len(all_items):
+                item = all_items[n - 1]
+                active_items.remove(item) if item in active_items else active_items.append(item)
+        if active_items:
+            set_func(include=active_items)
+            print(f"  Active: {format_active()}")
         else:
-            print("  Warning: No models selected!")
-    except ValueError:
-        print("  Invalid input")
-
-
-def select_categories():
-    """Interactive category selection."""
-    all_cats = list_available_categories()
-    active_cats = CATEGORIES.copy()
-
-    print("\n  Available categories:")
-    for i, cat in enumerate(all_cats, 1):
-        print(f"    {i}. {'[x]' if cat in active_cats else '[ ]'} {cat}")
-
-    print("\n  Enter numbers to toggle, 'all', 'none', or Enter to keep:")
-    choice = input("  Selection: ").strip().lower()
-
-    if not choice:
-        return
-    if choice == "all":
-        set_active_categories()
-        print(f"  Selected all {len(ALL_CATEGORIES)} categories")
-        return
-    if choice == "none":
-        set_active_categories(include=["__none__"])
-        print("  Cleared selection")
-        return
-
-    try:
-        for n in [int(x) for x in choice.replace(",", " ").split()]:
-            if 1 <= n <= len(all_cats):
-                cat = all_cats[n - 1]
-                active_cats.remove(cat) if cat in active_cats else active_cats.append(cat)
-        if active_cats:
-            set_active_categories(include=active_cats)
-            print(f"  Active: {len(CATEGORIES)} categories")
-        else:
-            print("  Warning: No categories selected!")
+            print(f"  Warning: No {name} selected!")
     except ValueError:
         print("  Invalid input")
 
@@ -398,22 +339,26 @@ async def main():
         elif choice == "H":
             await health_check()
         elif choice == "M":
-            select_models()
+            select_items("models", list_available_models(), [m[2] for m in MODELS],
+                         set_active_models, len(ALL_MODELS), lambda: ', '.join(m[2] for m in MODELS))
             continue
         elif choice == "C":
-            select_categories()
+            select_items("categories", list_available_categories(), CATEGORIES.copy(),
+                         set_active_categories, len(ALL_CATEGORIES), lambda: f"{len(CATEGORIES)} categories")
             continue
         elif choice == "N":
             change_settings()
             continue
         elif choice == "W":
-            change_web_search()
+            toggle_setting("Phase 2 web search", get_phase2_web_search, set_phase2_web_search,
+                           "Web search enables models to access current information.")
             continue
         elif choice == "D":
             change_seed()
             continue
         elif choice == "E":
-            change_elo()
+            toggle_setting("Phase 4 Elo ratings", get_phase4_elo, set_phase4_elo,
+                           "Elo ratings derive rankings from pairwise comparisons.")
             continue
         elif choice == "J":
             select_judge()

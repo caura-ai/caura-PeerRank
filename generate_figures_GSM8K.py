@@ -81,7 +81,7 @@ STYLE_CONFIG = {
 
 # Colorblind-safe palette for models
 MODEL_COLORS = {
-    'gpt-5.2': '#0173B2',
+    'gpt-5.2': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',
     'claude-opus-4-5': '#029E73',
     'claude-sonnet-4-5': '#78C679',
