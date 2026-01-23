@@ -446,7 +446,7 @@ async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX
                                                       "overloaded", "capacity", "empty response"])
             if retryable and attempt < retries - 1:
                 delay = RETRY_DELAY * (2 ** attempt)
-                print(f"  [Retry {attempt + 1}] {model} - {type(e).__name__}, waiting {delay}s...")
+                print(f"  [Retry {attempt + 1}] {model} - {type(e).__name__}: {str(e)[:60]}, waiting {delay}s...")
                 await asyncio.sleep(delay)
             else:
                 raise

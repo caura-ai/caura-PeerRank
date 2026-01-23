@@ -224,7 +224,7 @@ Question: {question["question"]}
         try:
             async with semaphore:
                 response, duration, in_tok, out_tok = await call_llm(
-                    provider, model_id, prompt, max_tokens=2048, timeout=60, temperature=0
+                    provider, model_id, prompt, max_tokens=16000, timeout=180, temperature=0
                 )
             answer_letter = next((c for c in response.upper() if c in letters[:len(question["choices"])]), "?")
             result = {"text": response.strip(), "answer_letter": answer_letter,
