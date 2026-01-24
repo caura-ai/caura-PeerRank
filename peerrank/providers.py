@@ -21,7 +21,7 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
     TAVILY_COST_PER_SEARCH, ANTHROPIC_WEB_SEARCH_MAX_USES, OPENAI_WEB_SEARCH_CONTEXT_SIZE,
-    GOOGLE_SEARCH_THRESHOLD, GOOGLE_THINKING_BUDGET,
+    GOOGLE_THINKING_BUDGET,
     get_api_key
 )
 
@@ -454,6 +454,9 @@ async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX
         except Exception as e:
             last_error = e
             error_str = str(e).lower()
+            # Don't retry MAX_TOKENS errors - they'll always fail with the same request
+            if "max_tokens" in error_str:
+                raise
             retryable = any(x in error_str for x in ["timeout", "rate limit", "429", "500", "502", "503", "504",
                                                       "overloaded", "capacity", "empty response"])
             if retryable and attempt < retries - 1:

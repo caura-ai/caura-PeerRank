@@ -101,24 +101,18 @@ TOKEN_COSTS = {
 TAVILY_COST_PER_SEARCH = 0.008
 
 # Web search limits (to control costs)
-ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request (default: 1, reduce from unlimited)
-OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high" - controls search result context size
-GOOGLE_SEARCH_THRESHOLD = 0.7  # 0.0-1.0, higher = less likely to trigger search (saves tokens)
-GOOGLE_THINKING_BUDGET = 8192  # Max thinking tokens for Gemini (0 = disable, None = unlimited)
+ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request
+OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high"
+GOOGLE_THINKING_BUDGET = -1  # -1=dynamic, 0=disable, N=fixed budget
 
 # Evaluation settings
 NUM_QUESTIONS = 2
-
-# Phase 2 web search toggle
-PHASE2_WEB_SEARCH = True  # Default: enabled (current behavior)
-
-# Phase 3 web search toggle (for fact-checking during evaluation)
-PHASE3_WEB_SEARCH = False  # Default: disabled (faster, cheaper)
-
-# Phase 4 Elo rating toggle
-PHASE4_ELO = True  # Default: enabled
 ELO_INITIAL_RATING = 1500
 ELO_K_FACTOR = 32
+
+# Phase toggles
+PHASE2_WEB_SEARCH = True   # Web search for answering
+PHASE3_WEB_SEARCH = False  # Native search for evaluation (excludes Tavily models)
 
 
 def get_phase2_web_search() -> bool:
@@ -141,17 +135,6 @@ def set_phase3_web_search(enabled: bool):
     """Set Phase 3 web search setting."""
     global PHASE3_WEB_SEARCH
     PHASE3_WEB_SEARCH = enabled
-
-
-def get_phase4_elo() -> bool:
-    """Get Phase 4 Elo rating setting."""
-    return PHASE4_ELO
-
-
-def set_phase4_elo(enabled: bool):
-    """Set Phase 4 Elo rating setting."""
-    global PHASE4_ELO
-    PHASE4_ELO = enabled
 
 
 # Phase 3 runs 3 bias modes automatically (shuffle_only, blind_only, shuffle_blind)
