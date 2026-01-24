@@ -45,8 +45,8 @@ Output format (STRICT):
 - Return ONLY a single JSON object (no markdown, no extra text).
 - You MUST include an entry for EVERY label present in Responses, exactly once.
 - Each entry MUST contain keys: "score", "reason", "flags" (no other keys).
-- "score" MUST be an integer 1–10.
-- "reason" MUST be 8–20 words and cite a specific strength or flaw.
+- "score" MUST be an INTEGER 1–10 (e.g., 7). NEVER put text in score field.
+- "reason" MUST be 8–20 words and cite a specific strength or flaw. Put ALL text here, not in score.
 - "flags" MUST be an array using only:
   "hallucination", "unsupported_specifics", "evasive", "incorrect",
   "good_uncertainty", "clear_correct"

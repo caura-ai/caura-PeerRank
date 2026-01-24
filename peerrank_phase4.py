@@ -4,6 +4,7 @@ phases/phase4.py - Report Generation
 
 from datetime import datetime
 from statistics import mean, stdev
+from scipy import stats
 
 from peerrank.config import (
     MODELS, ALL_MODELS, DATA_DIR, load_json, format_duration, get_revision,
@@ -162,6 +163,57 @@ def _welch_ttest(group1: list, group2: list) -> tuple:
     z = abs(t_stat)
     p_value = 2 * (1 - 0.5 * (1 + math.erf(z / math.sqrt(2))))
     return t_stat, p_value
+
+
+def _calculate_provider_clustering(evaluations: dict) -> dict | None:
+    """Compute Kruskal-Wallis test for peer scores grouped by provider."""
+    # Provider mapping from model names
+    PROVIDER_MAP = {
+        'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+        'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
+        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-thinking': 'Google',
+        'gemini-3-flash-preview': 'Google', 'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
+        'grok-4-1-fast': 'xAI',
+        'deepseek-chat': 'DeepSeek',
+        'llama-4-maverick': 'Meta',
+        'sonar-pro': 'Perplexity',
+        'kimi-k2-0905': 'Moonshot',
+        'mistral-large': 'Mistral',
+    }
+
+    models = list(evaluations.keys())
+    scores = calculate_scores_from_evaluations(evaluations)
+
+    # Group peer scores by provider
+    provider_scores = {}
+    for model in models:
+        provider = PROVIDER_MAP.get(model, 'Other')
+        peer = scores['peer_scores'].get(model, [])
+        if peer:
+            if provider not in provider_scores:
+                provider_scores[provider] = []
+            provider_scores[provider].extend(peer)
+
+    # Need at least 2 providers with data
+    groups = [v for v in provider_scores.values() if len(v) >= 2]
+    if len(groups) < 2:
+        return None
+
+    # Kruskal-Wallis H-test (non-parametric ANOVA)
+    h_stat, p_value = stats.kruskal(*groups)
+
+    # Effect size: eta-squared approximation = H / (N - 1)
+    n_total = sum(len(g) for g in groups)
+    eta_sq = h_stat / (n_total - 1) if n_total > 1 else 0
+
+    return {
+        "n_providers": len(groups),
+        "n_total": n_total,
+        "h_stat": h_stat,
+        "p_value": p_value,
+        "eta_sq": eta_sq,
+        "provider_scores": {k: (len(v), mean(v)) for k, v in provider_scores.items()},
+    }
 
 
 def _calculate_home_advantage(phase1_data: dict, evaluations: dict) -> dict | None:
@@ -521,6 +573,28 @@ def phase4_generate_report() -> str:
             r.append("\n**Least similar judges:**")
             for j1, j2, corr, n in pairs[-3:]:
                 r.append(f"- {j1} ↔ {j2}: r={corr:.3f} (n={n})")
+
+    # Statistical Analysis - Provider Clustering
+    clustering = _calculate_provider_clustering(evaluations)
+    if clustering:
+        r.append("\n## Statistical Analysis\n")
+        r.append("### Provider Clustering\n")
+        r.append("Kruskal-Wallis H-test: Do models from the same provider score similarly?\n")
+
+        h, p, eta = clustering["h_stat"], clustering["p_value"], clustering["eta_sq"]
+        n_prov, n_total = clustering["n_providers"], clustering["n_total"]
+        sig = "p < 0.001" if p < 0.001 else f"p = {p:.3f}"
+
+        r.append(f"- **H({n_prov - 1})** = {h:.2f}, {sig}")
+        r.append(f"- **Effect size** (η²) = {eta:.3f}")
+        r.append(f"- **Interpretation**: {'Significant' if p < 0.05 else 'Not significant'} provider effect")
+        r.append(f"- **Samples**: {n_total} scores across {n_prov} providers\n")
+
+        # Provider breakdown
+        prov_rows = []
+        for prov, (n, avg) in sorted(clustering["provider_scores"].items(), key=lambda x: -x[1][1]):
+            prov_rows.append([prov, str(n), f"{avg:.2f}"])
+        r.append(format_table(["Provider", "N", "Avg Score"], prov_rows, ['l', 'r', 'r']))
 
     # Home Advantage Analysis
     home_adv = _calculate_home_advantage(phase1, evaluations)

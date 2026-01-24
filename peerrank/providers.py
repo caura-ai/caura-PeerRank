@@ -21,7 +21,7 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
     TAVILY_COST_PER_SEARCH, ANTHROPIC_WEB_SEARCH_MAX_USES, OPENAI_WEB_SEARCH_CONTEXT_SIZE,
-    GOOGLE_SEARCH_THRESHOLD,
+    GOOGLE_SEARCH_THRESHOLD, GOOGLE_THINKING_BUDGET,
     get_api_key
 )
 
@@ -163,9 +163,14 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
     if model == "gemini-3-flash-preview":
         actual_model = "gemini-2.5-flash"
 
-    # Note: thinking/reasoning mode disabled for all models
+    # Limit thinking budget to save tokens (default can be very high)
     effective_max_tokens = min(max_tokens, MAX_TOKENS_GOOGLE)
-    config = {"temperature": temperature, "max_output_tokens": effective_max_tokens}
+    config = {
+        "temperature": temperature,
+        "max_output_tokens": effective_max_tokens,
+    }
+    if GOOGLE_THINKING_BUDGET is not None:
+        config["thinking_config"] = {"thinking_budget": GOOGLE_THINKING_BUDGET}
 
     if use_web_search:
         config["tools"] = [{

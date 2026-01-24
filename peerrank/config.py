@@ -110,6 +110,7 @@ TAVILY_COST_PER_SEARCH = 0.008
 ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request (default: 1, reduce from unlimited)
 OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high" - controls search result context size
 GOOGLE_SEARCH_THRESHOLD = 0.7  # 0.0-1.0, higher = less likely to trigger search (saves tokens)
+GOOGLE_THINKING_BUDGET = 2048  # Max thinking tokens for Gemini (0 = disable, None = unlimited)
 
 # Evaluation settings
 NUM_QUESTIONS = 2
