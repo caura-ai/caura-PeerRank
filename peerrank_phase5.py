@@ -221,7 +221,7 @@ async def phase5_final_analysis() -> str:
 
     # Call judge LLM
     prompt = ANALYSIS_PROMPT.format(report=report_content)
-    analysis, duration, _, _ = await call_llm(
+    analysis, duration, _, _, _ = await call_llm(
         judge_provider, judge_model, prompt,
         max_tokens=MAX_TOKENS_EVAL,
         use_web_search=False

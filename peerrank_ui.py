@@ -85,7 +85,7 @@ async def generate_random_question() -> str:
     prompt = """Generate one interesting, thought-provoking question that would test an AI's knowledge or reasoning.
 The question should be specific and answerable. Return ONLY the question, nothing else."""
 
-    response, _, _, _ = await call_llm("openai", "gpt-5.2", prompt, max_tokens=200, use_web_search=False)
+    response, _, _, _, _ = await call_llm("openai", "gpt-5.2", prompt, max_tokens=200, use_web_search=False)
     return response.strip()
 
 
@@ -93,7 +93,7 @@ async def get_answer(provider: str, model: str, display_name: str, question: str
     """Get answer from a single model with timing."""
     start = time.time()
     try:
-        response, duration, _, _ = await call_llm(
+        response, duration, _, _, _ = await call_llm(
             provider, model, question,
             max_tokens=MAX_TOKENS_ANSWER,
             use_web_search=True
@@ -135,7 +135,7 @@ async def evaluate_answers_with_config(
     )
 
     try:
-        response, duration, _, _ = await call_llm(
+        response, duration, _, _, _ = await call_llm(
             provider, evaluator, prompt,
             max_tokens=MAX_TOKENS_EVAL,
             use_web_search=False,

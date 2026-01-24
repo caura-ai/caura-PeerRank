@@ -38,12 +38,13 @@ async def main():
     prompt = "What is the current weather in Tokyo? Keep your answer brief."
 
     try:
-        response, duration, in_tok, out_tok = await call_llm(
+        response, duration, in_tok, out_tok, tavily_cost = await call_llm(
             "deepseek", "deepseek-chat", prompt,
             max_tokens=200, use_web_search=True
         )
         print(f"[OK] DeepSeek + Tavily working ({duration:.2f}s)")
         print(f"  Tokens: {in_tok} in / {out_tok} out")
+        print(f"  Tavily cost: ${tavily_cost:.4f}")
         print(f"  Response: {response[:200]}...")
     except Exception as e:
         print(f"[FAIL] Error: {e}")

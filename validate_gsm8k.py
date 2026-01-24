@@ -482,7 +482,7 @@ Problem:
         start_time = time.time()
         try:
             async with semaphore:
-                response, duration, in_tok, out_tok = await call_llm(
+                response, duration, in_tok, out_tok, _ = await call_llm(
                     provider, model_id, prompt, max_tokens=18000, timeout=300,
                     temperature=0, use_web_search=False
                 )
@@ -611,7 +611,7 @@ async def phase3_evaluate():
         start_time = time.time()
         try:
             async with semaphore:
-                response, duration, _, _ = await call_llm(
+                response, duration, _, _, _ = await call_llm(
                     provider, model_id, prompt,
                     max_tokens=MAX_TOKENS_EVAL,
                     use_web_search=False,

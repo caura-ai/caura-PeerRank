@@ -39,7 +39,7 @@ async def phase1_generate_questions() -> dict:
         for attempt in range(MAX_RETRIES + 1):
             try:
                 use_json = attempt == 0 and provider in ("openai", "deepseek")
-                response, duration, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_SHORT,
+                response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_SHORT,
                     use_web_search=False, response_format={"type": "json_object"} if use_json else None)
                 data = extract_json(response)
 

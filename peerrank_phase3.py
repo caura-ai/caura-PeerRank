@@ -136,7 +136,7 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
         )
 
         try:
-            response, duration, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=False, temperature=TEMPERATURE_EVAL)
+            response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=False, temperature=TEMPERATURE_EVAL)
             scores = extract_json(response)
             if scores and isinstance(scores, dict):
                 remapped_scores = remap_scores_to_models(scores, label_to_model)

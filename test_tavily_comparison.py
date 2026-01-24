@@ -29,7 +29,7 @@ async def ask_deepseek(question: str, use_web_search: bool) -> str:
     from peerrank.providers import call_llm
 
     try:
-        response, duration, _, _ = await call_llm(
+        response, duration, _, _, _ = await call_llm(
             "deepseek", "deepseek-chat", question,
             max_tokens=200, use_web_search=use_web_search
         )

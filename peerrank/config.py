@@ -44,7 +44,7 @@ MAX_TOKENS_SHORT = 4096  # Phase 1 question generation (increased for verbose mo
 MAX_TOKENS_ANSWER = 8192
 MAX_TOKENS_EVAL = 20000
 MAX_TOKENS_DEEPSEEK = 8192
-MAX_TOKENS_GOOGLE = 32000
+MAX_TOKENS_GOOGLE = 36000
 MAX_ANSWER_WORDS = 200
 DEFAULT_TIMEOUT = 200
 MAX_RETRIES = 5
@@ -102,6 +102,14 @@ TOKEN_COSTS = {
     # Mistral AI
     "mistral-large-latest": (2.00, 6.00),  # Mistral Large (128K context)
 }
+
+# Tavily search cost (basic search = 1 credit = $0.008)
+TAVILY_COST_PER_SEARCH = 0.008
+
+# Web search limits (to control costs)
+ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request (default: 1, reduce from unlimited)
+OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high" - controls search result context size
+GOOGLE_SEARCH_THRESHOLD = 0.7  # 0.0-1.0, higher = less likely to trigger search (saves tokens)
 
 # Evaluation settings
 NUM_QUESTIONS = 2

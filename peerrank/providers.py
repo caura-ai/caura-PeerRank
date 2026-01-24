@@ -20,6 +20,8 @@ from .config import (
     DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_DELAY,
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
+    TAVILY_COST_PER_SEARCH, ANTHROPIC_WEB_SEARCH_MAX_USES, OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+    GOOGLE_SEARCH_THRESHOLD,
     get_api_key
 )
 
@@ -98,7 +100,7 @@ def _get_mistral_client(api_key: str) -> Mistral:
 
 # Provider implementations
 async def _call_openai(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
     client = _get_openai_client(api_key, timeout)
     start = time.time()
     effective_temp = _get_temperature(model, temperature)
@@ -108,7 +110,7 @@ async def _call_openai(model: str, prompt: str, api_key: str, max_tokens: int, t
 
     if use_web_search:
         response = await client.responses.create(
-            model=model, input=prompt, tools=[{"type": "web_search"}], max_output_tokens=max_tokens)
+            model=model, input=prompt, tools=[{"type": "web_search_preview", "search_context_size": OPENAI_WEB_SEARCH_CONTEXT_SIZE}], max_output_tokens=max_tokens)
         content = "".join(block.text for item in response.output if item.type == "message"
                          for block in item.content if hasattr(block, 'text'))
         # Extract token usage from response if available
@@ -127,19 +129,19 @@ async def _call_openai(model: str, prompt: str, api_key: str, max_tokens: int, t
             input_tokens = getattr(response.usage, 'prompt_tokens', 0)
             output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
-    return (content.strip() if content else "", time.time() - start, input_tokens, output_tokens)
+    return (content.strip() if content else "", time.time() - start, input_tokens, output_tokens, 0.0)
 
 
 async def _call_anthropic(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                          use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                          use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
     client = _get_anthropic_client(api_key, timeout)
     kwargs = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens, "temperature": temperature}
     extra_headers = {}
 
     if use_web_search:
         extra_headers["anthropic-beta"] = "web-search-2025-03-05"
-        kwargs["tools"] = [{"type": "web_search_20250305", "name": "web_search"}]
-        kwargs["system"] = "Use your web_search tool to find current information before answering."
+        kwargs["tools"] = [{"type": "web_search_20250305", "name": "web_search", "max_uses": ANTHROPIC_WEB_SEARCH_MAX_USES}]
+        kwargs["system"] = "Use your web_search tool once to find current information, then answer concisely."
 
     start = time.time()
     response = await client.messages.create(**kwargs, extra_headers=extra_headers) if extra_headers else await client.messages.create(**kwargs)
@@ -149,11 +151,11 @@ async def _call_anthropic(model: str, prompt: str, api_key: str, max_tokens: int
     input_tokens = getattr(response.usage, 'input_tokens', 0)
     output_tokens = getattr(response.usage, 'output_tokens', 0)
 
-    return (content.strip(), time.time() - start, input_tokens, output_tokens)
+    return (content.strip(), time.time() - start, input_tokens, output_tokens, 0.0)
 
 
 async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
     client = _get_google_client()
 
     # Handle gemini-3-flash-preview variant (maps to gemini-2.5-flash)
@@ -166,7 +168,14 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
     config = {"temperature": temperature, "max_output_tokens": effective_max_tokens}
 
     if use_web_search:
-        config["tools"] = [{"google_search": {}}]
+        config["tools"] = [{
+            "google_search": {
+                "dynamic_retrieval_config": {
+                    "mode": "MODE_DYNAMIC",
+                    "dynamic_threshold": GOOGLE_SEARCH_THRESHOLD
+                }
+            }
+        }]
 
     start = time.time()
     response = await client.aio.models.generate_content(model=actual_model, contents=prompt, config=config)
@@ -211,16 +220,16 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
         if thoughts_tokens:
             output_tokens += thoughts_tokens
 
-    return (content.strip(), duration, input_tokens, output_tokens)
+    return (content.strip(), duration, input_tokens, output_tokens, 0.0)
 
 
 # Tavily search for providers without native search
-async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float]:
-    """Returns (search_results, duration_seconds)"""
+async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float, bool]:
+    """Returns (search_results, duration_seconds, success)"""
     import aiohttp
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
-        return "", 0.0
+        return "", 0.0, False
 
     start = time.time()
     try:
@@ -232,7 +241,7 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float]:
                 if resp.status != 200:
                     error_text = await resp.text()
                     print(f"      [Tavily HTTP {resp.status}: {error_text[:200]}]")
-                    return "", time.time() - start
+                    return "", time.time() - start, False
                 data = await resp.json()
 
         # Format as natural prose, not citation list
@@ -243,25 +252,28 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float]:
             content = r.get('content', '')[:250]
             if content:
                 parts.append(content)
-        return " ".join(parts), time.time() - start
+        return " ".join(parts), time.time() - start, True
     except Exception as e:
         print(f"      [Tavily error: {e}]")
-        return "", time.time() - start
+        return "", time.time() - start, False
 
 
 def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limit: int | None = None,
                         supports_response_format: bool = True):
     """Factory for OpenAI-compatible API callers."""
     async def _call(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                    use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                    use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
         client = _get_openai_client(api_key, timeout, base_url)
         effective_max = min(max_tokens, max_tokens_limit) if max_tokens_limit else max_tokens
         effective_temp = _get_temperature(model, temperature)
 
         messages = []
         tavily_duration = 0.0
+        tavily_cost = 0.0
         if use_tavily and use_web_search:
-            search_results, tavily_duration = await tavily_search(prompt[:400])
+            search_results, tavily_duration, tavily_success = await tavily_search(prompt[:400])
+            if tavily_success:
+                tavily_cost = TAVILY_COST_PER_SEARCH
             if search_results:
                 # Inject as system context - invisible to response style
                 messages.append({"role": "system", "content":
@@ -284,14 +296,14 @@ def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limi
             input_tokens = getattr(response.usage, 'prompt_tokens', 0)
             output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
-        return (response.choices[0].message.content.strip(), tavily_duration + llm_duration, input_tokens, output_tokens)
+        return (response.choices[0].message.content.strip(), tavily_duration + llm_duration, input_tokens, output_tokens, tavily_cost)
 
     return _call
 
 
 # Grok implementation using xAI SDK with native web search and X search
 async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                     use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                     use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
     client = XaiAsyncClient(api_key=api_key)
     effective_temp = _get_temperature(model, temperature)
 
@@ -320,12 +332,12 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
         input_tokens = getattr(response.usage, 'prompt_tokens', 0) or getattr(response.usage, 'input_tokens', 0) or 0
         output_tokens = getattr(response.usage, 'completion_tokens', 0) or getattr(response.usage, 'output_tokens', 0) or 0
 
-    return (content.strip(), duration, input_tokens, output_tokens)
+    return (content.strip(), duration, input_tokens, output_tokens, 0.0)
 
 
 # Mistral implementation with native web search via Agents API
 async def _call_mistral(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                        use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int]:
+                        use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
     client = _get_mistral_client(api_key)
     effective_temp = _get_temperature(model, temperature)
 
@@ -403,7 +415,7 @@ async def _call_mistral(model: str, prompt: str, api_key: str, max_tokens: int, 
             output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
     duration = time.time() - start
-    return (content.strip() if content else "", duration, input_tokens, output_tokens)
+    return (content.strip() if content else "", duration, input_tokens, output_tokens, 0.0)
 
 
 # Provider instances
@@ -422,12 +434,12 @@ _PROVIDER_CALLS = {
 async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX_TOKENS_ANSWER,
                    timeout: int = DEFAULT_TIMEOUT, use_web_search: bool = False,
                    response_format: dict | None = None, retries: int = MAX_RETRIES,
-                   temperature: float = TEMPERATURE_DEFAULT) -> tuple[str, float, int, int]:
+                   temperature: float = TEMPERATURE_DEFAULT) -> tuple[str, float, int, int, float]:
     """
     Call LLM API with automatic retry on transient failures.
 
     Returns:
-        tuple: (content, duration, input_tokens, output_tokens)
+        tuple: (content, duration, input_tokens, output_tokens, tavily_cost)
     """
     api_key = get_api_key(provider)
     call_fn = _PROVIDER_CALLS.get(provider)
@@ -502,7 +514,7 @@ async def health_check() -> dict:
         extra = list_google_models() if provider == "google" else []
         print(f"  [{name}] Testing...", flush=True)
         try:
-            content, duration, in_tok, out_tok = await call_llm(provider, model_id, "Say 'OK'.", max_tokens=1024, timeout=60, use_web_search=False)
+            content, duration, in_tok, out_tok, _ = await call_llm(provider, model_id, "Say 'OK'.", max_tokens=1024, timeout=60, use_web_search=False)
             reasoning = _get_reasoning_mode(provider, model_id)
             result = (name, True, f"{duration:.1f}s", "", extra, in_tok, out_tok, reasoning, provider, content)
         except Exception as e:
