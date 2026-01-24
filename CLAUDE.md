@@ -55,8 +55,8 @@ python peerrank.py --exclude-categories creative       # Exclude these categorie
 python peerrank.py --seed 42    # Reproducible shuffle ordering for Phase 3
 python peerrank.py --web-search on   # Enable Phase 2 web search (default)
 python peerrank.py --web-search off  # Disable Phase 2 web search (test knowledge only)
-python peerrank.py --elo on          # Enable Phase 4 Elo ratings (default)
-python peerrank.py --elo off         # Disable Phase 4 Elo ratings
+python peerrank.py --web-search-3 on # Enable Phase 3 web search (fact-checking)
+python peerrank.py --web-search-3 off # Disable Phase 3 web search (default)
 python peerrank.py --judge gpt-5.2   # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
@@ -70,32 +70,20 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 ## Interactive Menu
 
 ```
-  Revision: v1
-  Progress: Phase 0/5 completed
-  Models: 3/10 - gpt-5.2, claude-opus-4-5, gemini-3-pro-preview
-  Categories: 5/5 active
-  Questions per model: 2
-  Phase 2 web search: ON
-  Phase 3: 3 passes (random)
-  Phase 4 Elo ratings: ON
-  Phase 5 judge: gpt-5.2
+  Revision: v1  |  Progress: 0/5
+  Models: 3/12  |  Categories: 5/5  |  Questions: 2/model
+  P2: web=ON  |  P3: seed=rand, web=OFF  |  P5: gpt-5.2
 
-  [1] Phase 1 - Generate Questions
-  [2] Phase 2 - Answer Questions
-  [3] Phase 3 - Cross-Evaluate (3 bias modes)
-  [4] Phase 4 - Generate Report
-  [5] Phase 5 - Final Analysis
-  [A] Run ALL phases
-  [R] Resume from last completed
-  [H] Health Check - Test all APIs
-  [M] Models - Select which models to run
-  [C] Categories - Select question categories
-  [N] Number of questions per model
-  [W] Web Search - Toggle Phase 2 grounding
-  [D] Seed - Set random seed for Phase 3
-  [E] Elo - Toggle Phase 4 Elo ratings
-  [J] Judge - Select Phase 5 analysis judge
-  [V] Version - Set revision tag
+  --- Run ---
+  [1-5] Run phase    [A] All    [R] Resume    [H] Health check
+
+  --- Setup ---
+  [M] Models         [C] Categories    [N] Questions    [V] Revision
+
+  --- Phase Settings ---
+  [W] P2 web search  [D] P3 seed       [G] P3 web search
+  [J] P5 judge
+
   [Q] Quit
 ```
 
@@ -110,7 +98,7 @@ peerrank.py                    # CLI entry point
 peerrank_ui.py                 # Streamlit UI (live comparison)
 peerrank_phase1.py             # Question generation
 peerrank_phase2.py             # Answer questions (web search configurable)
-peerrank_phase3.py             # Cross-evaluation (web search OFF, 3 bias modes)
+peerrank_phase3.py             # Cross-evaluation (web search configurable, 3 bias modes)
 peerrank_phase4.py             # Report generation
 peerrank_phase5.py             # Final analysis by judge LLM
 generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6, 10-17)
@@ -376,7 +364,7 @@ calculate_cost(model_id: str, input_tokens: int, output_tokens: int) -> float
 ```
 Returns total cost in USD using TOKEN_COSTS pricing table
 
-**Provider Behavior**: All `call_llm()` calls return `(content, duration, input_tokens, output_tokens)`
+**Provider Behavior**: All `call_llm()` calls return `(content, duration, input_tokens, output_tokens, tavily_cost)`
 
 ## Web Search Control (Phase 2)
 
@@ -393,15 +381,28 @@ Returns total cost in USD using TOKEN_COSTS pricing table
 
 **Report Indicator**: Phase 4 header shows "Web search: ON/OFF" status
 
+## Web Search Control (Phase 3)
+
+**Configuration**:
+- `PHASE3_WEB_SEARCH` global setting in `peerrank/config.py` (default: False)
+- Functions: `get_phase3_web_search()` / `set_phase3_web_search(enabled: bool)`
+- CLI: `python peerrank.py --web-search-3 on/off`
+- Menu: `[G] Ground Phase 3 - Toggle Phase 3 web search`
+
+**Use Cases**:
+- `--web-search-3 off` (default): Evaluators judge based on their own knowledge (faster, cheaper)
+- `--web-search-3 on`: Evaluators can fact-check responses during evaluation (more thorough)
+
+**Impact**:
+- OFF: ~3x faster, ~10x cheaper (no search API calls during 3 evaluation passes)
+- ON: More accurate factual scoring, but significantly higher cost/time
+
 ## Elo Ratings (Phase 4)
 
 Alternative ranking methodology using pairwise comparisons from evaluation scores.
 
 **Configuration**:
-- `PHASE4_ELO` global setting in `peerrank/config.py` (default: True)
-- Functions: `get_phase4_elo()` / `set_phase4_elo(enabled: bool)`
-- CLI: `python peerrank.py --elo on/off`
-- Menu: `[E] Elo - Toggle Phase 4 Elo ratings`
+- Always enabled (Elo ratings are computed in Phase 4 report)
 
 **Algorithm**:
 - Initial rating: 1500 (configurable via `ELO_INITIAL_RATING`)

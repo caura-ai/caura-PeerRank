@@ -118,6 +118,9 @@ NUM_QUESTIONS = 2
 # Phase 2 web search toggle
 PHASE2_WEB_SEARCH = True  # Default: enabled (current behavior)
 
+# Phase 3 web search toggle (for fact-checking during evaluation)
+PHASE3_WEB_SEARCH = False  # Default: disabled (faster, cheaper)
+
 # Phase 4 Elo rating toggle
 PHASE4_ELO = True  # Default: enabled
 ELO_INITIAL_RATING = 1500
@@ -133,6 +136,17 @@ def set_phase2_web_search(enabled: bool):
     """Set Phase 2 web search setting."""
     global PHASE2_WEB_SEARCH
     PHASE2_WEB_SEARCH = enabled
+
+
+def get_phase3_web_search() -> bool:
+    """Get Phase 3 web search setting."""
+    return PHASE3_WEB_SEARCH
+
+
+def set_phase3_web_search(enabled: bool):
+    """Set Phase 3 web search setting."""
+    global PHASE3_WEB_SEARCH
+    PHASE3_WEB_SEARCH = enabled
 
 
 def get_phase4_elo() -> bool:

@@ -11,7 +11,7 @@ from statistics import mean
 from peerrank.config import (
     MODELS, MAX_TOKENS_EVAL, TEMPERATURE_EVAL, BIAS_MODES, PROVIDER_CONCURRENCY,
     extract_json, save_json, load_json, format_duration,
-    get_revision, calculate_timing_stats, get_bias_test_config,
+    get_revision, calculate_timing_stats, get_bias_test_config, get_phase3_web_search,
 )
 from peerrank.providers import call_llm
 
@@ -136,7 +136,8 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
         )
 
         try:
-            response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=False, temperature=TEMPERATURE_EVAL)
+            web_search = get_phase3_web_search()
+            response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=web_search, temperature=TEMPERATURE_EVAL)
             scores = extract_json(response)
             if scores and isinstance(scores, dict):
                 remapped_scores = remap_scores_to_models(scores, label_to_model)
@@ -237,7 +238,7 @@ async def phase3_evaluate_answers() -> dict:
     print(f"  Evaluators:  {len(MODELS)}")
     print(f"  Questions:   {len(questions)}")
     print("  Passes:      3 (shuffle_only, blind_only, shuffle_blind)")
-    print("  Web search:  OFF")
+    print(f"  Web search:  {'ON' if get_phase3_web_search() else 'OFF'}")
     if resumed_from:
         print(f"  Resuming:    Skipping {len(resumed_from)} completed mode(s)")
     print(f"{'=' * 60}")

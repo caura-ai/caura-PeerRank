@@ -29,7 +29,7 @@ from peerrank.config import (
     get_revision, set_revision,
     set_bias_test_config, get_bias_test_config,
     get_phase2_web_search, set_phase2_web_search,
-    get_phase4_elo, set_phase4_elo,
+    get_phase3_web_search, set_phase3_web_search,
     get_phase5_judge, set_phase5_judge,
 )
 from peerrank.providers import health_check
@@ -66,41 +66,30 @@ def show_menu():
     print("\n" + "=" * 50)
     print("         PEERRANK.AI - LLM Evaluation")
     print("=" * 50)
-    print(f"\n  Revision: {get_revision()}")
-    print(f"  Progress: Phase {get_last_completed_phase()}/5 completed")
-    print(f"  Models: {len(MODELS)}/{len(ALL_MODELS)} - {', '.join(m[2] for m in MODELS)}")
-    print(f"  Categories: {len(CATEGORIES)}/{len(ALL_CATEGORIES)} active")
-    print(f"  Questions per model: {config.NUM_QUESTIONS}")
 
-    # Show Phase 2, 3, 4, and 5 config
-    web_search = "ON" if get_phase2_web_search() else "OFF"
-    print(f"  Phase 2 web search: {web_search}")
+    # Setup
+    print(f"\n  Revision: {get_revision()}  |  Progress: {get_last_completed_phase()}/5")
+    print(f"  Models: {len(MODELS)}/{len(ALL_MODELS)}  |  Categories: {len(CATEGORIES)}/{len(ALL_CATEGORIES)}  |  Questions: {config.NUM_QUESTIONS}/model")
+
+    # Phase settings
+    ws2 = "ON" if get_phase2_web_search() else "OFF"
+    ws3 = "ON" if get_phase3_web_search() else "OFF"
     seed = get_bias_test_config().get("seed")
-    seed_str = f"seed={seed}" if seed is not None else "random"
-    print(f"  Phase 3: 3 passes ({seed_str})")
-    elo_status = "ON" if get_phase4_elo() else "OFF"
-    print(f"  Phase 4 Elo ratings: {elo_status}")
+    seed_str = str(seed) if seed is not None else "rand"
     judge = get_phase5_judge()[2]
-    print(f"  Phase 5 judge: {judge}")
+    print(f"  P2: web={ws2}  |  P3: seed={seed_str}, web={ws3}  |  P5: {judge}")
 
     print("""
-  [1] Phase 1 - Generate Questions
-  [2] Phase 2 - Answer Questions
-  [3] Phase 3 - Cross-Evaluate (3 bias modes)
-  [4] Phase 4 - Generate Report
-  [5] Phase 5 - Final Analysis
+  --- Run ---
+  [1-5] Run phase    [A] All    [R] Resume    [H] Health check
 
-  [A] Run ALL phases
-  [R] Resume from last completed
-  [H] Health Check - Test all APIs
-  [M] Models - Select which models to run
-  [C] Categories - Select question categories
-  [N] Number of questions per model
-  [W] Web Search - Toggle Phase 2 grounding
-  [D] Seed - Set random seed for Phase 3
-  [E] Elo - Toggle Phase 4 Elo ratings
-  [J] Judge - Select Phase 5 analysis judge
-  [V] Version - Set revision tag
+  --- Setup ---
+  [M] Models         [C] Categories    [N] Questions    [V] Revision
+
+  --- Phase Settings ---
+  [W] P2 web search  [D] P3 seed       [G] P3 web search
+  [J] P5 judge
+
   [Q] Quit
 """)
     return input("  Select option: ").strip().upper()
@@ -259,7 +248,7 @@ async def main():
     parser.add_argument("--exclude-categories", type=str, help="Categories to exclude (comma-separated keywords)")
     parser.add_argument("--seed", type=int, help="Random seed for reproducible Phase 3 shuffle ordering")
     parser.add_argument("--web-search", type=str, choices=["on", "off"], help="Enable/disable web search in Phase 2")
-    parser.add_argument("--elo", type=str, choices=["on", "off"], help="Enable/disable Elo ratings in Phase 4")
+    parser.add_argument("--web-search-3", type=str, choices=["on", "off"], help="Enable/disable web search in Phase 3 (fact-checking)")
     parser.add_argument("--judge", type=str, help="Judge model for Phase 5 analysis (model name)")
     parser.add_argument("--rev", type=str, help="Set revision tag")
     args = parser.parse_args()
@@ -295,10 +284,11 @@ async def main():
         set_phase2_web_search(args.web_search.lower() == "on")
         print(f"Phase 2 web search: {args.web_search.upper()}")
 
-    # Apply Elo setting for Phase 4
-    if args.elo:
-        set_phase4_elo(args.elo.lower() == "on")
-        print(f"Phase 4 Elo ratings: {args.elo.upper()}")
+    # Apply web search setting for Phase 3
+    if args.web_search_3:
+        set_phase3_web_search(args.web_search_3.lower() == "on")
+        print(f"Phase 3 web search: {args.web_search_3.upper()}")
+
 
     # Apply judge for Phase 5
     if args.judge:
@@ -356,9 +346,9 @@ async def main():
         elif choice == "D":
             change_seed()
             continue
-        elif choice == "E":
-            toggle_setting("Phase 4 Elo ratings", get_phase4_elo, set_phase4_elo,
-                           "Elo ratings derive rankings from pairwise comparisons.")
+        elif choice == "G":
+            toggle_setting("Phase 3 web search", get_phase3_web_search, set_phase3_web_search,
+                           "Web search allows evaluators to fact-check responses.")
             continue
         elif choice == "J":
             select_judge()
