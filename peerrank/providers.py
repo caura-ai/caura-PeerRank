@@ -16,7 +16,7 @@ from mistralai import Mistral
 
 from .config import (
     MODELS,
-    MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK, MAX_TOKENS_GOOGLE,
+    MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK, 
     DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_DELAY,
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
@@ -164,7 +164,7 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
         actual_model = "gemini-2.5-flash"
 
     # Limit thinking budget to save tokens (default can be very high)
-    effective_max_tokens = min(max_tokens, MAX_TOKENS_GOOGLE)
+    effective_max_tokens = max_tokens
     config = {
         "temperature": temperature,
         "max_output_tokens": effective_max_tokens,

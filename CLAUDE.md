@@ -630,9 +630,8 @@ Model-specific maximum token limits for API calls:
 ```python
 MAX_TOKENS_SHORT = 2048         # Short responses
 MAX_TOKENS_ANSWER = 8192        # Phase 2 answers
-MAX_TOKENS_EVAL = 12000         # Phase 3 evaluations
+MAX_TOKENS_EVAL = 32000         # Phase 3 evaluations
 MAX_TOKENS_DEEPSEEK = 8192      # DeepSeek-specific limit
-MAX_TOKENS_GOOGLE = 16000       # Google models limit
 MAX_ANSWER_WORDS = 200          # Phase 2 answer word limit
 ```
 

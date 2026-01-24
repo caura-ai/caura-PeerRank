@@ -42,9 +42,8 @@ def get_bias_test_config() -> dict:
 # Token limits
 MAX_TOKENS_SHORT = 4096  # Phase 1 question generation (increased for verbose models)
 MAX_TOKENS_ANSWER = 8192
-MAX_TOKENS_EVAL = 20000
+MAX_TOKENS_EVAL = 32000
 MAX_TOKENS_DEEPSEEK = 8192
-MAX_TOKENS_GOOGLE = 36000
 MAX_ANSWER_WORDS = 200
 DEFAULT_TIMEOUT = 200
 MAX_RETRIES = 5
@@ -105,7 +104,7 @@ TAVILY_COST_PER_SEARCH = 0.008
 ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request (default: 1, reduce from unlimited)
 OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high" - controls search result context size
 GOOGLE_SEARCH_THRESHOLD = 0.7  # 0.0-1.0, higher = less likely to trigger search (saves tokens)
-GOOGLE_THINKING_BUDGET = 2048  # Max thinking tokens for Gemini (0 = disable, None = unlimited)
+GOOGLE_THINKING_BUDGET = 8192  # Max thinking tokens for Gemini (0 = disable, None = unlimited)
 
 # Evaluation settings
 NUM_QUESTIONS = 2
