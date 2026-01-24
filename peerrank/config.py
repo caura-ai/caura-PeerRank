@@ -75,11 +75,9 @@ TOKEN_COSTS = {
     "claude-sonnet-4-5": (3.00, 15.00),
 
     # Google Gemini
-    "gemini-3-pro-preview": (2.00, 12.00),  # Base price, up to $4/$18 for long context
-    "gemini-3-flash-thinking": (0.50, 3.00),
-    "gemini-3-flash-preview": (0.50, 3.00),  # Flash with thinking=high (same pricing, more tokens)
-    "gemini-2.5-pro": (1.25, 10.00),   # Smart "Thinking" model (Input $1.25 / Output $10.00)
-    "gemini-2.5-flash": (0.15, 0.60),  # Fast "Workhorse" model (Input $0.15 / Output $0.60)
+    "gemini-3-pro-preview": (2.00, 12.00),  # Base price, up to $4/$18 for long context    
+    "gemini-3-flash-preview": (0.50, 3.00),  # Flash   
+    
 
     # xAI
     "grok-4-1-fast": (0.60, 3.00),
@@ -94,10 +92,7 @@ TOKEN_COSTS = {
     "sonar-pro": (3.00, 15.00),
 
     # Moonshot AI (Kimi) - with auto caching: cache hit $0.15/M
-    "kimi-k2-0905-preview": (0.60, 2.50),  # K2 model (256K context)
-    "kimi-k2-0711-preview": (0.60, 2.50),  # K2 model (128K context)
-    "kimi-k2-turbo-preview": (1.15, 8.00), # Turbo variant
-    "kimi-k2-thinking": (0.60, 2.50),      # Thinking model
+    "kimi-k2-0905-preview": (0.60, 2.50),  # K2 model (256K context)    
 
     # Mistral AI
     "mistral-large-latest": (2.00, 6.00),  # Mistral Large (128K context)
@@ -194,10 +189,7 @@ ALL_MODELS = [
     ("anthropic", "claude-opus-4-5", "claude-opus-4-5"),
     ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
     ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
-    #("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),
-    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),  # Flash with thinking=high
-    #("google", "gemini-2.5-pro", "gemini-2.5-pro"),
-    #("google", "gemini-2.5-flash", "gemini-2.5-flash"),
+    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),       
     ("grok", "grok-4-1-fast", "grok-4-1-fast"),
     ("deepseek", "deepseek-chat", "deepseek-chat"),
     ("together", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "llama-4-maverick"),
