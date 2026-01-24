@@ -77,7 +77,7 @@ def show_menu():
     seed = get_bias_test_config().get("seed")
     seed_str = str(seed) if seed is not None else "rand"
     judge = get_phase5_judge()[2]
-    print(f"  P2: web={ws2}  |  P3: seed={seed_str}, web={ws3}  |  P5: {judge}")
+    print(f"  P2: web={ws2}  |  P3: seed={seed_str}, native-search={ws3}  |  P5: {judge}")
 
     print("""
   --- Run ---
@@ -87,7 +87,7 @@ def show_menu():
   [M] Models         [C] Categories    [N] Questions    [V] Revision
 
   --- Phase Settings ---
-  [W] P2 web search  [D] P3 seed       [G] P3 web search
+  [W] P2 web search  [D] P3 seed       [G] P3 native search
   [J] P5 judge
 
   [Q] Quit
@@ -347,8 +347,8 @@ async def main():
             change_seed()
             continue
         elif choice == "G":
-            toggle_setting("Phase 3 web search", get_phase3_web_search, set_phase3_web_search,
-                           "Web search allows evaluators to fact-check responses.")
+            toggle_setting("Phase 3 native search", get_phase3_web_search, set_phase3_web_search,
+                           "Native search models can fact-check (excludes Tavily models).")
             continue
         elif choice == "J":
             select_judge()

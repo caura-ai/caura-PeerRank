@@ -136,7 +136,10 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
         )
 
         try:
-            web_search = get_phase3_web_search()
+            # Tavily models can't do meaningful fact-checking (search query = rubric, not claims)
+            # So disable web search for them even if globally enabled
+            tavily_providers = ("deepseek", "together", "kimi")
+            web_search = get_phase3_web_search() and provider not in tavily_providers
             response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=web_search, temperature=TEMPERATURE_EVAL)
             scores = extract_json(response)
             if scores and isinstance(scores, dict):
@@ -238,7 +241,8 @@ async def phase3_evaluate_answers() -> dict:
     print(f"  Evaluators:  {len(MODELS)}")
     print(f"  Questions:   {len(questions)}")
     print("  Passes:      3 (shuffle_only, blind_only, shuffle_blind)")
-    print(f"  Web search:  {'ON' if get_phase3_web_search() else 'OFF'}")
+    native_search = get_phase3_web_search()
+    print(f"  Native search: {'ON (excludes Tavily models)' if native_search else 'OFF'}")
     if resumed_from:
         print(f"  Resuming:    Skipping {len(resumed_from)} completed mode(s)")
     print(f"{'=' * 60}")

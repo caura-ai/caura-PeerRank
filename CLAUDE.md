@@ -72,7 +72,7 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 ```
   Revision: v1  |  Progress: 0/5
   Models: 3/12  |  Categories: 5/5  |  Questions: 2/model
-  P2: web=ON  |  P3: seed=rand, web=OFF  |  P5: gpt-5.2
+  P2: web=ON  |  P3: seed=rand, native-search=OFF  |  P5: gpt-5.2
 
   --- Run ---
   [1-5] Run phase    [A] All    [R] Resume    [H] Health check
@@ -81,7 +81,7 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
   [M] Models         [C] Categories    [N] Questions    [V] Revision
 
   --- Phase Settings ---
-  [W] P2 web search  [D] P3 seed       [G] P3 web search
+  [W] P2 web search  [D] P3 seed       [G] P3 native search
   [J] P5 judge
 
   [Q] Quit
@@ -381,21 +381,27 @@ Returns total cost in USD using TOKEN_COSTS pricing table
 
 **Report Indicator**: Phase 4 header shows "Web search: ON/OFF" status
 
-## Web Search Control (Phase 3)
+## Native Search Control (Phase 3)
 
 **Configuration**:
 - `PHASE3_WEB_SEARCH` global setting in `peerrank/config.py` (default: False)
 - Functions: `get_phase3_web_search()` / `set_phase3_web_search(enabled: bool)`
 - CLI: `python peerrank.py --web-search-3 on/off`
-- Menu: `[G] Ground Phase 3 - Toggle Phase 3 web search`
+- Menu: `[G] P3 native search`
+
+**Native vs Tavily**:
+- **Native search models** (OpenAI, Anthropic, Google, Grok, Mistral, Perplexity): LLM decides what to search during evaluation - can verify specific claims
+- **Tavily models** (DeepSeek, Together, Kimi): Search happens before LLM call using prompt text - would search rubric instructions, not claims (useless for fact-checking)
+
+When enabled, native search is only activated for native models. Tavily models evaluate without search to avoid wasted API calls.
 
 **Use Cases**:
-- `--web-search-3 off` (default): Evaluators judge based on their own knowledge (faster, cheaper)
-- `--web-search-3 on`: Evaluators can fact-check responses during evaluation (more thorough)
+- `--web-search-3 off` (default): All evaluators judge based on their own knowledge (faster, cheaper)
+- `--web-search-3 on`: Native models can fact-check responses; Tavily models still evaluate without search
 
 **Impact**:
-- OFF: ~3x faster, ~10x cheaper (no search API calls during 3 evaluation passes)
-- ON: More accurate factual scoring, but significantly higher cost/time
+- OFF: ~3x faster, ~10x cheaper
+- ON: Better factual scoring from native models, Tavily models unaffected
 
 ## Elo Ratings (Phase 4)
 
