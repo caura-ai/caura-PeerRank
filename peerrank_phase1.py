@@ -23,7 +23,7 @@ Return as JSON object: {{"questions": [{{"category": "factual knowledge", "quest
 async def phase1_generate_questions() -> dict:
     """Phase 1: Each LLM generates questions."""
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 1: Question Generation")
+    print("  PHASE 1: Question Generation")
     print(f"{'-' * 60}")
     print(f"  Revision:    {get_revision()}")
     print(f"  Models:      {len(MODELS)}")

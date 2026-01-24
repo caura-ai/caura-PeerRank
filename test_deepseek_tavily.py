@@ -28,7 +28,7 @@ async def main():
         print(f"[OK] Tavily working ({duration:.2f}s)")
         print(f"  Result: {results[:100]}...")
     else:
-        print(f"[FAIL] Tavily failed (check quota)")
+        print("[FAIL] Tavily failed (check quota)")
         return
 
     # Test DeepSeek with Tavily

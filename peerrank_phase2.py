@@ -20,7 +20,7 @@ async def phase2_answer_questions() -> dict:
     web_search_enabled = get_phase2_web_search()
 
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 2: Answer Questions")
+    print("  PHASE 2: Answer Questions")
     print(f"{'-' * 60}")
     print(f"  Revision:    {get_revision()}")
 

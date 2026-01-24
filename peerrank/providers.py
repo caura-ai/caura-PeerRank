@@ -231,7 +231,7 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float]:
                 timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
-                    print(f"      [Tavily HTTP {resp.status}: {error_text[:100]}]")
+                    print(f"      [Tavily HTTP {resp.status}: {error_text[:200]}]")
                     return "", time.time() - start
                 data = await resp.json()
 
@@ -261,7 +261,7 @@ def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limi
         messages = []
         tavily_duration = 0.0
         if use_tavily and use_web_search:
-            search_results, tavily_duration = await tavily_search(prompt[:500])
+            search_results, tavily_duration = await tavily_search(prompt[:400])
             if search_results:
                 # Inject as system context - invisible to response style
                 messages.append({"role": "system", "content":
