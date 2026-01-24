@@ -173,14 +173,7 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
         config["thinking_config"] = {"thinking_budget": GOOGLE_THINKING_BUDGET}
 
     if use_web_search:
-        config["tools"] = [{
-            "google_search": {
-                "dynamic_retrieval_config": {
-                    "mode": "MODE_DYNAMIC",
-                    "dynamic_threshold": GOOGLE_SEARCH_THRESHOLD
-                }
-            }
-        }]
+        config["tools"] = [{"google_search": {}}]
 
     start = time.time()
     response = await client.aio.models.generate_content(model=actual_model, contents=prompt, config=config)
