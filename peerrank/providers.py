@@ -230,6 +230,8 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float]:
                       "include_answer": True, "search_depth": "basic"},
                 timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status != 200:
+                    error_text = await resp.text()
+                    print(f"      [Tavily HTTP {resp.status}: {error_text[:100]}]")
                     return "", time.time() - start
                 data = await resp.json()
 

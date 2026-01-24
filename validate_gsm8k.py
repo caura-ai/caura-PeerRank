@@ -483,7 +483,7 @@ Problem:
         try:
             async with semaphore:
                 response, duration, in_tok, out_tok = await call_llm(
-                    provider, model_id, prompt, max_tokens=8192, timeout=300,
+                    provider, model_id, prompt, max_tokens=18000, timeout=300,
                     temperature=0, use_web_search=False
                 )
 
@@ -557,7 +557,7 @@ async def phase3_evaluate():
     - Prioritize final answer correctness
     - Not penalize brevity
     """
-    from config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL, extract_json
+    from peerrank.config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL, extract_json
 
     set_revision(VALIDATION_REVISION)
 
