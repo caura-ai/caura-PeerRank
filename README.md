@@ -97,7 +97,7 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 |----------|--------|
 | OpenAI | gpt-5.2, gpt-5-mini |
 | Anthropic | claude-opus-4-5, claude-sonnet-4-5 |
-| Google | gemini-3-pro-preview, gemini-3-flash-thinking |
+| Google | gemini-3-pro-preview, gemini-3-flash-preview |
 | xAI | grok-4-1-fast |
 | DeepSeek | deepseek-chat |
 | Together AI | llama-4-maverick |

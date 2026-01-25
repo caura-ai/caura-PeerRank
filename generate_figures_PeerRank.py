@@ -73,7 +73,7 @@ MODEL_COLORS = {
     'claude-opus-4-5': '#029E73',      # Green
     'claude-sonnet-4-5': '#78C679',    # Light Green
     'gemini-3-pro-preview': '#D55E00', # Orange
-    'gemini-3-flash-thinking': '#F0E442', # Yellow
+    'gemini-3-flash-preview': '#F0E442', # Yellow
     'grok-4-1-fast': '#CC79A7',        # Pink
     'deepseek-chat': '#E69F00',        # Orange-Brown
     'llama-4-maverick': '#999999',     # Gray
@@ -1321,7 +1321,7 @@ def compute_provider_clustering(data: dict) -> str:
     PROVIDER_MAP = {
         'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
         'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
-        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-thinking': 'Google',
+        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
         'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
         'grok-4-1-fast': 'xAI',
         'deepseek-chat': 'DeepSeek',

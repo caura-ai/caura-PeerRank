@@ -353,7 +353,7 @@ def _calculate_provider_clustering(evaluations: dict) -> dict | None:
     PROVIDER_MAP = {
         'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
         'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
-        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-thinking': 'Google',
+        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
         'gemini-3-flash-preview': 'Google', 'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
         'grok-4-1-fast': 'xAI',
         'deepseek-chat': 'DeepSeek',
@@ -847,7 +847,7 @@ def phase4_generate_report() -> str:
 
         # Short name helper
         def short_name(m):
-            shortcuts = {"gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-thinking": "gem-3-flash",
+            shortcuts = {"gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-preview": "gem-3-flash",
                          "claude-opus-4-5": "opus-4.5", "claude-sonnet-4-5": "sonnet-4.5",
                          "llama-4-maverick": "llama-4", "deepseek-chat": "deepseek",
                          "kimi-k2-0905": "kimi", "grok-4-1-fast": "grok-4", "mistral-large": "mistral"}

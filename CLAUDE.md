@@ -176,7 +176,7 @@ ALL_MODELS = [
     ("anthropic", "claude-opus-4-5", "claude-opus-4-5"),
     ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
     ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
-    ("google", "gemini-3-flash-thinking", "gemini-3-flash-thinking"),
+    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),
     ("grok", "grok-4-1-fast", "grok-4-1-fast"),
     ("deepseek", "deepseek-chat", "deepseek-chat"),
     ("together", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "llama-4-maverick"),
@@ -354,7 +354,7 @@ TOKEN_COSTS = {
     # Google Gemini
     "gemini-3-pro-preview": (2.00, 12.00),  # Base price
     "gemini-3-flash-preview": (0.50, 3.00),
-    "gemini-3-flash-thinking": (0.50, 3.00),  # Flash with thinking=high
+    "gemini-3-flash-preview": (0.50, 3.00),  # Flash with thinking=high
     "gemini-2.5-pro": (1.25, 10.00),     # Smart "Thinking" model
     "gemini-2.5-flash": (0.15, 0.60),    # Fast "Workhorse" model
 
