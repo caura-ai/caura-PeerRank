@@ -75,6 +75,188 @@ def _calculate_bias_analysis(phase3_data: dict) -> dict | None:
     return analysis
 
 
+def _load_tfq_validation() -> dict | None:
+    """Load TruthfulQA validation data: truth scores and baseline correlation.
+
+    Returns dict with:
+      - truth_scores: {model: score} mapping
+      - baseline_r: Pearson r from TFQ validation (peer vs truth)
+      - baseline_rho: Spearman rho from TFQ validation
+    Or None if TFQ data not available.
+    """
+    import os
+    import re
+
+    # Load truth scores
+    tfq_scores_path = os.path.join(DATA_DIR, "TRUTH", "phase4_TFQ_scores_TFQ.json")
+    tfq_report_path = os.path.join(DATA_DIR, "TRUTH", "TFQ_validation_report_TFQ.md")
+
+    if not os.path.exists(tfq_scores_path):
+        return None
+
+    try:
+        import json
+        with open(tfq_scores_path, "r", encoding="utf-8") as f:
+            tfq_data = json.load(f)
+
+        summary = tfq_data.get("summary", {})
+        if not summary:
+            return None
+
+        # Extract truth scores
+        truth_scores = {}
+        for model, data in summary.items():
+            if "mean" in data:
+                truth_scores[model] = data["mean"]
+            elif "accuracy" in data:
+                truth_scores[model] = data["accuracy"] / 10.0
+
+        if not truth_scores:
+            return None
+
+        result = {"truth_scores": truth_scores}
+
+        # Try to load baseline correlation from TFQ validation report
+        if os.path.exists(tfq_report_path):
+            with open(tfq_report_path, "r", encoding="utf-8") as f:
+                report = f.read()
+
+            # Parse Pearson r and Spearman rho from report
+            # Format: "Pearson r    0.8584    0.0004   strong"
+            r_match = re.search(r"Pearson\s+r\s+([\d.]+)", report)
+            rho_match = re.search(r"Spearman\s+([\d.]+)", report)
+
+            if r_match:
+                result["baseline_r"] = float(r_match.group(1))
+            if rho_match:
+                result["baseline_rho"] = float(rho_match.group(1))
+
+        return result
+    except Exception:
+        return None
+
+
+def _calculate_ablation_study(bias_analysis: list, peer_data: list) -> dict | None:
+    """Calculate ablation study: uncorrected scores vs bias-corrected scores.
+
+    No Correction = Peer + Name Bias + Position Bias
+    This shows what rankings would look like without any bias correction.
+
+    Also computes correlation with TruthfulQA ground truth if available,
+    showing that bias correction improves alignment with objective accuracy.
+    """
+    if not bias_analysis or not peer_data:
+        return None
+
+    # Build peer score lookup
+    peer_lookup = {name: avg for name, avg, *_ in peer_data}
+
+    # Calculate uncorrected scores
+    results = []
+    for ba in bias_analysis:
+        name = ba["model"]
+        peer = peer_lookup.get(name, ba["shuffle_blind"])
+        # No Correction = Peer + Name Bias + Position Bias
+        no_correction = peer + ba["name_bias"] + ba["position_bias"]
+        results.append({
+            "model": name,
+            "peer": peer,
+            "no_correction": no_correction,
+            "name_bias": ba["name_bias"],
+            "position_bias": ba["position_bias"],
+            "total_bias": ba["name_bias"] + ba["position_bias"],
+        })
+
+    # Sort by no_correction (uncorrected ranking)
+    results.sort(key=lambda x: x["no_correction"], reverse=True)
+
+    # Add ranks
+    peer_ranked = sorted(results, key=lambda x: x["peer"], reverse=True)
+    peer_rank_lookup = {r["model"]: i for i, r in enumerate(peer_ranked, 1)}
+
+    for i, r in enumerate(results, 1):
+        r["nc_rank"] = i
+        r["peer_rank"] = peer_rank_lookup[r["model"]]
+        r["rank_change"] = r["peer_rank"] - r["nc_rank"]  # positive = correction helped
+
+    ablation_result = {"results": results}
+
+    # Try to load TFQ validation data for ground truth correlation
+    tfq_data = _load_tfq_validation()
+    if tfq_data:
+        tfq_truth = tfq_data["truth_scores"]
+
+        # Match models and collect scores
+        matched_models = []
+        peer_scores = []
+        nc_scores = []
+        truth_scores = []
+
+        for r in results:
+            model = r["model"]
+            truth = tfq_truth.get(model)
+            if truth is None:
+                for tfq_model, tfq_score in tfq_truth.items():
+                    if model in tfq_model or tfq_model in model:
+                        truth = tfq_score
+                        break
+
+            if truth is not None:
+                matched_models.append(model)
+                peer_scores.append(r["peer"])
+                nc_scores.append(r["no_correction"])
+                truth_scores.append(truth)
+
+        # Compute correlations if we have enough matched models
+        if len(matched_models) >= 5:
+            # Bias-corrected (Peer) vs TFQ Truth
+            peer_pearson = _pearson_correlation(peer_scores, truth_scores)
+            peer_spearman = _spearman_correlation(peer_scores, truth_scores)
+
+            # No correction vs TFQ Truth
+            nc_pearson = _pearson_correlation(nc_scores, truth_scores)
+            nc_spearman = _spearman_correlation(nc_scores, truth_scores)
+
+            # Calculate p-values using scipy
+            from scipy.stats import pearsonr, spearmanr
+            _, peer_p_pearson = pearsonr(peer_scores, truth_scores)
+            _, peer_p_spearman = spearmanr(peer_scores, truth_scores)
+            _, nc_p_pearson = pearsonr(nc_scores, truth_scores)
+            _, nc_p_spearman = spearmanr(nc_scores, truth_scores)
+
+            ablation_result["tfq_validation"] = {
+                "n_models": len(matched_models),
+                "models": matched_models,
+                # TFQ baseline (within-dataset, full bias correction)
+                "tfq_baseline": {
+                    "pearson_r": tfq_data.get("baseline_r"),
+                    "spearman_rho": tfq_data.get("baseline_rho"),
+                    "description": "TFQ Peer vs TFQ Truth (within-dataset)",
+                },
+                # Cross-dataset correlations
+                "bias_corrected": {
+                    "pearson_r": peer_pearson,
+                    "spearman_rho": peer_spearman,
+                    "p_pearson": peer_p_pearson,
+                    "p_spearman": peer_p_spearman,
+                    "description": "V6 Peer vs TFQ Truth (cross-dataset)",
+                },
+                "no_correction": {
+                    "pearson_r": nc_pearson,
+                    "spearman_rho": nc_spearman,
+                    "p_pearson": nc_p_pearson,
+                    "p_spearman": nc_p_spearman,
+                    "description": "V6 No Correction vs TFQ Truth (cross-dataset)",
+                },
+                "improvement": {
+                    "pearson_delta": peer_pearson - nc_pearson,
+                    "spearman_delta": peer_spearman - nc_spearman,
+                },
+            }
+
+    return ablation_result
+
+
 def _calculate_stats(phase2_data: dict, phase3_data: dict) -> dict:
     """Calculate statistics from evaluation data."""
     evaluations = phase3_data["evaluations"]
@@ -521,6 +703,79 @@ def phase4_generate_report() -> str:
             ['c', 'l', 'r', 'r', 'r', 'r', 'r']
         ))
         r.append("\n*Self Bias = Self − Peer (+ overrates self) | Name Bias = Shuffle − Peer (+ name helped)*")
+
+    # Ablation Study: Effect of Bias Correction
+    ablation = _calculate_ablation_study(bias_analysis, stats["peer_data"])
+    if ablation:
+        r.append("\n## Ablation Study: Effect of Bias Correction\n")
+        r.append("Comparison of rankings with and without bias correction.\n")
+        r.append("**No Correction** = Peer + Name Bias + Position Bias (raw scores with all biases present)\n")
+
+        abl_rows = []
+        for res in ablation["results"]:
+            rank_str = f"{res['rank_change']:+d}" if res["rank_change"] != 0 else "—"
+            abl_rows.append([
+                str(res["nc_rank"]),
+                res["model"],
+                f"{res['no_correction']:.2f}",
+                f"{res['name_bias']:+.2f}",
+                f"{res['position_bias']:+.2f}",
+                f"{res['total_bias']:+.2f}",
+                f"{res['peer']:.2f}",
+                str(res["peer_rank"]),
+                rank_str,
+            ])
+
+        r.append(format_table(
+            ["#", "Model", "No Corr", "+Name", "+Pos", "=Bias", "Peer", "P#", "Δ"],
+            abl_rows,
+            ['c', 'l', 'r', 'r', 'r', 'r', 'r', 'c', 'c']
+        ))
+        r.append("\n*Δ = Peer rank − Uncorrected rank (positive = bias correction helped this model)*\n")
+
+        # Calculate summary statistics
+        rank_changes = [abs(res["rank_change"]) for res in ablation["results"]]
+        models_changed = sum(1 for rc in rank_changes if rc > 0)
+        max_change = max(rank_changes)
+        total_biases = [res["total_bias"] for res in ablation["results"]]
+        avg_bias = sum(total_biases) / len(total_biases)
+        max_pos_bias = max(total_biases)
+        max_neg_bias = min(total_biases)
+
+        r.append(f"**Summary:** {models_changed}/{len(ablation['results'])} models changed rank after correction. "
+                 f"Max rank change: {max_change}. Avg total bias: {avg_bias:+.2f} "
+                 f"(range: {max_neg_bias:+.2f} to {max_pos_bias:+.2f}).\n")
+
+        # TFQ Validation (correlation with ground truth)
+        tfq_val = ablation.get("tfq_validation")
+        if tfq_val:
+            r.append("### Ground Truth Validation (TruthfulQA)\n")
+            r.append("Correlation between PeerRank scores and TruthfulQA ground truth accuracy.\n")
+            r.append("Removing bias correction reduces alignment with ground truth:\n")
+
+            baseline = tfq_val.get("tfq_baseline", {})
+            nc = tfq_val["no_correction"]
+
+            baseline_r = baseline.get("pearson_r")
+            baseline_rho = baseline.get("spearman_rho")
+            nc_r = nc["pearson_r"]
+            nc_rho = nc["spearman_rho"]
+
+            if baseline_r:
+                delta_r = baseline_r - nc_r
+                delta_rho = baseline_rho - nc_rho if baseline_rho else 0
+
+                tfq_rows = [
+                    ["Pearson *r*", f"{baseline_r:.3f}", f"{nc_r:.3f}", f"{delta_r:+.3f}"],
+                    ["Spearman *ρ*", f"{baseline_rho:.3f}" if baseline_rho else "—", f"{nc_rho:.3f}", f"{delta_rho:+.3f}" if baseline_rho else "—"],
+                ]
+
+                r.append(format_table(
+                    ["Metric", "PeerRank (corrected)", "No Correction", "Δ"],
+                    tfq_rows,
+                    ['l', 'r', 'r', 'r']
+                ))
+                r.append(f"\n*n={tfq_val['n_models']} models. Bias correction improves correlation by {delta_r:+.3f} (Pearson).*\n")
 
     # Judge generosity
     judge_rows = [[str(i), n, f"{a:.2f}", f"{s:.2f}", str(c)] for i, (n, a, s, c) in enumerate(stats["judge_data"], 1)]
