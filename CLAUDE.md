@@ -145,6 +145,7 @@ Files are tagged with user-set revision (default: `v1`). Change via `[V]` menu o
 - **Final Peer Rankings**: Scores from shuffle+blind mode (excluding self-ratings)
 - **Elo Ratings**: Pairwise comparison rankings with W-L-T records and rank comparison
 - **Bias Analysis**: Three bias types with Position Bias table and Model Bias table
+- **Ablation Study**: Effect of bias correction with TFQ ground truth validation
 - **Judge Generosity**: How lenient/strict each model judges
 - **Judge Agreement Matrix**: Pairwise correlation between judges' scoring patterns
 - **Question Autopsy**: Hardest, easiest, most controversial, and consensus questions
@@ -298,6 +299,42 @@ Phase 3 saves checkpoints after each mode completes. If interrupted:
 - On restart, Phase 3 detects incomplete checkpoint and resumes from next mode
 - Already-completed modes are skipped (e.g., if `shuffle_only` finished, resumes with `blind_only`)
 - Progress shown: `[RESUME] Found checkpoint with 1/3 modes complete`
+
+## Ablation Study (Phase 4)
+
+Phase 4 includes an ablation study showing the effect of bias correction on alignment with ground truth.
+
+**No Correction Formula:**
+```
+No Correction = Peer + Name Bias + Position Bias
+```
+This reconstructs what scores would look like without any bias correction (raw scores with all biases present).
+
+**Ablation Table:**
+| # | Model | No Corr | +Name | +Pos | =Bias | Peer | P# | Δ |
+|---|-------|---------|-------|------|-------|------|----|----|
+| 1 | gpt-5.2 | 9.19 | +0.14 | +0.35 | +0.48 | 8.71 | 2 | +1 |
+
+- **No Corr**: Uncorrected score (with all biases)
+- **+Name/+Pos**: Individual bias contributions
+- **=Bias**: Total bias (Name + Position)
+- **Peer**: Bias-corrected score
+- **Δ**: Peer rank − Uncorrected rank (positive = correction helped)
+
+**TFQ Ground Truth Validation:**
+
+Reads baseline correlation from `data/TRUTH/TFQ_validation_report_TFQ.md` and compares:
+
+| Metric | PeerRank (corrected) | No Correction | Δ |
+|--------|---------------------|---------------|-----|
+| Pearson *r* | 0.858 | 0.573 | +0.285 |
+| Spearman *ρ* | 0.916 | 0.491 | +0.425 |
+
+**Interpretation:** Bias correction improves correlation with ground truth by +0.285 (Pearson), demonstrating that removing position and name biases produces rankings more aligned with objective accuracy.
+
+**Functions** (in `peerrank_phase4.py`):
+- `_load_tfq_validation()` - Loads TFQ truth scores and baseline correlation from validation report
+- `_calculate_ablation_study(bias_analysis, peer_data)` - Computes No Correction scores and TFQ correlations
 
 ## Cost Tracking (Jan 2026)
 
