@@ -12,6 +12,7 @@ from peerrank.config import (
     calculate_judge_agreement, calculate_question_stats,
     calculate_elo_ratings, ELO_K_FACTOR,
     _pearson_correlation, _spearman_correlation,
+    PROVIDER_MAP, get_short_name,
 )
 
 
@@ -217,12 +218,11 @@ def _calculate_ablation_study(bias_analysis: list, peer_data: list) -> dict | No
             nc_pearson = _pearson_correlation(nc_scores, truth_scores)
             nc_spearman = _spearman_correlation(nc_scores, truth_scores)
 
-            # Calculate p-values using scipy
-            from scipy.stats import pearsonr, spearmanr
-            _, peer_p_pearson = pearsonr(peer_scores, truth_scores)
-            _, peer_p_spearman = spearmanr(peer_scores, truth_scores)
-            _, nc_p_pearson = pearsonr(nc_scores, truth_scores)
-            _, nc_p_spearman = spearmanr(nc_scores, truth_scores)
+            # Calculate p-values using scipy (stats already imported at module level)
+            _, peer_p_pearson = stats.pearsonr(peer_scores, truth_scores)
+            _, peer_p_spearman = stats.spearmanr(peer_scores, truth_scores)
+            _, nc_p_pearson = stats.pearsonr(nc_scores, truth_scores)
+            _, nc_p_spearman = stats.spearmanr(nc_scores, truth_scores)
 
             ablation_result["tfq_validation"] = {
                 "n_models": len(matched_models),
@@ -349,20 +349,6 @@ def _welch_ttest(group1: list, group2: list) -> tuple:
 
 def _calculate_provider_clustering(evaluations: dict) -> dict | None:
     """Compute Kruskal-Wallis test for peer scores grouped by provider."""
-    # Provider mapping from model names
-    PROVIDER_MAP = {
-        'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
-        'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
-        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
-        'gemini-3-flash-preview': 'Google', 'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
-        'grok-4-1-fast': 'xAI',
-        'deepseek-chat': 'DeepSeek',
-        'llama-4-maverick': 'Meta',
-        'sonar-pro': 'Perplexity',
-        'kimi-k2-0905': 'Moonshot',
-        'mistral-large': 'Mistral',
-    }
-
     models = list(evaluations.keys())
     scores = calculate_scores_from_evaluations(evaluations)
 
@@ -845,14 +831,6 @@ def phase4_generate_report() -> str:
         r.append("\n## Home Advantage Analysis\n")
         r.append("Do models perform better on questions they generated? (Peer scores, excluding self-evaluation)\n")
 
-        # Short name helper
-        def short_name(m):
-            shortcuts = {"gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-preview": "gem-3-flash",
-                         "claude-opus-4-5": "opus-4.5", "claude-sonnet-4-5": "sonnet-4.5",
-                         "llama-4-maverick": "llama-4", "deepseek-chat": "deepseek",
-                         "kimi-k2-0905": "kimi", "grok-4-1-fast": "grok-4", "mistral-large": "mistral"}
-            return shortcuts.get(m, m)[:12]
-
         # Results table
         ha_rows = []
         for res in home_adv["results"]:
@@ -863,7 +841,7 @@ def phase4_generate_report() -> str:
                 elif res["p_value"] < 0.05: sig = "*"
             d_str = f"{res['cohens_d']:+.2f}" if res["cohens_d"] else "—"
             ha_rows.append([
-                short_name(res["model"]),
+                get_short_name(res["model"]),
                 f"{res['own_avg']:.2f}",
                 f"{res['other_avg']:.2f}",
                 f"{res['diff']:+.2f}",
@@ -892,7 +870,7 @@ def phase4_generate_report() -> str:
             r.append("\n### Question Difficulty by Source\n")
             r.append("Average peer score on questions from each model (lower = harder questions):\n")
             sorted_diff = sorted(home_adv["source_difficulty"].items(), key=lambda x: x[1])
-            diff_rows = [[short_name(src), f"{score:.2f}"] for src, score in sorted_diff]
+            diff_rows = [[get_short_name(src), f"{score:.2f}"] for src, score in sorted_diff]
             r.append(format_table(["Source Model", "Avg Score"], diff_rows, ['l', 'r']))
 
     # Question Autopsy - flatten questions_by_model into a list

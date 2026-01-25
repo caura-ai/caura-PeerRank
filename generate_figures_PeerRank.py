@@ -22,6 +22,7 @@ from scipy import stats
 from peerrank.config import (
     calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats,
     calculate_elo_ratings, _pearson_correlation, _spearman_correlation,
+    PROVIDER_MAP,
 )
 
 # =============================================================================
@@ -1316,21 +1317,6 @@ def main():
 
 def compute_provider_clustering(data: dict) -> str:
     """Compute Kruskal-Wallis test for peer scores grouped by provider."""
-
-    # Provider mapping from model names
-    PROVIDER_MAP = {
-        'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
-        'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
-        'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
-        'gemini-2.5-pro': 'Google', 'gemini-2.5-flash': 'Google',
-        'grok-4-1-fast': 'xAI',
-        'deepseek-chat': 'DeepSeek',
-        'llama-4-maverick': 'Meta',
-        'sonar-pro': 'Perplexity',
-        'kimi-k2-0905': 'Moonshot',
-        'mistral-large': 'Mistral',
-    }
-
     evaluations = data['phase3'].get('evaluations', {})
     models = list(evaluations.keys())
     scores = calculate_scores_from_evaluations(evaluations, models)
