@@ -103,7 +103,7 @@ TAVILY_COST_PER_SEARCH = 0.008
 # Web search limits (to control costs)
 ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request
 OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high"
-GOOGLE_THINKING_BUDGET = -1  # -1=dynamic, 0=disable, N=fixed budget
+GOOGLE_THINKING_BUDGET = 8192  # -1=dynamic, N=fixed budget (0 invalid for thinking models)
 
 # Evaluation settings
 NUM_QUESTIONS = 2
@@ -181,6 +181,33 @@ ALL_MODELS = [
 ]
 MODELS = ALL_MODELS.copy()
 
+# Model display name to provider mapping (for figures and analysis)
+PROVIDER_MAP = {
+    'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+    'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
+    'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
+    'grok-4-1-fast': 'xAI',
+    'deepseek-chat': 'DeepSeek',
+    'llama-4-maverick': 'Meta',
+    'sonar-pro': 'Perplexity',
+    'kimi-k2-0905': 'Moonshot',
+    'mistral-large': 'Mistral',
+}
+
+# Short names for compact display
+MODEL_SHORTCUTS = {
+    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3-flash-preview': 'gem-3-flash',
+    'claude-opus-4-5': 'opus-4.5', 'claude-sonnet-4-5': 'sonnet-4.5',
+    'llama-4-maverick': 'llama-4', 'deepseek-chat': 'deepseek',
+    'kimi-k2-0905': 'kimi', 'grok-4-1-fast': 'grok-4', 'mistral-large': 'mistral',
+}
+
+
+def get_short_name(model: str, max_len: int = 12) -> str:
+    """Get short display name for a model."""
+    return MODEL_SHORTCUTS.get(model, model)[:max_len]
+
+
 # Google service account config (set via environment variables)
 _google_sa_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
 GOOGLE_SERVICE_ACCOUNT_FILE = Path(_google_sa_path) if _google_sa_path else None
@@ -193,7 +220,7 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 4,  # Reduced to avoid 429 rate limits
+    "google": 2,  # Reduced to avoid MAX_TOKENS errors with thinking models
     "grok": 8,
     "deepseek": 8,
     "together": 8,
