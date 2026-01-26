@@ -272,6 +272,10 @@ async def phase3_evaluate_answers() -> dict:
 
         # Incremental save after each mode for crash recovery
         revision = get_revision()
+        # Count native search models (excludes Tavily-only providers)
+        tavily_providers = ("deepseek", "together", "kimi")
+        native_count = sum(1 for p, _, _ in MODELS if p not in tavily_providers)
+
         partial_output = {
             "revision": revision,
             "timestamp": datetime.now().isoformat(),
@@ -279,6 +283,8 @@ async def phase3_evaluate_answers() -> dict:
             "duration_seconds": round(time.time() - phase_start, 2),
             "mode_durations": mode_durations,
             "bias_test_config": {"seed": seed, "modes": [m[0] for m in BIAS_MODES]},
+            "native_search": native_search,
+            "native_search_count": native_count if native_search else 0,
             "timing_stats_by_mode": all_timing,
             "evaluations_by_mode": all_evaluations,
             "complete": mode_name == "shuffle_blind",

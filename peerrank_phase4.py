@@ -480,8 +480,14 @@ def phase4_generate_report() -> str:
     revision = get_revision()
     web_search_enabled = phase2.get("web_search", True)
     web_search_status = "ON" if web_search_enabled else "OFF"
+
+    # Phase 3 native search status
+    p3_native_search = phase3.get("native_search", False)
+    p3_native_count = phase3.get("native_search_count", 0)
+    p3_search_status = f"ON ({p3_native_count}/{len(MODELS)} models)" if p3_native_search else "OFF"
+
     r = [f"# PeerRank.ai LLM Evaluation Report\n\nRevision: **{revision}** | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-         f"\nModels evaluated: {len(MODELS)} | Questions: {len(stats['questions'])} | Web search: **{web_search_status}**"]
+         f"\nModels evaluated: {len(MODELS)} | Questions: {len(stats['questions'])} | P2 web search: **{web_search_status}** | P3 native search: **{p3_search_status}**"]
 
     # Model Order (fixed initial order used in blind_only mode)
     # Web mode by provider: how each model gets web search capability
@@ -969,11 +975,16 @@ def phase4_generate_report() -> str:
     chart.extend(["                    └─────────────────────────┘    │    └─────────────────────────┘", "```"])
     r.append("\n## Performance Overview\n" + "\n".join(chart))
 
-    # Methodology
-    r.append("""\n---\n## Methodology
+    # Methodology (dynamic based on settings)
+    p2_web_note = "with web search" if web_search_enabled else "without web search"
+    p3_search_note = ""
+    if p3_native_search:
+        p3_search_note = f"\n  - **Native search ON**: {p3_native_count} models can fact-check responses (Tavily models evaluate without search)"
+
+    r.append(f"""\n---\n## Methodology
 - Phase 1: Each model generates questions across categories
-- Phase 2: All models answer all questions with web search enabled
-- Phase 3: Each model evaluates all responses in 3 modes:
+- Phase 2: All models answer all questions {p2_web_note}
+- Phase 3: Each model evaluates all responses in 3 modes:{p3_search_note}
   - Shuffle Only: Randomized order, real model names shown
   - Blind Only: Fixed order, model names hidden (Response A, B, C...)
   - Shuffle + Blind: Randomized order + hidden names (baseline Peer score)
