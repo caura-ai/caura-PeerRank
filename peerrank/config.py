@@ -9,6 +9,11 @@ from statistics import mean, stdev
 
 from dotenv import load_dotenv
 
+from .models import ALL_MODELS
+
+# Derived from ALL_MODELS
+TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
+
 load_dotenv(override=True)
 
 # Paths and constants
@@ -61,41 +66,6 @@ MODEL_TEMPERATURE_OVERRIDES = {
 # Efficiency calculation exponent - rewards higher peer scores
 # 1.0 = linear, 1.5 = moderate score bonus, 2.0 = strong score bonus
 EFFICIENCY_QUALITY_EXPONENT = 2
-
-# Token costs per million tokens (input, output) - Updated Jan 2026
-# Format: model_id -> (input_cost_per_1M, output_cost_per_1M)
-TOKEN_COSTS = {
-    # OpenAI
-    "gpt-5.2": (1.75, 14.00),
-    "gpt-5-mini": (0.25, 2.00),
-
-    # Anthropic (with prompt caching, cache reads are 90% off: $0.50/M)
-    "claude-opus-4-5": (5.00, 25.00),
-    "claude-sonnet-4-5": (3.00, 15.00),
-
-    # Google Gemini
-    "gemini-3-pro-preview": (2.00, 12.00),  # Base price, up to $4/$18 for long context    
-    "gemini-3-flash-preview": (0.50, 3.00),  # Flash   
-    
-
-    # xAI
-    "grok-4-1-fast": (0.60, 3.00),
-
-    # DeepSeek (with auto caching: cache hit $0.028/M, cache miss $0.28/M)
-    "deepseek-chat": (0.28, 0.42),
-
-    # Together AI
-    "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8": (0.27, 0.27),
-
-    # Perplexity (includes native web search)
-    "sonar-pro": (3.00, 15.00),
-
-    # Moonshot AI (Kimi) - with auto caching: cache hit $0.15/M
-    "kimi-k2-0905-preview": (0.60, 2.50),  # K2 model (256K context)    
-
-    # Mistral AI
-    "mistral-large-latest": (2.00, 6.00),  # Mistral Large (128K context)
-}
 
 # Tavily search cost (basic search = 1 credit = $0.008)
 TAVILY_COST_PER_SEARCH = 0.008
@@ -164,22 +134,9 @@ ALL_CATEGORIES = [
 ]
 CATEGORIES = ALL_CATEGORIES.copy()
 
-# Models: (provider, model_id, display_name)
-ALL_MODELS = [
-    ("openai", "gpt-5.2", "gpt-5.2"),
-    ("openai", "gpt-5-mini", "gpt-5-mini"),
-    ("anthropic", "claude-opus-4-5", "claude-opus-4-5"),
-    ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
-    ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
-    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),       
-    ("grok", "grok-4-1-fast", "grok-4-1-fast"),
-    ("deepseek", "deepseek-chat", "deepseek-chat"),
-    ("together", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "llama-4-maverick"),
-    ("perplexity", "sonar-pro", "sonar-pro"),
-    ("kimi", "kimi-k2-0905-preview", "kimi-k2-0905"),
-    ("mistral", "mistral-large-latest", "mistral-large"),
-]
-MODELS = ALL_MODELS.copy()
+# Active models for PeerRank (tuple format for backward compat)
+PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
+MODELS = PEERRANK_MODELS.copy()
 
 # Model display name to provider mapping (for figures and analysis)
 PROVIDER_MAP = {
@@ -232,7 +189,7 @@ PROVIDER_CONCURRENCY = {
 
 def set_active_models(include: list[str] | None = None, exclude: list[str] | None = None):
     """Filter which models participate in the run."""
-    filtered = ALL_MODELS.copy()
+    filtered = PEERRANK_MODELS.copy()
     if include:
         include_lower = [m.lower() for m in include]
         filtered = [m for m in filtered if m[2].lower() in include_lower]
@@ -245,7 +202,7 @@ def set_active_models(include: list[str] | None = None, exclude: list[str] | Non
 
 
 def list_available_models() -> list[str]:
-    return [m[2] for m in ALL_MODELS]
+    return [m[2] for m in PEERRANK_MODELS]
 
 
 def set_active_categories(include: list[str] | None = None, exclude: list[str] | None = None):
