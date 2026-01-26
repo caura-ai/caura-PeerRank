@@ -91,8 +91,9 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 
 ```
 peerrank/                      # Core package (pip installable)
-  __init__.py                  # Package exports (config, providers)
-  config.py                    # Settings, model configs, utilities
+  __init__.py                  # Package exports (config, models, providers)
+  models.py                    # Model definitions and pricing (ALL_MODELS)
+  config.py                    # Settings, utilities, derived model lists
   providers.py                 # LLM API calls with web search
 peerrank.py                    # CLI entry point
 peerrank_ui.py                 # Streamlit UI (live comparison)
@@ -169,24 +170,38 @@ Configuration:
 
 ## Models
 
+Defined in `peerrank/models.py`. Each model has:
+- `peerrank`: Whether model participates in PeerRank evaluation
+- `provider`: API provider name
+- `model_id`: API model identifier
+- `name`: Display name
+- `cost`: (input_cost_per_1M, output_cost_per_1M) in USD
+
 ```python
+# peerrank/models.py
 ALL_MODELS = [
-    ("openai", "gpt-5.2", "gpt-5.2"),
-    ("openai", "gpt-5-mini", "gpt-5-mini"),
-    ("anthropic", "claude-opus-4-5", "claude-opus-4-5"),
-    ("anthropic", "claude-sonnet-4-5", "claude-sonnet-4-5"),
-    ("google", "gemini-3-pro-preview", "gemini-3-pro-preview"),
-    ("google", "gemini-3-flash-preview", "gemini-3-flash-preview"),
-    ("grok", "grok-4-1-fast", "grok-4-1-fast"),
-    ("deepseek", "deepseek-chat", "deepseek-chat"),
-    ("together", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "llama-4-maverick"),
-    ("perplexity", "sonar-pro", "sonar-pro"),
-    ("kimi", "kimi-k2-0905-preview", "kimi-k2-0905"),
-    ("mistral", "mistral-large-latest", "mistral-large"),
+    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
+    {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-5", "name": "claude-opus-4-5", "cost": (5.00, 25.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-5", "name": "claude-sonnet-4-5", "cost": (3.00, 15.00)},
+    {"peerrank": True, "provider": "google", "model_id": "gemini-3-pro-preview", "name": "gemini-3-pro-preview", "cost": (2.00, 12.00)},
+    {"peerrank": True, "provider": "google", "model_id": "gemini-3-flash-preview", "name": "gemini-3-flash-preview", "cost": (0.50, 3.00)},
+    {"peerrank": True, "provider": "grok", "model_id": "grok-4-1-fast", "name": "grok-4-1-fast", "cost": (0.60, 3.00)},
+    {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-chat", "name": "deepseek-chat", "cost": (0.28, 0.42)},
+    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "name": "llama-4-maverick", "cost": (0.27, 0.27)},
+    {"peerrank": True, "provider": "perplexity", "model_id": "sonar-pro", "name": "sonar-pro", "cost": (3.00, 15.00)},
+    {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2-0905-preview", "name": "kimi-k2-0905", "cost": (0.60, 2.50)},
+    {"peerrank": True, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
+    # Non-PeerRank models (for cost tracking only)
+    {"peerrank": False, "provider": "openai", "model_id": "gpt-5.1", "name": "gpt-5.1", "cost": (1.25, 10.00)},
 ]
+
+# Derived in config.py:
+TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
+PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
 ```
 
-Total: **12 models** across 8 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral)
+Total: **12 active models** across 8 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral)
 
 ## Categories
 
@@ -340,47 +355,15 @@ Reads baseline correlation from `data/TRUTH/TFQ_validation_report_TFQ.md` and co
 
 ## Cost Tracking (Jan 2026)
 
-**Token Costs**: Defined in `peerrank/config.py` - `TOKEN_COSTS` dictionary with input/output pricing per million tokens
+**Token Costs**: Defined in `peerrank/models.py` as part of `ALL_MODELS`, derived to `TOKEN_COSTS` dict in `config.py`.
 
-Updated Jan 2026 pricing for all models:
+Costs are stored in each model's `cost` field as `(input_cost_per_1M, output_cost_per_1M)`:
 ```python
-TOKEN_COSTS = {
-    # OpenAI
-    "gpt-5.2": (1.75, 14.00),
-    "gpt-5-mini": (0.25, 2.00),
+# In models.py - cost is part of each model definition
+{"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
 
-    # Anthropic (with prompt caching, cache reads are 90% off)
-    "claude-opus-4-5": (5.00, 25.00),
-    "claude-sonnet-4-5": (3.00, 15.00),
-
-    # Google Gemini
-    "gemini-3-pro-preview": (2.00, 12.00),  # Base price
-    "gemini-3-flash-preview": (0.50, 3.00),
-    "gemini-3-flash-preview": (0.50, 3.00),  # Flash with thinking=high
-    "gemini-2.5-pro": (1.25, 10.00),     # Smart "Thinking" model
-    "gemini-2.5-flash": (0.15, 0.60),    # Fast "Workhorse" model
-
-    # xAI
-    "grok-4-1-fast": (0.60, 3.00),
-
-    # DeepSeek (with auto caching)
-    "deepseek-chat": (0.28, 0.42),
-
-    # Together AI
-    "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8": (0.27, 0.27),
-
-    # Perplexity (includes native web search)
-    "sonar-pro": (3.00, 15.00),
-
-    # Moonshot AI (Kimi) - with auto caching
-    "kimi-k2-0905-preview": (0.60, 2.50),
-    "kimi-k2-0711-preview": (0.60, 2.50),
-    "kimi-k2-turbo-preview": (1.15, 8.00),
-    "kimi-k2-thinking": (0.60, 2.50),
-
-    # Mistral AI
-    "mistral-large-latest": (2.00, 6.00),
-}
+# In config.py - derived lookup
+TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
 ```
 
 **Phase 2 Tracking**:
@@ -779,10 +762,9 @@ Contributions are welcome! Please:
 
 ### Adding a New Provider
 
-1. Add provider config to `ALL_MODELS` in `peerrank/config.py`
+1. Add model entry to `ALL_MODELS` in `peerrank/models.py` (includes provider, model_id, name, and cost)
 2. Implement `call_{provider}()` in `peerrank/providers.py`
-3. Add token costs to `TOKEN_COSTS` in `peerrank/config.py`
-4. Update the health check in `peerrank.py`
+3. Update the health check in `peerrank.py`
 
 ## License
 

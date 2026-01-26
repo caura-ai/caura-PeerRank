@@ -155,7 +155,8 @@ data/
 ```
 peerrank/                # Core package (pip installable)
   __init__.py            # Package exports
-  config.py              # Settings, model configs, utilities
+  models.py              # Model definitions and pricing
+  config.py              # Settings and utilities
   providers.py           # LLM API implementations
 peerrank.py              # CLI entry point
 peerrank_ui.py           # Streamlit web interface
@@ -206,9 +207,8 @@ Contributions welcome! Please:
 
 ### Adding a New Provider
 
-1. Add model config to `ALL_MODELS` in `peerrank/config.py`
+1. Add model entry to `ALL_MODELS` in `peerrank/models.py` (includes provider, model_id, name, and cost)
 2. Implement `call_{provider}()` in `peerrank/providers.py`
-3. Add token costs to `TOKEN_COSTS` in `peerrank/config.py`
 
 ## License
 
