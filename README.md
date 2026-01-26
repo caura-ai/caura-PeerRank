@@ -13,7 +13,7 @@
 - **Web Search Integration** — Native search for most providers, Tavily fallback for others
 - **Cost Tracking** — Real-time token usage and cost analysis per model
 - **Publication Figures** — Generate publication-quality charts and statistical analysis
-- **TruthfulQA Validation** — Correlate peer rankings with ground truth accuracy
+- **Ground Truth Validation** — TruthfulQA (r=0.858) and GSM8K (r=0.986) correlation with accuracy
 
 ## Quick Start
 
@@ -143,7 +143,9 @@ data/
 ### Sample Report Sections
 
 - **Final Peer Rankings** — Scores from blind+shuffled evaluation
+- **Elo Ratings** — Pairwise comparison rankings with W-L-T records
 - **Bias Analysis** — Self-bias, name bias, and position bias metrics
+- **Ablation Study** — Effect of bias correction on ground truth correlation
 - **Judge Generosity** — Which models rate harshly vs. leniently
 - **Performance vs. Cost** — Efficiency rankings (Points²/¢)
 - **Question Autopsy** — Hardest, easiest, and most controversial questions
@@ -174,16 +176,21 @@ pip install .[figures]              # Include figure generation
 pip install .[all]                  # All optional dependencies
 ```
 
-## TruthfulQA Validation
+## Ground Truth Validation
 
-Validate peer rankings against ground truth:
+Validate peer rankings against objective benchmarks:
 
 ```bash
-python validate_truthfulqa.py --all              # Run validation pipeline
-python generate_figures_TFQ.py        # Generate correlation figures
+# TruthfulQA - factual accuracy
+python validate_truthfulqa.py --all       # Run validation (r=0.858)
+python generate_figures_TFQ.py            # Generate figures
+
+# GSM8K - mathematical reasoning
+python validate_gsm8k.py --all            # Run validation (r=0.986)
+python validate_gsm8k.py --difficulty hard  # Hard questions only
 ```
 
-Computes Pearson/Spearman correlation between peer scores and TruthfulQA accuracy.
+**Ablation Study**: Bias correction improves correlation with ground truth by +0.285 (Pearson).
 
 ## Contributing
 
