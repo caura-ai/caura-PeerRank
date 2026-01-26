@@ -304,6 +304,8 @@ Phase 3 saves checkpoints after each mode completes. If interrupted:
 
 Phase 4 includes an ablation study showing the effect of bias correction on alignment with ground truth.
 
+**Prerequisite:** Run `python validate_truthfulqa.py --all` before Phase 4 to generate `data/TRUTH/TFQ_validation_report_TFQ.md`. Phase 4 reads the baseline correlation (r=0.858) from this file for the ablation comparison.
+
 **No Correction Formula:**
 ```
 No Correction = Peer + Name Bias + Position Bias

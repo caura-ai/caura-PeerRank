@@ -181,7 +181,7 @@ pip install .[all]                  # All optional dependencies
 Validate peer rankings against objective benchmarks:
 
 ```bash
-# TruthfulQA - factual accuracy
+# TruthfulQA - factual accuracy (run BEFORE peerrank phase 4)
 python validate_truthfulqa.py --all       # Run validation (r=0.858)
 python generate_figures_TFQ.py            # Generate figures
 
@@ -189,6 +189,8 @@ python generate_figures_TFQ.py            # Generate figures
 python validate_gsm8k.py --all            # Run validation (r=0.986)
 python validate_gsm8k.py --difficulty hard  # Hard questions only
 ```
+
+> **Note:** Run `validate_truthfulqa.py` before `peerrank.py --phase 4`. Phase 4's ablation study reads the baseline correlation from `data/TRUTH/TFQ_validation_report_TFQ.md`.
 
 **Ablation Study**: Bias correction improves correlation with ground truth by +0.285 (Pearson).
 
