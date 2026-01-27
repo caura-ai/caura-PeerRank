@@ -92,9 +92,7 @@ def set_web_grounding_provider(provider: str):
         raise ValueError(f"Invalid provider: {provider}. Must be 'tavily' or 'serpapi'")
     WEB_GROUNDING_PROVIDER = provider.lower()
 
-# Web search limits (to control costs)
-ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request
-OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low"  # "low", "medium", "high"
+# Google thinking budget
 GOOGLE_THINKING_BUDGET = 8192  # -1=dynamic, N=fixed budget (0 invalid for thinking models)
 
 # Evaluation settings

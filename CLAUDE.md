@@ -141,7 +141,9 @@ Files are tagged with user-set revision (default: `v1`). Change via `[V]` menu o
 
 ## Report Sections (Phase 4)
 
-- **Model Order**: Fixed presentation order (1-10) used in blind evaluation
+Report header shows: `Models evaluated: 12 | Questions: 48 | P2 grounding: **ON (TAVILY)** | P3 grounding: **OFF**`
+
+- **Model Order**: Fixed position order for active peerrank models (used in blind evaluation)
 - **Phase Timing**: Duration of each phase with Phase 3 mode breakdown
 - **Question Analysis**: By category, by source model, category coverage matrix
 - **Answer/Evaluation Response Time**: Average response time per model
@@ -759,9 +761,9 @@ MAX_RETRIES = 5                 # Number of retry attempts
 RETRY_DELAY = 4                 # Base delay between retries (exponential backoff)
 ```
 
-### Debug Flags
+### Google Thinking Budget
 ```python
-TAVILY_DEBUG = True             # Verbose logging for Tavily search augmentation
+GOOGLE_THINKING_BUDGET = 8192   # -1=dynamic, N=fixed budget (0 invalid for thinking models)
 ```
 
 ### Provider Concurrency

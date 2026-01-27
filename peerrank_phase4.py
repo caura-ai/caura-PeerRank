@@ -7,8 +7,8 @@ from statistics import mean, stdev
 from scipy import stats
 
 from peerrank.config import (
-    MODELS, ALL_MODELS, DATA_DIR, load_json, format_duration, get_revision,
-    format_table, match_model_name, calculate_scores_from_evaluations,
+    MODELS, DATA_DIR, load_json, format_duration, get_revision,
+    format_table, calculate_scores_from_evaluations,
     calculate_judge_agreement, calculate_question_stats,
     calculate_elo_ratings, ELO_K_FACTOR,
     _pearson_correlation, _spearman_correlation,
@@ -479,31 +479,20 @@ def phase4_generate_report() -> str:
 
     revision = get_revision()
     web_search_enabled = phase2.get("web_search", True)
-    web_search_status = "ON" if web_search_enabled else "OFF"
+    grounding_provider = phase2.get("web_grounding_provider", "tavily").upper() if web_search_enabled else None
+    web_search_status = f"ON ({grounding_provider})" if web_search_enabled else "OFF"
 
-    # Phase 3 native search status
-    p3_native_search = phase3.get("native_search", False)
-    p3_native_count = phase3.get("native_search_count", 0)
-    p3_search_status = f"ON ({p3_native_count}/{len(MODELS)} models)" if p3_native_search else "OFF"
+    # Phase 3 web grounding status (reuses Phase 2 grounding data)
+    p3_web_grounding = phase3.get("web_grounding", False)
+    p3_grounding_count = phase3.get("web_grounding_count", 0)
+    p3_search_status = f"ON ({p3_grounding_count} questions)" if p3_web_grounding else "OFF"
 
     r = [f"# PeerRank.ai LLM Evaluation Report\n\nRevision: **{revision}** | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-         f"\nModels evaluated: {len(MODELS)} | Questions: {len(stats['questions'])} | P2 web search: **{web_search_status}** | P3 native search: **{p3_search_status}**"]
+         f"\nModels evaluated: {len(MODELS)} | Questions: {len(stats['questions'])} | P2 grounding: **{web_search_status}** | P3 grounding: **{p3_search_status}**"]
 
-    # Model Order (fixed initial order used in blind_only mode)
-    # Web mode by provider: how each model gets web search capability
-    web_mode_by_provider = {
-        "openai": "Tool",      # Responses API web_search tool
-        "anthropic": "Tool",   # web-search-2025-03-05 beta
-        "google": "Tool",      # google_search tool
-        "grok": "Tool",        # xAI SDK web_search + x_search
-        "mistral": "Agents",   # Native Agents API web_search connector
-        "deepseek": "Tavily",  # Tavily search augmentation
-        "together": "Tavily",  # Tavily search augmentation
-        "perplexity": "Native", # Built-in to Sonar models
-        "kimi": "Tavily",      # Tavily search augmentation
-    }
-    model_order = [f"{i}. {n} ({web_mode_by_provider.get(p, '?')})" for i, (p, _, n) in enumerate(ALL_MODELS, 1)]
-    r.append(f"\n## Model Order and Web Mode\n\n" + "\n".join(model_order))
+    # Model Order (fixed position used in blind_only mode)
+    model_order = [f"{i}. {n}" for i, (_, _, n) in enumerate(MODELS, 1)]
+    r.append(f"\n## Model Order\n\nFixed position order used in blind evaluation mode:\n\n" + "\n".join(model_order))
 
     # Timing
     mode_durations = phase3.get("mode_durations", {})
@@ -976,15 +965,15 @@ def phase4_generate_report() -> str:
     r.append("\n## Performance Overview\n" + "\n".join(chart))
 
     # Methodology (dynamic based on settings)
-    p2_web_note = "with web search" if web_search_enabled else "without web search"
-    p3_search_note = ""
-    if p3_native_search:
-        p3_search_note = f"\n  - **Native search ON**: {p3_native_count} models can fact-check responses (Tavily models evaluate without search)"
+    p2_web_note = "with standardized web grounding (current events only)" if web_search_enabled else "without web grounding"
+    p3_grounding_note = ""
+    if p3_web_grounding:
+        p3_grounding_note = f"\n  - **Web grounding ON**: Evaluators receive Phase 2 grounding context ({p3_grounding_count} questions)"
 
     r.append(f"""\n---\n## Methodology
 - Phase 1: Each model generates questions across categories
 - Phase 2: All models answer all questions {p2_web_note}
-- Phase 3: Each model evaluates all responses in 3 modes:{p3_search_note}
+- Phase 3: Each model evaluates all responses in 3 modes:{p3_grounding_note}
   - Shuffle Only: Randomized order, real model names shown
   - Blind Only: Fixed order, model names hidden (Response A, B, C...)
   - Shuffle + Blind: Randomized order + hidden names (baseline Peer score)
