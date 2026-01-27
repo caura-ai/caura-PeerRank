@@ -15,7 +15,7 @@ ALL_MODELS = [
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-chat", "name": "deepseek-chat", "cost": (0.28, 0.42)},
     {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "name": "llama-4-maverick", "cost": (0.27, 0.27)},
     {"peerrank": True, "provider": "perplexity", "model_id": "sonar-pro", "name": "sonar-pro", "cost": (3.00, 15.00)},
-    {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2-0905-preview", "name": "kimi-k2-0905", "cost": (0.60, 2.50)},
+    {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
     {"peerrank": True, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
     {"peerrank": False, "provider": "openai", "model_id": "gpt-5.1", "name": "gpt-5.1", "cost": (1.25, 10.00)},
     {"peerrank": False, "provider": "google", "model_id": "gemini-2.5-pro", "name": "gemini-2.5-pro", "cost": (1.25, 10.00)},
@@ -23,4 +23,5 @@ ALL_MODELS = [
     {"peerrank": False, "provider": "grok", "model_id": "grok-code-fast-1", "name": "grok-code-fast-1", "cost": (0.60, 3.00)},
     {"peerrank": False, "provider": "anthropic", "model_id": "claude-haiku-4-5", "name": "claude-haiku-4-5", "cost": (0.20, 1.00)},
     {"peerrank": False, "provider": "openai", "model_id": "gpt-5-nano", "name": "gpt-5-nano", "cost": (0.05, 0.4)},
+    {"peerrank": False, "provider": "kimi", "model_id": "kimi-k2-0905-preview", "name": "kimi-k2-0905", "cost": (0.60, 2.50)},
 ]
