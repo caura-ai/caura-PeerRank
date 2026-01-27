@@ -8,7 +8,7 @@
 - **12 Models**: OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
 - **Bias Detection**: Measures self-bias, name bias, and position bias through controlled evaluation modes
 - **Elo Ratings**: Alternative ranking via pairwise comparisons (K=32, excludes self-evaluations)
-- **Web Search Integration**: Native search support for most providers, Tavily fallback for others
+- **Standardized Web Grounding**: Single search per question via Tavily or SerpAPI, identical context for all models (fair comparison)
 - **Cost Tracking**: Real-time token usage and cost analysis per model
 - **Publication Figures**: Generate publication-quality charts and statistical analysis
 - **TruthfulQA Validation**: Correlate peer rankings with ground truth accuracy
@@ -53,10 +53,12 @@ python peerrank.py --exclude gemini-3-pro-preview      # Exclude these models
 python peerrank.py --categories factual,reasoning      # Include only these categories
 python peerrank.py --exclude-categories creative       # Exclude these categories
 python peerrank.py --seed 42    # Reproducible shuffle ordering for Phase 3
-python peerrank.py --web-search on   # Enable Phase 2 web search (default)
-python peerrank.py --web-search off  # Disable Phase 2 web search (test knowledge only)
-python peerrank.py --web-search-3 on # Enable Phase 3 web search (fact-checking)
-python peerrank.py --web-search-3 off # Disable Phase 3 web search (default)
+python peerrank.py --web-search on   # Enable Phase 2 web grounding (default)
+python peerrank.py --web-search off  # Disable Phase 2 web grounding (test knowledge only)
+python peerrank.py --web-search-3 on # Enable Phase 3 web grounding (reuse Phase 2 data)
+python peerrank.py --web-search-3 off # Disable Phase 3 web grounding (default)
+python peerrank.py --grounding-provider tavily  # Use Tavily for grounding (default)
+python peerrank.py --grounding-provider serpapi # Use SerpAPI for grounding
 python peerrank.py --judge gpt-5.2   # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
@@ -72,16 +74,17 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 ```
   Revision: v1  |  Progress: 0/5
   Models: 3/12  |  Categories: 5/5  |  Questions: 2/model
-  P2: web=ON  |  P3: seed=rand, native-search=OFF  |  P5: gpt-5.2
+  P2: web=ON  |  P3: seed=rand, web-grounding=OFF  |  P5: gpt-5.2
+  Grounding: TAVILY
 
   --- Run ---
   [1-5] Run phase    [A] All    [R] Resume    [H] Health check
 
   --- Setup ---
-  [M] Models         [C] Categories    [N] Questions    [V] Revision
+  [V] Revision    [M] Models    [N] Questions    [C] Categories    [S] Search provider
 
   --- Phase Settings ---
-  [W] P2 web search  [D] P3 seed       [G] P3 native search
+  [W] P2 web grounding  [D] P3 seed    [G] P3 web grounding
   [J] P5 judge
 
   [Q] Quit
@@ -94,7 +97,7 @@ peerrank/                      # Core package (pip installable)
   __init__.py                  # Package exports (config, models, providers)
   models.py                    # Model definitions and pricing (ALL_MODELS)
   config.py                    # Settings, utilities, derived model lists
-  providers.py                 # LLM API calls with web search
+  providers.py                 # LLM API calls with grounding injection
 peerrank.py                    # CLI entry point
 peerrank_ui.py                 # Streamlit UI (live comparison)
 peerrank_phase1.py             # Question generation
@@ -110,6 +113,7 @@ pyproject.toml                 # Package configuration for pip install
 data/
   phase1_questions_{rev}.json
   phase2_answers_{rev}.json
+  phase2_web_grounding_{rev}.json  # Tavily grounding for current events
   phase3_rankings_{rev}.json
   phase4_report_{rev}.md
   phase5_analysis_{rev}.md
@@ -220,13 +224,15 @@ Filter by keyword: `--categories factual,logic` matches categories containing th
 ## Provider Implementations
 
 All calls route through `call_llm()` in `peerrank/providers.py`:
-- **OpenAI**: Responses API for web search, Chat Completions otherwise
-- **Anthropic**: web-search-2025-03-05 beta header
-- **Google**: Vertex AI (service account) or API key with google_search tool
-- **Perplexity**: Native web search in Sonar models
-- **Grok**: Native xAI SDK with web_search + x_search tools
-- **Mistral**: Native Agents API with web_search connector
-- **DeepSeek/Together/Kimi**: Tavily search augmentation
+- **Standardized Grounding**: All providers receive pre-fetched Tavily grounding via `grounding_text` parameter
+- **No Native Search**: Native web search removed from all providers for fair comparison
+- **Grounding Injection**: OpenAI/Anthropic/Mistral use system message; Google/Grok prepend to prompt
+- **Perplexity Note**: sonar-pro is inherently search-augmented (cannot be disabled), so it may have additional context
+
+```python
+# All providers follow this pattern:
+call_llm(provider, model, prompt, grounding_text="...")  # Injects as system context
+```
 
 ## API Keys
 
@@ -244,8 +250,9 @@ PERPLEXITY_API_KEY=pplx-...
 KIMI_API_KEY=sk-...
 MISTRAL_API_KEY=...
 
-# Required for web search with DeepSeek/Together/Kimi
-TAVILY_API_KEY=tvly-...
+# Web grounding providers (only need one)
+TAVILY_API_KEY=tvly-...      # Tavily: $0.008/search
+SERPAPI_API_KEY=...          # SerpAPI: ~$0.01/search
 ```
 
 You only need keys for the providers you want to test. Use `--models` to select specific models.
@@ -369,8 +376,16 @@ TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
 **Phase 2 Tracking**:
 - Each answer stores: `{text, input_tokens, output_tokens, cost}`
 - Real-time cost display: `(avg 2.34s/q, $0.0023/q)`
-- Output JSON includes: `cost_stats`, `total_cost`, `web_search` flag
+- Output JSON includes: `cost_stats`, `total_cost`, `web_grounding_provider`
 - Per-model tracking: total cost, input/output tokens, call count
+
+**Web Grounding Costs**:
+```python
+# In config.py
+TAVILY_COST_PER_SEARCH = 0.008    # $0.008 per search
+SERPAPI_COST_PER_SEARCH = 0.01   # ~$0.01 per search
+get_grounding_cost()              # Returns cost for current provider
+```
 
 **Phase 4 Report**:
 - **Answering API Cost Analysis**: Total costs, tokens, avg cost per question
@@ -386,44 +401,93 @@ calculate_cost(model_id: str, input_tokens: int, output_tokens: int) -> float
 ```
 Returns total cost in USD using TOKEN_COSTS pricing table
 
-**Provider Behavior**: All `call_llm()` calls return `(content, duration, input_tokens, output_tokens, tavily_cost)`
+**Provider Behavior**: All `call_llm()` calls return `(content, duration, input_tokens, output_tokens, reserved)`
+- The 5th element is reserved (always 0.0) for backwards compatibility
+- Tavily costs are tracked separately in Phase 2 grounding
 
-## Web Search Control (Phase 2)
+## Standardized Web Grounding (Phase 2)
 
-**Configuration**:
+Phase 2 uses **standardized web grounding** - one search per question via configurable provider, same context for all models.
+
+**Supported Providers**:
+| Provider | Cost | API Key Env Var | Notes |
+|----------|------|-----------------|-------|
+| **Tavily** (default) | $0.008/search | `TAVILY_API_KEY` | Fast, includes AI-generated answer summary |
+| **SerpAPI** | ~$0.01/search | `SERPAPI_API_KEY` | Google search results, answer boxes, knowledge graph |
+
+**How It Works**:
+1. Before LLM calls, search provider is queried once per question (current events category only)
+2. Grounding text is saved to `phase2_web_grounding_{rev}.json`
+3. Same grounding is injected to all models as system context
+4. Models answer with identical external knowledge (fair comparison)
+
+**Category Filtering**:
+- Only "current events (needs recent info)" questions get web grounding
+- Other categories (factual, reasoning, creative, how-to) use model knowledge only
+- ~80% cost savings vs grounding all questions
+
+**Provider Configuration**:
+- `WEB_GROUNDING_PROVIDER` in `peerrank/config.py` (default: "tavily")
+- Functions: `get_web_grounding_provider()` / `set_web_grounding_provider("tavily" | "serpapi")`
+- CLI: `python peerrank.py --grounding-provider tavily|serpapi`
+
+**Web Search Toggle**:
 - `PHASE2_WEB_SEARCH` global setting in `peerrank/config.py` (default: True)
 - Functions: `get_phase2_web_search()` / `set_phase2_web_search(enabled: bool)`
 - CLI: `python peerrank.py --web-search on/off`
-- Menu: `[W] Web Search - Toggle Phase 2 grounding`
+- Menu: `[W] Web Grounding - Toggle Phase 2 grounding`
 
 **Use Cases**:
-- `--web-search on` (default): Test models with external knowledge augmentation
-- `--web-search off`: Test pure model knowledge without search assistance
-- Compare performance: Run two revisions (web vs no-web) for A/B testing
+- `--web-search on` (default): Web grounding for current events, model knowledge for rest
+- `--web-search off`: Pure model knowledge for all questions (no search calls)
+- `--grounding-provider serpapi`: Use SerpAPI instead of Tavily
 
-**Report Indicator**: Phase 4 header shows "Web search: ON/OFF" status
+**Output JSON** (`phase2_web_grounding_{rev}.json`):
+```json
+{
+  "revision": "v1",
+  "provider": "tavily",
+  "cost_per_search": 0.008,
+  "total_questions": 48,
+  "attempted": 10,
+  "successful": 10,
+  "skipped": 38,
+  "total_cost": 0.08,
+  "grounding": [
+    {"index": 0, "question": "...", "category": "current events", "skipped": false, "success": true, "grounding": "..."},
+    {"index": 1, "question": "...", "category": "reasoning/logic", "skipped": true, "success": null, "grounding": null}
+  ]
+}
+```
 
-## Native Search Control (Phase 3)
+## Web Grounding Control (Phase 3)
+
+Phase 3 can optionally inject the same grounding from Phase 2 to evaluators.
+
+**How It Works**:
+1. Loads grounding data from `phase2_web_grounding_{rev}.json`
+2. When evaluating a question, injects its grounding (if available) to all evaluators
+3. Evaluators see same context that answerers used (consistent fact-checking)
 
 **Configuration**:
 - `PHASE3_WEB_SEARCH` global setting in `peerrank/config.py` (default: False)
 - Functions: `get_phase3_web_search()` / `set_phase3_web_search(enabled: bool)`
 - CLI: `python peerrank.py --web-search-3 on/off`
-- Menu: `[G] P3 native search`
-
-**Native vs Tavily**:
-- **Native search models** (OpenAI, Anthropic, Google, Grok, Mistral, Perplexity): LLM decides what to search during evaluation - can verify specific claims
-- **Tavily models** (DeepSeek, Together, Kimi): Search happens before LLM call using prompt text - would search rubric instructions, not claims (useless for fact-checking)
-
-When enabled, native search is only activated for native models. Tavily models evaluate without search to avoid wasted API calls.
+- Menu: `[G] P3 web grounding`
 
 **Use Cases**:
-- `--web-search-3 off` (default): All evaluators judge based on their own knowledge (faster, cheaper)
-- `--web-search-3 on`: Native models can fact-check responses; Tavily models still evaluate without search
+- `--web-search-3 off` (default): Evaluators judge based on their own knowledge
+- `--web-search-3 on`: Evaluators receive same grounding as answerers (for current events)
 
-**Impact**:
-- OFF: ~3x faster, ~10x cheaper
-- ON: Better factual scoring from native models, Tavily models unaffected
+**Benefits of OFF** (default):
+- Tests evaluator's inherent knowledge and judgment
+- Faster (no grounding injection overhead)
+- Reveals which models have better training data
+
+**Benefits of ON**:
+- Consistent context between answering and evaluation
+- Evaluators can fact-check current events claims
+- Fairer scoring for time-sensitive questions
 
 ## Elo Ratings (Phase 4)
 

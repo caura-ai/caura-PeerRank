@@ -121,12 +121,16 @@ def remap_scores_to_models(scores: dict, label_to_model: dict) -> dict:
 # BIAS_MODES imported from config.py
 
 
-async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed: int | None, mode_name: str) -> tuple[dict, dict]:
-    """Run a single evaluation pass with specified bias settings."""
+async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed: int | None, mode_name: str, grounding: dict | None = None) -> tuple[dict, dict]:
+    """Run a single evaluation pass with specified bias settings.
+
+    Args:
+        grounding: Optional dict mapping question index to grounding text (from Phase 2)
+    """
     evaluations = {n: {} for _, _, n in MODELS}
     timing = {n: [] for _, _, n in MODELS}
 
-    async def evaluate(provider, model_id, name, q):
+    async def evaluate(provider, model_id, name, q, q_idx):
         responses_text, label_to_model = format_responses_for_eval(q, shuffle, blind, seed)
         label_example = "Response A" if blind else list(label_to_model.keys())[0]
         prompt = EVAL_PROMPT.format(
@@ -136,19 +140,21 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
         )
 
         try:
-            # Tavily models can't do meaningful fact-checking (search query = rubric, not claims)
-            # So disable web search for them even if globally enabled
-            tavily_providers = ("deepseek", "together", "kimi")
-            web_search = get_phase3_web_search() and provider not in tavily_providers
-            response, duration, _, _, _ = await call_llm(provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL, use_web_search=web_search, temperature=TEMPERATURE_EVAL)
+            # Get grounding text for this question (if web search enabled and grounding available)
+            grounding_text = grounding.get(q_idx, "") if grounding else ""
+            response, duration, _, _, _ = await call_llm(
+                provider, model_id, prompt, max_tokens=MAX_TOKENS_EVAL,
+                use_web_search=False, temperature=TEMPERATURE_EVAL,
+                grounding_text=grounding_text if grounding_text else None
+            )
             scores = extract_json(response)
             if scores and isinstance(scores, dict):
                 remapped_scores = remap_scores_to_models(scores, label_to_model)
                 return (name, q["text"], remapped_scores, duration)
             return (name, q["text"], {}, duration)
         except Exception as e:
-            q_idx = questions.index(q) + 1 if q in questions else "?"
-            print(f"      [ERROR] {name} Q#{q_idx}: {type(e).__name__}: {str(e)[:200]}", flush=True)
+            q_idx_display = q_idx + 1
+            print(f"      [ERROR] {name} Q#{q_idx_display}: {type(e).__name__}: {str(e)[:200]}", flush=True)
             return (name, q["text"], {}, 0)
 
     async def process_evaluator(provider, model_id, name, semaphore):
@@ -161,12 +167,12 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
 
         for i in range(0, len(questions), 5):
             batch_num = i // 5 + 1
-            batch = questions[i:i + 5]
+            batch_indices = range(i, min(i + 5, len(questions)))
             batch_start = time.time()
 
             async with semaphore:
                 results = await asyncio.gather(*[
-                    evaluate(provider, model_id, name, q) for q in batch
+                    evaluate(provider, model_id, name, questions[j], j) for j in batch_indices
                 ])
 
             batch_duration = time.time() - batch_start
@@ -205,6 +211,25 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
     return evaluations, timing
 
 
+def _load_phase2_grounding() -> dict:
+    """Load web grounding data from Phase 2.
+
+    Returns:
+        dict mapping question index to grounding text, or empty dict if not available
+    """
+    try:
+        grounding_data = load_json("phase2_web_grounding.json")
+        grounding = {}
+        for entry in grounding_data.get("grounding", []):
+            idx = entry.get("index")
+            text = entry.get("grounding")
+            if idx is not None and text:
+                grounding[idx] = text
+        return grounding
+    except Exception:
+        return {}
+
+
 async def phase3_evaluate_answers() -> dict:
     """Phase 3: Run 3 bias test modes and collect comparative data."""
     phase_start = time.time()
@@ -212,6 +237,11 @@ async def phase3_evaluate_answers() -> dict:
     seed = bias_config["seed"]
 
     questions = load_json("phase2_answers.json")["questions"]
+
+    # Load grounding from Phase 2 if web search is enabled
+    web_search = get_phase3_web_search()
+    grounding = _load_phase2_grounding() if web_search else {}
+    grounding_count = len([g for g in grounding.values() if g]) if grounding else 0
 
     # Check for existing checkpoint to resume from
     all_evaluations = {}
@@ -241,8 +271,10 @@ async def phase3_evaluate_answers() -> dict:
     print(f"  Evaluators:  {len(MODELS)}")
     print(f"  Questions:   {len(questions)}")
     print("  Passes:      3 (shuffle_only, blind_only, shuffle_blind)")
-    native_search = get_phase3_web_search()
-    print(f"  Native search: {'ON (excludes Tavily models)' if native_search else 'OFF'}")
+    if web_search:
+        print(f"  Web grounding: ON ({grounding_count}/{len(questions)} questions from Phase 2)")
+    else:
+        print(f"  Web grounding: OFF")
     if resumed_from:
         print(f"  Resuming:    Skipping {len(resumed_from)} completed mode(s)")
     print(f"{'=' * 60}")
@@ -263,7 +295,7 @@ async def phase3_evaluate_answers() -> dict:
         print(f"\n  [{mode_name}] {' + '.join(mode_desc)}")
         print(f"  {'-' * 40}")
 
-        evaluations, timing = await _run_evaluation_pass(questions, shuffle, blind, seed, mode_name)
+        evaluations, timing = await _run_evaluation_pass(questions, shuffle, blind, seed, mode_name, grounding)
         all_evaluations[mode_name] = evaluations
         all_timing[mode_name] = calculate_timing_stats(timing)
         mode_durations[mode_name] = round(time.time() - mode_start, 2)
@@ -272,9 +304,6 @@ async def phase3_evaluate_answers() -> dict:
 
         # Incremental save after each mode for crash recovery
         revision = get_revision()
-        # Count native search models (excludes Tavily-only providers)
-        tavily_providers = ("deepseek", "together", "kimi")
-        native_count = sum(1 for p, _, _ in MODELS if p not in tavily_providers)
 
         partial_output = {
             "revision": revision,
@@ -283,8 +312,8 @@ async def phase3_evaluate_answers() -> dict:
             "duration_seconds": round(time.time() - phase_start, 2),
             "mode_durations": mode_durations,
             "bias_test_config": {"seed": seed, "modes": [m[0] for m in BIAS_MODES]},
-            "native_search": native_search,
-            "native_search_count": native_count if native_search else 0,
+            "web_grounding": web_search,
+            "web_grounding_count": grounding_count if web_search else 0,
             "timing_stats_by_mode": all_timing,
             "evaluations_by_mode": all_evaluations,
             "complete": mode_name == "shuffle_blind",

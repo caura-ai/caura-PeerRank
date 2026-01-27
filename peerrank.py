@@ -31,6 +31,7 @@ from peerrank.config import (
     get_phase2_web_search, set_phase2_web_search,
     get_phase3_web_search, set_phase3_web_search,
     get_phase5_judge, set_phase5_judge,
+    get_web_grounding_provider, set_web_grounding_provider,
 )
 from peerrank.providers import health_check
 from peerrank_phase1 import phase1_generate_questions
@@ -77,17 +78,20 @@ def show_menu():
     seed = get_bias_test_config().get("seed")
     seed_str = str(seed) if seed is not None else "rand"
     judge = get_phase5_judge()[2]
-    print(f"  P2: web={ws2}  |  P3: seed={seed_str}, native-search={ws3}  |  P5: {judge}")
+    print(f"  P2: web={ws2}  |  P3: seed={seed_str}, web-grounding={ws3}  |  P5: {judge}")
+
+    provider = get_web_grounding_provider().upper()
+    print(f"  Grounding: {provider}")
 
     print("""
   --- Run ---
   [1-5] Run phase    [A] All    [R] Resume    [H] Health check
 
   --- Setup ---
-  [M] Models         [C] Categories    [N] Questions    [V] Revision
+  [V] Revision    [M] Models    [N] Questions    [C] Categories    [S] Search provider
 
   --- Phase Settings ---
-  [W] P2 web search  [D] P3 seed       [G] P3 native search
+  [W] P2 web grounding  [D] P3 seed    [G] P3 web grounding
   [J] P5 judge
 
   [Q] Quit
@@ -107,6 +111,24 @@ def change_settings():
             print("  Invalid: must be between 1 and 100")
     except ValueError:
         print("  Invalid: enter a number")
+
+
+def change_grounding_provider():
+    """Change web grounding provider."""
+    current = get_web_grounding_provider()
+    print(f"\n  Current grounding provider: {current.upper()}")
+    print("  Available providers:")
+    print("    [1] TAVILY  - $0.008/search, includes AI summary")
+    print("    [2] SERPAPI - $0.010/search, Google results + knowledge graph")
+    choice = input("  Select provider (1-2): ").strip()
+    if choice == "1":
+        set_web_grounding_provider("tavily")
+        print("  Updated to TAVILY")
+    elif choice == "2":
+        set_web_grounding_provider("serpapi")
+        print("  Updated to SERPAPI")
+    else:
+        print("  Cancelled")
 
 
 def change_revision():
@@ -247,8 +269,9 @@ async def main():
     parser.add_argument("--categories", type=str, help="Categories to include (comma-separated keywords)")
     parser.add_argument("--exclude-categories", type=str, help="Categories to exclude (comma-separated keywords)")
     parser.add_argument("--seed", type=int, help="Random seed for reproducible Phase 3 shuffle ordering")
-    parser.add_argument("--web-search", type=str, choices=["on", "off"], help="Enable/disable web search in Phase 2")
-    parser.add_argument("--web-search-3", type=str, choices=["on", "off"], help="Enable/disable web search in Phase 3 (fact-checking)")
+    parser.add_argument("--web-search", type=str, choices=["on", "off"], help="Enable/disable web grounding in Phase 2")
+    parser.add_argument("--web-search-3", type=str, choices=["on", "off"], help="Enable/disable web grounding in Phase 3")
+    parser.add_argument("--grounding-provider", type=str, choices=["tavily", "serpapi"], help="Web grounding provider (default: tavily)")
     parser.add_argument("--judge", type=str, help="Judge model for Phase 5 analysis (model name)")
     parser.add_argument("--rev", type=str, help="Set revision tag")
     args = parser.parse_args()
@@ -282,13 +305,17 @@ async def main():
     # Apply web search setting for Phase 2
     if args.web_search:
         set_phase2_web_search(args.web_search.lower() == "on")
-        print(f"Phase 2 web search: {args.web_search.upper()}")
+        print(f"Phase 2 web grounding: {args.web_search.upper()}")
 
     # Apply web search setting for Phase 3
     if args.web_search_3:
         set_phase3_web_search(args.web_search_3.lower() == "on")
-        print(f"Phase 3 web search: {args.web_search_3.upper()}")
+        print(f"Phase 3 web grounding: {args.web_search_3.upper()}")
 
+    # Apply grounding provider
+    if args.grounding_provider:
+        set_web_grounding_provider(args.grounding_provider.lower())
+        print(f"Web grounding provider: {args.grounding_provider.upper()}")
 
     # Apply judge for Phase 5
     if args.judge:
@@ -339,15 +366,18 @@ async def main():
         elif choice == "N":
             change_settings()
             continue
+        elif choice == "S":
+            change_grounding_provider()
+            continue
         elif choice == "W":
-            toggle_setting("Phase 2 web search", get_phase2_web_search, set_phase2_web_search,
+            toggle_setting("Phase 2 web grounding", get_phase2_web_search, set_phase2_web_search,
                            "Web search enables models to access current information.")
             continue
         elif choice == "D":
             change_seed()
             continue
         elif choice == "G":
-            toggle_setting("Phase 3 native search", get_phase3_web_search, set_phase3_web_search,
+            toggle_setting("Phase 3 web grounding", get_phase3_web_search, set_phase3_web_search,
                            "Native search models can fact-check (excludes Tavily models).")
             continue
         elif choice == "J":

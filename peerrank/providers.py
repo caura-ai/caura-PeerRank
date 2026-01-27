@@ -11,16 +11,14 @@ from anthropic import AsyncAnthropic
 from google import genai
 from xai_sdk import AsyncClient as XaiAsyncClient
 from xai_sdk.chat import user as xai_user
-from xai_sdk.tools import web_search as xai_web_search, x_search as xai_x_search
 from mistralai import Mistral
 
 from .config import (
     MODELS,
-    MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK, 
+    MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK,
     DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_DELAY,
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    TAVILY_COST_PER_SEARCH, ANTHROPIC_WEB_SEARCH_MAX_USES, OPENAI_WEB_SEARCH_CONTEXT_SIZE,
     GOOGLE_THINKING_BUDGET,
     get_api_key
 )
@@ -100,51 +98,48 @@ def _get_mistral_client(api_key: str) -> Mistral:
 
 # Provider implementations
 async def _call_openai(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                       use_web_search: bool, response_format: dict | None, temperature: float,
+                       grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_openai_client(api_key, timeout)
     start = time.time()
     effective_temp = _get_temperature(model, temperature)
 
+    # Build messages with optional grounding context
+    messages = []
+    if grounding_text:
+        messages.append({"role": "system", "content":
+            f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}"})
+    messages.append({"role": "user", "content": prompt})
+
+    kwargs = {"model": model, "messages": messages,
+              "temperature": effective_temp, "max_completion_tokens": max_tokens}
+    if response_format:
+        kwargs["response_format"] = response_format
+    response = await client.chat.completions.create(**kwargs)
+    content = response.choices[0].message.content
+
+    # Extract token usage from response
     input_tokens = 0
     output_tokens = 0
-
-    if use_web_search:
-        response = await client.responses.create(
-            model=model, input=prompt, tools=[{"type": "web_search_preview", "search_context_size": OPENAI_WEB_SEARCH_CONTEXT_SIZE}], max_output_tokens=max_tokens)
-        content = "".join(block.text for item in response.output if item.type == "message"
-                         for block in item.content if hasattr(block, 'text'))
-        # Extract token usage from response if available
-        if hasattr(response, 'usage'):
-            input_tokens = getattr(response.usage, 'input_tokens', 0)
-            output_tokens = getattr(response.usage, 'output_tokens', 0)
-    else:
-        kwargs = {"model": model, "messages": [{"role": "user", "content": prompt}],
-                  "temperature": effective_temp, "max_completion_tokens": max_tokens}
-        if response_format:
-            kwargs["response_format"] = response_format
-        response = await client.chat.completions.create(**kwargs)
-        content = response.choices[0].message.content
-        # Extract token usage from response
-        if hasattr(response, 'usage') and response.usage:
-            input_tokens = getattr(response.usage, 'prompt_tokens', 0)
-            output_tokens = getattr(response.usage, 'completion_tokens', 0)
+    if hasattr(response, 'usage') and response.usage:
+        input_tokens = getattr(response.usage, 'prompt_tokens', 0)
+        output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
     return (content.strip() if content else "", time.time() - start, input_tokens, output_tokens, 0.0)
 
 
 async def _call_anthropic(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                          use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                          use_web_search: bool, response_format: dict | None, temperature: float,
+                          grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_anthropic_client(api_key, timeout)
     kwargs = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens, "temperature": temperature}
-    extra_headers = {}
 
-    if use_web_search:
-        extra_headers["anthropic-beta"] = "web-search-2025-03-05"
-        kwargs["tools"] = [{"type": "web_search_20250305", "name": "web_search", "max_uses": ANTHROPIC_WEB_SEARCH_MAX_USES}]
-        kwargs["system"] = "Use your web_search tool once to find current information, then answer concisely."
+    # Inject grounding text as system context
+    if grounding_text:
+        kwargs["system"] = f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}"
 
     start = time.time()
-    response = await client.messages.create(**kwargs, extra_headers=extra_headers) if extra_headers else await client.messages.create(**kwargs)
+    response = await client.messages.create(**kwargs)
     content = "".join(block.text for block in response.content if block.type == "text")
 
     # Extract token usage
@@ -155,7 +150,8 @@ async def _call_anthropic(model: str, prompt: str, api_key: str, max_tokens: int
 
 
 async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                       use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                       use_web_search: bool, response_format: dict | None, temperature: float,
+                       grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_google_client()
 
     # Handle gemini-3-flash-preview variant (maps to gemini-2.5-flash)
@@ -172,11 +168,13 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
     if GOOGLE_THINKING_BUDGET is not None:
         config["thinking_config"] = {"thinking_budget": GOOGLE_THINKING_BUDGET}
 
-    if use_web_search:
-        config["tools"] = [{"google_search": {}}]
+    # Inject grounding text into prompt (Google doesn't support system messages in same way)
+    effective_prompt = prompt
+    if grounding_text:
+        effective_prompt = f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}\n\n---\n\n{prompt}"
 
     start = time.time()
-    response = await client.aio.models.generate_content(model=actual_model, contents=prompt, config=config)
+    response = await client.aio.models.generate_content(model=actual_model, contents=effective_prompt, config=config)
     duration = time.time() - start
 
     content = ""
@@ -221,12 +219,13 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
     return (content.strip(), duration, input_tokens, output_tokens, 0.0)
 
 
-# Tavily search for providers without native search
+# Web grounding search implementations
 async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float, bool]:
-    """Returns (search_results, duration_seconds, success)"""
+    """Tavily search. Returns (search_results, duration_seconds, success)"""
     import aiohttp
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
+        print("      [Tavily: TAVILY_API_KEY not set]")
         return "", 0.0, False
 
     start = time.time()
@@ -256,27 +255,90 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float, b
         return "", time.time() - start, False
 
 
-def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limit: int | None = None,
+async def serpapi_search(query: str, max_results: int = 5) -> tuple[str, float, bool]:
+    """SerpAPI search. Returns (search_results, duration_seconds, success)"""
+    import aiohttp
+    api_key = os.getenv("SERPAPI_API_KEY")
+    if not api_key:
+        print("      [SerpAPI: SERPAPI_API_KEY not set]")
+        return "", 0.0, False
+
+    start = time.time()
+    try:
+        params = {
+            "q": query,
+            "api_key": api_key,
+            "engine": "google",
+            "num": max_results,
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://serpapi.com/search",
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    print(f"      [SerpAPI HTTP {resp.status}: {error_text[:200]}]")
+                    return "", time.time() - start, False
+                data = await resp.json()
+
+        # Format results as natural prose
+        parts = []
+
+        # Answer box if available
+        if data.get("answer_box"):
+            answer = data["answer_box"]
+            if answer.get("answer"):
+                parts.append(answer["answer"])
+            elif answer.get("snippet"):
+                parts.append(answer["snippet"])
+
+        # Knowledge graph if available
+        if data.get("knowledge_graph"):
+            kg = data["knowledge_graph"]
+            if kg.get("description"):
+                parts.append(kg["description"])
+
+        # Organic results
+        for r in data.get("organic_results", [])[:max_results]:
+            snippet = r.get('snippet', '')[:250]
+            if snippet:
+                parts.append(snippet)
+
+        return " ".join(parts), time.time() - start, True
+    except Exception as e:
+        print(f"      [SerpAPI error: {e}]")
+        return "", time.time() - start, False
+
+
+async def web_grounding_search(query: str, max_results: int = 5) -> tuple[str, float, bool]:
+    """Universal web grounding search using configured provider.
+
+    Returns (search_results, duration_seconds, success)
+    """
+    from .config import get_web_grounding_provider
+    provider = get_web_grounding_provider()
+
+    if provider == "serpapi":
+        return await serpapi_search(query, max_results)
+    else:  # tavily (default)
+        return await tavily_search(query, max_results)
+
+
+def _make_openai_caller(base_url: str, max_tokens_limit: int | None = None,
                         supports_response_format: bool = True):
     """Factory for OpenAI-compatible API callers."""
     async def _call(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                    use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                    use_web_search: bool, response_format: dict | None, temperature: float,
+                    grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
         client = _get_openai_client(api_key, timeout, base_url)
         effective_max = min(max_tokens, max_tokens_limit) if max_tokens_limit else max_tokens
         effective_temp = _get_temperature(model, temperature)
 
+        # Build messages with optional grounding context
         messages = []
-        tavily_duration = 0.0
-        tavily_cost = 0.0
-        if use_tavily and use_web_search:
-            search_results, tavily_duration, tavily_success = await tavily_search(prompt[:400])
-            if tavily_success:
-                tavily_cost = TAVILY_COST_PER_SEARCH
-            if search_results:
-                # Inject as system context - invisible to response style
-                messages.append({"role": "system", "content":
-                    f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{search_results}"})
-
+        if grounding_text:
+            messages.append({"role": "system", "content":
+                f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}"})
         messages.append({"role": "user", "content": prompt})
 
         kwargs = {"model": model, "messages": messages, "temperature": effective_temp, "max_tokens": effective_max}
@@ -285,7 +347,7 @@ def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limi
 
         start = time.time()
         response = await client.chat.completions.create(**kwargs)
-        llm_duration = time.time() - start
+        duration = time.time() - start
 
         # Extract token usage
         input_tokens = 0
@@ -294,16 +356,22 @@ def _make_openai_caller(base_url: str, use_tavily: bool = False, max_tokens_limi
             input_tokens = getattr(response.usage, 'prompt_tokens', 0)
             output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
-        return (response.choices[0].message.content.strip(), tavily_duration + llm_duration, input_tokens, output_tokens, tavily_cost)
+        return (response.choices[0].message.content.strip(), duration, input_tokens, output_tokens, 0.0)
 
     return _call
 
 
-# Grok implementation using xAI SDK with native web search and X search
+# Grok implementation using xAI SDK (native web search removed for standardized grounding)
 async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                     use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                     use_web_search: bool, response_format: dict | None, temperature: float,
+                     grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = XaiAsyncClient(api_key=api_key)
     effective_temp = _get_temperature(model, temperature)
+
+    # Inject grounding text into prompt
+    effective_prompt = prompt
+    if grounding_text:
+        effective_prompt = f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}\n\n---\n\n{prompt}"
 
     kwargs = {
         "model": model,
@@ -311,11 +379,8 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
         "max_tokens": max_tokens,
     }
 
-    if use_web_search:
-        kwargs["tools"] = [xai_web_search(), xai_x_search()]
-
     chat = client.chat.create(**kwargs)
-    chat.append(xai_user(prompt))
+    chat.append(xai_user(effective_prompt))
 
     start = time.time()
     response = await chat.sample()
@@ -333,94 +398,46 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
     return (content.strip(), duration, input_tokens, output_tokens, 0.0)
 
 
-# Mistral implementation with native web search via Agents API
+# Mistral implementation (native web search removed for standardized grounding)
 async def _call_mistral(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
-                        use_web_search: bool, response_format: dict | None, temperature: float) -> tuple[str, float, int, int, float]:
+                        use_web_search: bool, response_format: dict | None, temperature: float,
+                        grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_mistral_client(api_key)
     effective_temp = _get_temperature(model, temperature)
 
+    # Build messages with optional grounding context
+    messages = []
+    if grounding_text:
+        messages.append({"role": "system", "content":
+            f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}"})
+    messages.append({"role": "user", "content": prompt})
+
     start = time.time()
+    response = await client.chat.complete_async(
+        model=model,
+        messages=messages,
+        temperature=effective_temp,
+        max_tokens=max_tokens,
+    )
+
+    content = response.choices[0].message.content if response.choices else ""
+
+    # Extract token usage
     input_tokens = 0
     output_tokens = 0
-
-    if use_web_search:
-        # Use Agents API with web_search connector for grounded responses
-        # Create a web search agent (or reuse cached one)
-        cache_key = f"mistral_websearch_agent:{model}"
-        if cache_key not in _clients:
-            agent = await client.beta.agents.create_async(
-                model=model,
-                name="WebSearch Agent",
-                description="Agent with web search capability for current information",
-                instructions="You have the ability to perform web searches with web_search to find up-to-date information. Answer accurately based on search results.",
-                tools=[{"type": "web_search"}],
-                completion_args={
-                    "temperature": effective_temp,
-                    "max_tokens": max_tokens,
-                }
-            )
-            _clients[cache_key] = agent.id
-
-        agent_id = _clients[cache_key]
-
-        # Start conversation with the agent
-        response = await client.beta.conversations.start_async(
-            agent_id=agent_id,
-            inputs=prompt
-        )
-
-        # Extract content from response - handle multiple output types
-        content = ""
-        if hasattr(response, 'outputs') and response.outputs:
-            for output in response.outputs:
-                # Skip tool execution entries, only process message outputs
-                if getattr(output, 'type', '') == 'tool.execution':
-                    continue
-                if hasattr(output, 'content'):
-                    out_content = output.content
-                    if isinstance(out_content, str):
-                        content += out_content
-                    elif isinstance(out_content, list):
-                        # Content is a list of text items
-                        for item in out_content:
-                            if hasattr(item, 'text') and item.text:
-                                content += item.text
-                            elif isinstance(item, str):
-                                content += item
-        elif hasattr(response, 'content'):
-            content = response.content
-        elif hasattr(response, 'message'):
-            content = response.message.content if hasattr(response.message, 'content') else str(response.message)
-
-        # Extract token usage if available
-        if hasattr(response, 'usage'):
-            input_tokens = getattr(response.usage, 'prompt_tokens', 0) or getattr(response.usage, 'input_tokens', 0) or 0
-            output_tokens = getattr(response.usage, 'completion_tokens', 0) or getattr(response.usage, 'output_tokens', 0) or 0
-    else:
-        # Use standard chat completions without web search
-        response = await client.chat.complete_async(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=effective_temp,
-            max_tokens=max_tokens,
-        )
-
-        content = response.choices[0].message.content if response.choices else ""
-
-        # Extract token usage
-        if hasattr(response, 'usage') and response.usage:
-            input_tokens = getattr(response.usage, 'prompt_tokens', 0)
-            output_tokens = getattr(response.usage, 'completion_tokens', 0)
+    if hasattr(response, 'usage') and response.usage:
+        input_tokens = getattr(response.usage, 'prompt_tokens', 0)
+        output_tokens = getattr(response.usage, 'completion_tokens', 0)
 
     duration = time.time() - start
     return (content.strip() if content else "", duration, input_tokens, output_tokens, 0.0)
 
 
-# Provider instances
-_call_deepseek = _make_openai_caller("https://api.deepseek.com", use_tavily=True, max_tokens_limit=MAX_TOKENS_DEEPSEEK)
-_call_together = _make_openai_caller("https://api.together.xyz/v1", use_tavily=True)
-_call_perplexity = _make_openai_caller("https://api.perplexity.ai", supports_response_format=False)
-_call_kimi = _make_openai_caller("https://api.moonshot.ai/v1", use_tavily=True)
+# Provider instances (native web search removed - using standardized Tavily grounding)
+_call_deepseek = _make_openai_caller("https://api.deepseek.com", max_tokens_limit=MAX_TOKENS_DEEPSEEK)
+_call_together = _make_openai_caller("https://api.together.xyz/v1")
+_call_perplexity = _make_openai_caller("https://api.perplexity.ai", supports_response_format=False)  # Perplexity is inherently a search model
+_call_kimi = _make_openai_caller("https://api.moonshot.ai/v1")
 
 _PROVIDER_CALLS = {
     "openai": _call_openai, "anthropic": _call_anthropic, "google": _call_google,
@@ -432,12 +449,18 @@ _PROVIDER_CALLS = {
 async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX_TOKENS_ANSWER,
                    timeout: int = DEFAULT_TIMEOUT, use_web_search: bool = False,
                    response_format: dict | None = None, retries: int = MAX_RETRIES,
-                   temperature: float = TEMPERATURE_DEFAULT) -> tuple[str, float, int, int, float]:
+                   temperature: float = TEMPERATURE_DEFAULT,
+                   grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     """
     Call LLM API with automatic retry on transient failures.
 
+    Args:
+        grounding_text: Pre-fetched web grounding text to inject as system context.
+        use_web_search: Deprecated - kept for API compatibility, not used.
+
     Returns:
-        tuple: (content, duration, input_tokens, output_tokens, tavily_cost)
+        tuple: (content, duration, input_tokens, output_tokens, reserved)
+               The 5th element is reserved (always 0.0) for backwards compatibility.
     """
     api_key = get_api_key(provider)
     call_fn = _PROVIDER_CALLS.get(provider)
@@ -450,7 +473,7 @@ async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX
     last_error = None
     for attempt in range(retries):
         try:
-            return await call_fn(model, prompt, api_key, max_tokens, timeout, use_web_search, response_format, temperature)
+            return await call_fn(model, prompt, api_key, max_tokens, timeout, use_web_search, response_format, temperature, grounding_text)
         except Exception as e:
             last_error = e
             error_str = str(e).lower()

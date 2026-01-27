@@ -68,8 +68,29 @@ MODEL_TEMPERATURE_OVERRIDES = {
 # 1.0 = linear, 1.5 = moderate score bonus, 2.0 = strong score bonus
 EFFICIENCY_QUALITY_EXPONENT = 2
 
-# Tavily search cost (basic search = 1 credit = $0.008)
-TAVILY_COST_PER_SEARCH = 0.008
+# Web grounding provider selection
+WEB_GROUNDING_PROVIDER = "tavily"  # "tavily" or "serpapi"
+
+# Web grounding costs per search
+TAVILY_COST_PER_SEARCH = 0.008    # Tavily basic search = 1 credit = $0.008
+SERPAPI_COST_PER_SEARCH = 0.01   # SerpAPI ~$0.01 per search (varies by plan)
+
+def get_grounding_cost() -> float:
+    """Get cost per search for current grounding provider."""
+    if WEB_GROUNDING_PROVIDER == "serpapi":
+        return SERPAPI_COST_PER_SEARCH
+    return TAVILY_COST_PER_SEARCH
+
+def get_web_grounding_provider() -> str:
+    """Get current web grounding provider."""
+    return WEB_GROUNDING_PROVIDER
+
+def set_web_grounding_provider(provider: str):
+    """Set web grounding provider ('tavily' or 'serpapi')."""
+    global WEB_GROUNDING_PROVIDER
+    if provider.lower() not in ("tavily", "serpapi"):
+        raise ValueError(f"Invalid provider: {provider}. Must be 'tavily' or 'serpapi'")
+    WEB_GROUNDING_PROVIDER = provider.lower()
 
 # Web search limits (to control costs)
 ANTHROPIC_WEB_SEARCH_MAX_USES = 1  # Max search invocations per request
@@ -82,8 +103,8 @@ ELO_INITIAL_RATING = 1500
 ELO_K_FACTOR = 32
 
 # Phase toggles
-PHASE2_WEB_SEARCH = True   # Web search for answering
-PHASE3_WEB_SEARCH = False  # Native search for evaluation (excludes Tavily models)
+PHASE2_WEB_SEARCH = True   # Web grounding for answering (current events only)
+PHASE3_WEB_SEARCH = False  # Web grounding for evaluation (reuses Phase 2 data)
 
 
 def get_phase2_web_search() -> bool:
