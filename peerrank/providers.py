@@ -18,6 +18,7 @@ from .config import (
     MAX_TOKENS_ANSWER, MAX_TOKENS_DEEPSEEK,
     DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_DELAY,
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
+    MODEL_TIMEOUT_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
     GOOGLE_THINKING_BUDGET,
     get_api_key
@@ -469,6 +470,10 @@ async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX
 
     # Sanitize prompt for all models equally
     prompt = sanitize_prompt(prompt)
+
+    # Apply model-specific timeout override
+    if model in MODEL_TIMEOUT_OVERRIDES:
+        timeout = MODEL_TIMEOUT_OVERRIDES[model]
 
     last_error = None
     for attempt in range(retries):

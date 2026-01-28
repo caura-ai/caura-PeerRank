@@ -50,9 +50,13 @@ MAX_TOKENS_ANSWER = 8192
 MAX_TOKENS_EVAL = 32000
 MAX_TOKENS_DEEPSEEK = 8192
 MAX_ANSWER_WORDS = 200
-DEFAULT_TIMEOUT = 200
 MAX_RETRIES = 5
 RETRY_DELAY =  4
+DEFAULT_TIMEOUT = 150
+# Model-specific timeout overrides (seconds)
+MODEL_TIMEOUT_OVERRIDES = {
+    "kimi-k2.5": 60,  # Kimi can be slow, fail faster and retry
+}
 
 # Temperature settings
 TEMPERATURE_DEFAULT = 0.5
@@ -197,12 +201,12 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 2,  # Reduced to avoid MAX_TOKENS errors with thinking models
+    "google": 3,  # Reduced to avoid MAX_TOKENS errors with thinking models
     "grok": 8,
     "deepseek": 8,
     "together": 8,
     "perplexity": 8,
-    "kimi": 8,
+    "kimi": 10,
     "mistral": 8,
 }
 
