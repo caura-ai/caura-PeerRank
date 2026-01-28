@@ -440,10 +440,9 @@ def phase5_correlation_analysis():
     peer_means = {m: mean(s) for m, s in scores_result["peer_scores"].items() if s}
     self_means = {m: mean(s) for m, s in scores_result["self_scores"].items() if s}
 
-    # Calculate scores for other modes if available (for ablation)
+    # Calculate scores for other modes if available (for bias analysis)
     shuffle_only_means = {}
     blind_only_means = {}
-    uncorrected_means = {}
     ablation_data = None
 
     if has_all_modes:
@@ -458,12 +457,6 @@ def phase5_correlation_analysis():
         blind_only_eval = evaluations_by_mode["blind_only"]
         blind_only_result = calculate_scores_from_evaluations(blind_only_eval, model_names)
         blind_only_means = {m: mean(s) for m, s in blind_only_result["peer_scores"].items() if s}
-
-        # Calculate uncorrected scores: Uncorrected = shuffle_only + blind_only - shuffle_blind
-        # This is equivalent to: Peer + Name Bias + Position Bias
-        for m in model_names:
-            if m in peer_means and m in shuffle_only_means and m in blind_only_means:
-                uncorrected_means[m] = shuffle_only_means[m] + blind_only_means[m] - peer_means[m]
     else:
         print("\n  [Ablation Study] Only shuffle_blind mode available (run Phase 3 with all modes for ablation)")
 
@@ -491,42 +484,41 @@ def phase5_correlation_analysis():
     print(f"  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f})")
     print(f"  Spearman:   {spearman_r:.4f} (p={spearman_p:.4f})")
 
-    # Ablation: Uncorrected vs Truth
-    uncorrected_pearson_r, uncorrected_spearman_r = 0, 0
-    if has_all_modes and uncorrected_means:
-        uncorrected_common = sorted(set(uncorrected_means) & set(truth_means))
-        if len(uncorrected_common) >= 3:
-            uncorrected_arr = [uncorrected_means[m] for m in uncorrected_common]
-            truth_arr_unc = [truth_means[m] for m in uncorrected_common]
+    # Ablation: Self vs Truth (how well do models evaluate themselves?)
+    self_pearson_r, self_spearman_r = 0, 0
+    self_common = sorted(set(self_means) & set(truth_means))
+    if len(self_common) >= 3:
+        self_arr = [self_means[m] for m in self_common]
+        truth_arr_self = [truth_means[m] for m in self_common]
 
-            if len(set(truth_arr_unc)) > 1:
-                uncorrected_pearson_r, uncorrected_pearson_p = pearsonr(uncorrected_arr, truth_arr_unc)
-                uncorrected_spearman_r, uncorrected_spearman_p = spearmanr(uncorrected_arr, truth_arr_unc)
+        if len(set(truth_arr_self)) > 1 and len(set(self_arr)) > 1:
+            self_pearson_r, self_pearson_p = pearsonr(self_arr, truth_arr_self)
+            self_spearman_r, self_spearman_p = spearmanr(self_arr, truth_arr_self)
 
-                print(f"\n  === Uncorrected (with biases) vs Truth ===")
-                print(f"  Pearson r:  {uncorrected_pearson_r:.4f} (p={uncorrected_pearson_p:.4f})")
-                print(f"  Spearman:   {uncorrected_spearman_r:.4f} (p={uncorrected_spearman_p:.4f})")
+            print(f"\n  === Self-Evaluation vs Truth ===")
+            print(f"  Pearson r:  {self_pearson_r:.4f} (p={self_pearson_p:.4f})")
+            print(f"  Spearman:   {self_spearman_r:.4f} (p={self_spearman_p:.4f})")
 
-                delta_pearson = pearson_r - uncorrected_pearson_r
-                delta_spearman = spearman_r - uncorrected_spearman_r
+            delta_self_pearson = pearson_r - self_pearson_r
+            delta_self_spearman = spearman_r - self_spearman_r
+            print(f"\n  === Ablation: Peer vs Self ===")
+            print(f"  Pearson Δ:  {delta_self_pearson:+.4f} (peer {'better' if delta_self_pearson > 0 else 'worse'} than self)")
+            print(f"  Spearman Δ: {delta_self_spearman:+.4f} (peer {'better' if delta_self_spearman > 0 else 'worse'} than self)")
 
-                print(f"\n  === Ablation: Effect of Bias Correction ===")
-                print(f"  Pearson Δ:  {delta_pearson:+.4f} (correction {'helped' if delta_pearson > 0 else 'hurt'})")
-                print(f"  Spearman Δ: {delta_spearman:+.4f} (correction {'helped' if delta_spearman > 0 else 'hurt'})")
-
-                ablation_data = {
-                    "corrected": {"pearson_r": pearson_r, "spearman_r": spearman_r},
-                    "uncorrected": {"pearson_r": uncorrected_pearson_r, "spearman_r": uncorrected_spearman_r},
-                    "delta": {"pearson": delta_pearson, "spearman": delta_spearman},
-                    "per_model": {m: {
-                        "peer": peer_means.get(m),
-                        "shuffle_only": shuffle_only_means.get(m),
-                        "blind_only": blind_only_means.get(m),
-                        "uncorrected": uncorrected_means.get(m),
-                        "name_bias": shuffle_only_means.get(m, 0) - peer_means.get(m, 0) if m in shuffle_only_means and m in peer_means else None,
-                        "position_bias": blind_only_means.get(m, 0) - peer_means.get(m, 0) if m in blind_only_means and m in peer_means else None,
-                    } for m in common}
-                }
+    # Build ablation data (Peer vs Self comparison)
+    if self_pearson_r != 0 or self_spearman_r != 0:
+        ablation_data = {
+            "peer": {"pearson_r": pearson_r, "spearman_r": spearman_r},
+            "self_eval": {"pearson_r": self_pearson_r, "spearman_r": self_spearman_r},
+            "delta_self": {"pearson": pearson_r - self_pearson_r, "spearman": spearman_r - self_spearman_r},
+            "per_model": {m: {
+                "peer": peer_means.get(m),
+                "self": self_means.get(m),
+                "self_bias": self_means.get(m, 0) - peer_means.get(m, 0) if m in self_means and m in peer_means else None,
+                "name_bias": shuffle_only_means.get(m, 0) - peer_means.get(m, 0) if m in shuffle_only_means and m in peer_means else None,
+                "position_bias": blind_only_means.get(m, 0) - peer_means.get(m, 0) if m in blind_only_means and m in peer_means else None,
+            } for m in common}
+        }
 
     # Build comparison with proper tie handling
     peer_ranked = sorted(common, key=lambda m: -peer_means[m])
@@ -564,8 +556,7 @@ def phase5_correlation_analysis():
             "correct": stats["correct"],
             "total": stats["total"],
         }
-        if has_all_modes and m in uncorrected_means:
-            row["uncorrected_score"] = round(uncorrected_means[m], 2)
+        if has_all_modes:
             row["name_bias"] = round(shuffle_only_means.get(m, 0) - peer_means.get(m, 0), 2)
             row["position_bias"] = round(blind_only_means.get(m, 0) - peer_means.get(m, 0), 2)
         comparison.append(row)
@@ -596,14 +587,30 @@ Revision: {VALIDATION_REVISION}
 Models:   {len(common)}
 Questions: {num_q}
 
-## Correlation
+## Correlation (Peer vs Truth)
 
   Metric       Value    p-value   Interpretation
   ----------   ------   -------   --------------
   Pearson r    {pearson_r:>6.4f}   {pearson_p:>7.4f}   {interp}
   Spearman     {spearman_r:>6.4f}   {spearman_p:>7.4f}   {interpret(spearman_r)}
 
-## Score Comparison
+"""
+    # Add ablation study section if self correlation was calculated
+    if self_pearson_r != 0 or self_spearman_r != 0:
+        delta_self_p = pearson_r - self_pearson_r
+        delta_self_s = spearman_r - self_spearman_r
+        report += f"""## Ablation: Peer vs Self Evaluation
+
+  Method       Pearson    Spearman   Interpretation
+  ----------   --------   --------   --------------
+  Peer         {pearson_r:>8.4f}   {spearman_r:>8.4f}   {interp}
+  Self         {self_pearson_r:>8.4f}   {self_spearman_r:>8.4f}   {interpret(self_pearson_r)}
+  Δ (P−S)      {delta_self_p:>+8.4f}   {delta_self_s:>+8.4f}   peer {'better' if delta_self_p > 0 else 'worse'}
+
+*Positive Δ means peer evaluation correlates better with ground truth than self-evaluation.*
+
+"""
+    report += """## Score Comparison
 
   Rank  Model                      Peer   Truth  T.Rank  Accuracy
   ----  -------------------------  -----  -----  ------  ---------------

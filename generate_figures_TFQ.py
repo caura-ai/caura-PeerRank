@@ -5,6 +5,7 @@ Generates publication-quality figures from TruthfulQA validation data:
 - Fig 8: Correlation scatter (peer scores vs ground truth accuracy)
 - Fig 9: Rank agreement visualization
 - Fig 10: Score comparison bar chart
+- Fig 11: Ablation study (Peer vs Self vs Uncorrected correlation)
 - Statistical analysis reports
 
 Output: PDF (vector) + PNG (600 DPI) for Overleaf/LaTeX compatibility.
@@ -91,7 +92,7 @@ MODEL_COLORS = {
     'deepseek-chat': '#E69F00',
     'llama-4-maverick': '#999999',
     'sonar-pro': '#9467BD',
-    'kimi-k2-0905': '#8C564B',
+    'kimi-k2.5': '#8C564B',
     'mistral-large': '#17BECF',
 }
 
@@ -325,12 +326,12 @@ def generate_fig8_correlation_scatter(data: dict, output_dir: Path):
     ax.set_ylim(min(peer_scores) - 0.8, max(peer_scores) + 0.8)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig8_peerrank_correlation')
+    save_figure(fig, output_dir, 'TFQ_peerrank_correlation')
 
 
-def generate_fig10_score_comparison(data: dict, output_dir: Path):
-    """Figure 10: Side-by-side bar chart comparing Peer vs Truth scores."""
-    print("\nGenerating Figure 10: Score Comparison Bars...")
+def generate_fig9_score_comparison(data: dict, output_dir: Path):
+    """Figure 9: Side-by-side bar chart comparing Peer vs Truth scores."""
+    print("\nGenerating Figure 9: Score Comparison Bars...")
 
     comparison = get_comparison_data(data)
     if not comparison:
@@ -373,12 +374,12 @@ def generate_fig10_score_comparison(data: dict, output_dir: Path):
     ax.legend(loc='upper right')
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig10_score_comparison')
+    save_figure(fig, output_dir, 'TFQ_score_comparison')
 
 
-def generate_fig9_rank_agreement(data: dict, output_dir: Path):
-    """Figure 9: Rank agreement visualization - peer rank vs truth rank."""
-    print("\nGenerating Figure 9: Rank Agreement...")
+def generate_fig10_rank_agreement(data: dict, output_dir: Path):
+    """Figure 10: Rank agreement visualization - peer rank vs truth rank."""
+    print("\nGenerating Figure 10: Rank Agreement...")
 
     comparison = get_comparison_data(data)
     if not comparison:
@@ -420,7 +421,7 @@ def generate_fig9_rank_agreement(data: dict, output_dir: Path):
     ax.set_xticks([0, 1])
     ax.set_xticklabels(['Peer Rank', 'Truth Rank'], fontweight='bold', fontsize=12)
     ax.set_ylabel('Rank (1 = Best)', fontweight='bold', fontsize=12)
-    ax.set_title('Rank Agreement: Peer vs Ground Truth\n(lower = better)',
+    ax.set_title('Rank Agreement: Peer vs Ground Truth',
                  fontweight='bold', fontsize=14, pad=10)
     ax.tick_params(axis='y', labelsize=11)
 
@@ -433,7 +434,81 @@ def generate_fig9_rank_agreement(data: dict, output_dir: Path):
     ax.legend(handles=[green_patch, orange_patch], loc='lower right', fontsize=10)
 
     plt.tight_layout()
-    save_figure(fig, output_dir, 'fig9_rank_agreement')
+    save_figure(fig, output_dir, 'TFQ_rank_agreement')
+
+
+def generate_fig11_ablation_study(data: dict, output_dir: Path):
+    """Figure 11: Ablation study - Peer vs Self correlation with Truth."""
+    print("\nGenerating Figure 11: Ablation Study...")
+
+    if 'analysis' not in data or 'ablation' not in data['analysis']:
+        print("  Skipping: No ablation data available")
+        return
+
+    ablation = data['analysis']['ablation']
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    # Data for bar chart - Peer vs Self only
+    methods = ['Peer\n(cross-evaluation)', 'Self\n(self-evaluation)']
+    # Handle both old format (corrected) and new format (peer)
+    peer_data = ablation.get('peer', ablation.get('corrected', {}))
+    pearson_vals = [
+        peer_data.get('pearson_r', 0),
+        ablation['self_eval']['pearson_r'],
+    ]
+    spearman_vals = [
+        peer_data.get('spearman_r', 0),
+        ablation['self_eval']['spearman_r'],
+    ]
+
+    x = np.arange(len(methods))
+    width = 0.35
+
+    bars1 = ax.bar(x - width/2, pearson_vals, width, label='Pearson r',
+                   color='#0173B2', edgecolor='white', alpha=0.85)
+    bars2 = ax.bar(x + width/2, spearman_vals, width, label='Spearman ρ',
+                   color='#029E73', edgecolor='white', alpha=0.85)
+
+    # Add value labels
+    for bar in bars1:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, height + 0.02,
+                f'{height:.3f}', ha='center', va='bottom', fontsize=11, fontweight='bold')
+    for bar in bars2:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, height + 0.02,
+                f'{height:.3f}', ha='center', va='bottom', fontsize=11)
+
+    # Add significance threshold line
+    ax.axhline(y=0.7, color='red', linestyle='--', alpha=0.5, linewidth=1.5,
+               label='Strong correlation threshold (0.7)')
+
+    # Add delta annotations - position arrow below the bars to avoid overlapping numbers
+    delta_self = ablation['delta_self']['pearson']
+    arrow_y = 0.42  # Below both bar tops
+    ax.annotate(f'Δ = +{delta_self:.2f}', xy=(0.5, arrow_y + 0.06), fontsize=12,
+                ha='center', color='#D55E00', fontweight='bold')
+    ax.annotate('', xy=(0, arrow_y), xytext=(1, arrow_y),
+                arrowprops=dict(arrowstyle='<->', color='#D55E00', lw=2))
+
+    ax.set_xlabel('Evaluation Method', fontweight='bold', fontsize=11)
+    ax.set_ylabel('Correlation with Ground Truth', fontweight='bold', fontsize=11)
+    ax.set_title('Ablation Study: Peer vs Self Evaluation\nCorrelation with TruthfulQA Ground Truth',
+                 fontweight='bold', fontsize=12, pad=10)
+    ax.set_xticks(x)
+    ax.set_xticklabels(methods, fontsize=11)
+    ax.set_ylim(0, 1.15)
+    ax.legend(loc='upper right', fontsize=9)
+
+    # Add interpretation box
+    textstr = 'Key Finding:\nPeer evaluation (r=0.90)\ndramatically outperforms\nself-evaluation (r=0.54)\n\nModels cannot reliably\njudge their own quality.'
+    props = dict(boxstyle='round', facecolor='lightyellow', alpha=0.9, edgecolor='orange')
+    ax.text(0.98, 0.58, textstr, transform=ax.transAxes, fontsize=9,
+            verticalalignment='top', horizontalalignment='right', bbox=props)
+
+    plt.tight_layout()
+    save_figure(fig, output_dir, 'TFQ_ablation_study')
 
 
 # =============================================================================
@@ -504,6 +579,27 @@ def generate_stats_report(data: dict, output_dir: Path):
     else:
         report_lines.append("  [Correlation data not available - install scipy]")
     report_lines.append("")
+
+    # Ablation Study
+    if 'analysis' in data and 'ablation' in data['analysis']:
+        ablation = data['analysis']['ablation']
+        # Handle both old format (corrected) and new format (peer)
+        peer_data = ablation.get('peer', ablation.get('corrected', {}))
+        report_lines.append("-" * 70)
+        report_lines.append("1b. ABLATION STUDY: PEER vs SELF EVALUATION")
+        report_lines.append("-" * 70)
+        report_lines.append("")
+        report_lines.append(f"  {'Method':<20} {'Pearson r':>12} {'Spearman ρ':>12}")
+        report_lines.append(f"  {'-'*20} {'-'*12} {'-'*12}")
+        report_lines.append(f"  {'Peer (cross-eval)':<20} {peer_data.get('pearson_r', 0):>12.4f} {peer_data.get('spearman_r', 0):>12.4f}")
+        report_lines.append(f"  {'Self-evaluation':<20} {ablation['self_eval']['pearson_r']:>12.4f} {ablation['self_eval']['spearman_r']:>12.4f}")
+        report_lines.append("")
+        report_lines.append(f"  Δ (Peer − Self):   {ablation['delta_self']['pearson']:>+.4f} (Pearson)")
+        report_lines.append(f"                     {ablation['delta_self']['spearman']:>+.4f} (Spearman)")
+        report_lines.append("")
+        report_lines.append("  KEY FINDING: Peer evaluation dramatically outperforms self-evaluation.")
+        report_lines.append("  Models cannot reliably judge their own quality.")
+        report_lines.append("")
 
     # Score Comparison Table
     report_lines.append("-" * 70)
@@ -635,68 +731,6 @@ def generate_stats_report(data: dict, output_dir: Path):
 
 
 # =============================================================================
-# LaTeX Templates
-# =============================================================================
-
-def generate_latex_templates(output_dir: Path):
-    """Generate LaTeX file with figure templates."""
-
-    latex_content = r"""%% TruthfulQA Validation Figures - LaTeX Templates
-%% Auto-generated by generate_figures_TFQ.py
-%% Copy these into your Overleaf document
-
-\usepackage{graphicx}
-\usepackage{subcaption}
-
-%% ============================================================================
-%% VALIDATION SECTION - TruthfulQA Analysis (Figures 8-10)
-%% ============================================================================
-
-%% FIGURE 8: Correlation Scatter Plot (Main Validation Result)
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{figures/fig8_peerrank_correlation.pdf}
-    \caption{Correlation between peer evaluation scores and ground truth accuracy on TruthfulQA. Each point represents a model, numbered by peer rank. The strong positive correlation (r = 0.88, p < 0.001) validates that peer evaluation can serve as a proxy for factual accuracy.}
-    \label{fig:tfq-correlation}
-\end{figure}
-
-%% FIGURE 9: Rank Agreement
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\linewidth]{figures/fig9_rank_agreement.pdf}
-    \caption{Rank agreement between peer evaluation and ground truth rankings. Lines connect each model's peer rank (left) to its truth rank (right). Green arrows indicate models underrated by peers; orange arrows indicate overrated models.}
-    \label{fig:tfq-rank-agreement}
-\end{figure}
-
-%% FIGURE 10: Score Comparison Bars
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{figures/fig10_score_comparison.pdf}
-    \caption{Side-by-side comparison of peer evaluation scores (blue) and ground truth accuracy scores (green) for each model. Both metrics use a 0--10 scale for direct comparison.}
-    \label{fig:tfq-score-comparison}
-\end{figure}
-
-%% ============================================================================
-%% CROSS-REFERENCE GUIDE
-%% ============================================================================
-%% Usage: Figure~\ref{fig:tfq-correlation} shows...
-%%
-%% Label                    | Figure | Description
-%% -------------------------|--------|---------------------------
-%% fig:tfq-correlation      | 8      | Main correlation scatter
-%% fig:tfq-rank-agreement   | 9      | Rank slope graph
-%% fig:tfq-score-comparison | 10     | Peer vs truth bar chart
-"""
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    latex_path = output_dir / "TFQ_figures_latex.tex"
-    with open(latex_path, 'w', encoding='utf-8') as f:
-        f.write(latex_content)
-
-    print(f"\nLaTeX templates saved to: {latex_path}")
-
-
-# =============================================================================
 # Main
 # =============================================================================
 
@@ -735,16 +769,14 @@ def main():
         return 0
 
     # Generate all figures
-    print("\n--- VALIDATION FIGURES (8-10) ---")
+    print("\n--- VALIDATION FIGURES (8-11) ---")
     generate_fig8_correlation_scatter(data, output_dir)
-    generate_fig9_rank_agreement(data, output_dir)
-    generate_fig10_score_comparison(data, output_dir)
+    generate_fig9_score_comparison(data, output_dir)
+    generate_fig10_rank_agreement(data, output_dir)
+    generate_fig11_ablation_study(data, output_dir)
 
     # Generate statistical report
     generate_stats_report(data, output_dir)
-
-    # Generate LaTeX templates
-    generate_latex_templates(output_dir)
 
     print(f"\n{'=' * 50}")
     print(f"Done! Figures saved to: {output_dir}/")
