@@ -10,7 +10,7 @@
 - **5-Phase Pipeline** — Question generation → Answering → Cross-evaluation → Report → Analysis
 - **12 Models Supported** — OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
 - **Bias Detection** — Measures self-bias, name bias, and position bias through controlled evaluation modes
-- **Web Search Integration** — Native search for most providers, Tavily fallback for others
+- **Standardized Web Grounding** — Tavily or SerpAPI search, same context for all models (fair comparison)
 - **Cost Tracking** — Real-time token usage and cost analysis per model
 - **Publication Figures** — Generate publication-quality charts and statistical analysis
 - **Ground Truth Validation** — TruthfulQA (r=0.858) and GSM8K (r=0.986) correlation with accuracy
@@ -81,10 +81,11 @@ python peerrank.py --models gpt-5.2,claude-opus-4-5     # Include only these
 python peerrank.py --exclude deepseek-chat              # Exclude these
 
 # Configuration
-python peerrank.py --web-search off     # Disable web search (test pure knowledge)
-python peerrank.py --seed 42            # Reproducible shuffle ordering
-python peerrank.py --judge claude-opus-4-5   # Set Phase 5 judge model
-python peerrank.py --rev v2             # Set revision tag for output files
+python peerrank.py --web-search off           # Disable web grounding (test pure knowledge)
+python peerrank.py --grounding-provider serpapi  # Use SerpAPI instead of Tavily
+python peerrank.py --seed 42                  # Reproducible shuffle ordering
+python peerrank.py --judge claude-opus-4-5    # Set Phase 5 judge model
+python peerrank.py --rev v2                   # Set revision tag for output files
 
 # UI and figures
 streamlit run peerrank_ui.py                              # Launch web UI
@@ -121,8 +122,9 @@ PERPLEXITY_API_KEY=pplx-...
 KIMI_API_KEY=sk-...
 MISTRAL_API_KEY=...
 
-# Required for web search with DeepSeek/Together/Kimi
-TAVILY_API_KEY=tvly-...
+# Web grounding (only one required)
+TAVILY_API_KEY=tvly-...       # Default: $0.008/search
+SERPAPI_KEY=...               # Alternative: ~$0.01/search
 ```
 
 You only need keys for providers you want to test. Use `--models` to select specific models.
@@ -133,11 +135,12 @@ Results are saved to the `data/` directory with revision tags:
 
 ```
 data/
-├── phase1_questions_v1.json    # Generated questions
-├── phase2_answers_v1.json      # Model responses (with cost tracking)
-├── phase3_rankings_v1.json     # Cross-evaluations (3 bias modes)
-├── phase4_report_v1.md         # Markdown report with rankings
-└── phase5_analysis_v1.md       # Judge analysis and insights
+├── phase1_questions_v1.json        # Generated questions
+├── phase2_answers_v1.json          # Model responses (with cost tracking)
+├── phase2_web_grounding_v1.json    # Web grounding data (current events only)
+├── phase3_rankings_v1.json         # Cross-evaluations (3 bias modes)
+├── phase4_report_v1.md             # Markdown report with rankings
+└── phase5_analysis_v1.md           # Judge analysis and insights
 ```
 
 ### Sample Report Sections
@@ -145,7 +148,6 @@ data/
 - **Final Peer Rankings** — Scores from blind+shuffled evaluation
 - **Elo Ratings** — Pairwise comparison rankings with W-L-T records
 - **Bias Analysis** — Self-bias, name bias, and position bias metrics
-- **Ablation Study** — Effect of bias correction on ground truth correlation
 - **Judge Generosity** — Which models rate harshly vs. leniently
 - **Performance vs. Cost** — Efficiency rankings (Points²/¢)
 - **Question Autopsy** — Hardest, easiest, and most controversial questions
@@ -182,7 +184,7 @@ pip install .[all]                  # All optional dependencies
 Validate peer rankings against objective benchmarks:
 
 ```bash
-# TruthfulQA - factual accuracy (run BEFORE peerrank phase 4)
+# TruthfulQA - factual accuracy
 python validate_truthfulqa.py --all       # Run validation (r=0.858)
 python generate_figures_TFQ.py            # Generate figures
 
@@ -190,10 +192,6 @@ python generate_figures_TFQ.py            # Generate figures
 python validate_gsm8k.py --all            # Run validation (r=0.986)
 python validate_gsm8k.py --difficulty hard  # Hard questions only
 ```
-
-> **Note:** Run `validate_truthfulqa.py` before `peerrank.py --phase 4`. Phase 4's ablation study reads the baseline correlation from `data/TRUTH/TFQ_validation_report_TFQ.md`.
-
-**Ablation Study**: Bias correction improves correlation with ground truth by +0.285 (Pearson).
 
 ## Contributing
 
