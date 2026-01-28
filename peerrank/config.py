@@ -55,7 +55,6 @@ RETRY_DELAY =  4
 DEFAULT_TIMEOUT = 150
 # Model-specific timeout overrides (seconds)
 MODEL_TIMEOUT_OVERRIDES = {
-    "kimi-k2.5": 60,  # Kimi can be slow, fail faster and retry
 }
 
 # Temperature settings
