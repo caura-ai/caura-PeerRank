@@ -254,7 +254,7 @@ MISTRAL_API_KEY=...
 
 # Web grounding providers (only need one)
 TAVILY_API_KEY=tvly-...      # Tavily: $0.008/search
-SERPAPI_API_KEY=...          # SerpAPI: ~$0.01/search
+SERPAPI_KEY=...          # SerpAPI: ~$0.01/search
 ```
 
 You only need keys for the providers you want to test. Use `--models` to select specific models.

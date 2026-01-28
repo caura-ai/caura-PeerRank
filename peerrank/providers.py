@@ -258,9 +258,9 @@ async def tavily_search(query: str, max_results: int = 5) -> tuple[str, float, b
 async def serpapi_search(query: str, max_results: int = 5) -> tuple[str, float, bool]:
     """SerpAPI search. Returns (search_results, duration_seconds, success)"""
     import aiohttp
-    api_key = os.getenv("SERPAPI_API_KEY")
+    api_key = os.getenv("SERPAPI_KEY")
     if not api_key:
-        print("      [SerpAPI: SERPAPI_API_KEY not set]")
+        print("      [SerpAPI: SERPAPI_KEY not set]")
         return "", 0.0, False
 
     start = time.time()
