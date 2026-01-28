@@ -584,6 +584,7 @@ Correlates peer rankings with TruthfulQA ground truth to validate the peer evalu
 - 5-phase pipeline mirroring main PeerRank system
 - Uses multiple choice questions with known correct answers
 - Computes Pearson/Spearman correlation between peer scores and accuracy
+- **Ablation study**: Compares corrected vs uncorrected peer scores
 
 **Usage**:
 ```bash
@@ -593,14 +594,25 @@ python validate_truthfulqa.py --phase 1-5        # Run specific phase
 python validate_truthfulqa.py --num-questions 50 # Set question count
 ```
 
+**Phase 3 Bias Modes**: Runs all 3 modes (shuffle_only, blind_only, shuffle_blind) to enable ablation study:
+- `shuffle_blind` = Peer score (bias-corrected baseline)
+- `shuffle_only` → Name Bias = shuffle_only - shuffle_blind
+- `blind_only` → Position Bias = blind_only - shuffle_blind
+- Uncorrected = shuffle_only + blind_only - shuffle_blind
+
+**Ablation Study (Phase 5)**: Compares correlation with ground truth:
+- Corrected (Peer) vs Truth: r=0.858
+- Uncorrected vs Truth: r=??? (expect lower)
+- Shows that bias correction improves alignment with objective accuracy
+
 **Output files** (in `data/TRUTH/`):
 - `phase1_questions_TFQ.json` - MC questions from TruthfulQA
 - `phase1_ground_truth_TFQ.json` - Correct answers
 - `phase2_answers_TFQ.json` - Model responses
-- `phase3_rankings_TFQ.json` - Peer evaluations
+- `phase3_rankings_TFQ.json` - Peer evaluations (all 3 bias modes)
 - `phase4_TFQ_scores_TFQ.json` - Ground truth accuracy scores
-- `TFQ_analysis_TFQ.json` - Correlation analysis
-- `TFQ_validation_report_TFQ.md` - Final report
+- `TFQ_analysis_TFQ.json` - Correlation analysis + ablation data
+- `TFQ_validation_report_TFQ.md` - Final report with ablation study
 
 ## GSM8K Validation (`validate_gsm8k.py`)
 Correlates peer rankings with GSM8K (Grade School Math 8K) ground truth to validate peer evaluation on mathematical reasoning:

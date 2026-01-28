@@ -276,14 +276,24 @@ Question: {question["question"]}
 
 
 # =============================================================================
-# PHASE 3: Peer Evaluation (shuffle_blind only - bias analysis not needed)
+# PHASE 3: Peer Evaluation (all 3 bias modes for ablation study)
 # =============================================================================
 
-async def phase3_evaluate():
-    """Run peer evaluation (shuffle_blind mode only).
+# Bias modes: (name, shuffle, blind)
+BIAS_MODES = [
+    ("shuffle_only", True, False),   # Randomized order, names visible
+    ("blind_only", False, True),     # Fixed order, names hidden
+    ("shuffle_blind", True, True),   # Both (baseline - no biases)
+]
 
-    For validation, we only need peer scores to correlate with accuracy.
-    Full bias analysis (3 modes) is unnecessary and triples the cost.
+
+async def phase3_evaluate():
+    """Run peer evaluation in all 3 bias modes for ablation study.
+
+    Runs shuffle_only, blind_only, and shuffle_blind to enable:
+    - Name Bias = shuffle_only - shuffle_blind
+    - Position Bias = blind_only - shuffle_blind
+    - Uncorrected = Peer + Name Bias + Position Bias
     """
     set_revision(VALIDATION_REVISION)
     from peerrank_phase3 import _run_evaluation_pass
@@ -294,19 +304,43 @@ async def phase3_evaluate():
     questions = load_validation_json("phase2_answers.json")["questions"]
 
     print(f"\n{'=' * 60}")
-    print("  PHASE 3: Peer Evaluation")
+    print("  PHASE 3: Peer Evaluation (3 Bias Modes)")
     print(f"{'=' * 60}")
 
-    evaluations, timing = await _run_evaluation_pass(questions, shuffle=True, blind=True, seed=seed, mode_name="shuffle_blind")
+    all_evaluations = {}
+    all_timing = {}
+    mode_durations = {}
+
+    for mode_name, shuffle, blind in BIAS_MODES:
+        mode_start = time.time()
+        mode_desc = []
+        if shuffle:
+            mode_desc.append("shuffle")
+        if blind:
+            mode_desc.append("blind")
+
+        print(f"\n  [{mode_name}] {' + '.join(mode_desc)}")
+        print(f"  {'-' * 40}")
+
+        evaluations, timing = await _run_evaluation_pass(
+            questions, shuffle=shuffle, blind=blind, seed=seed, mode_name=mode_name
+        )
+        all_evaluations[mode_name] = evaluations
+        all_timing[mode_name] = calculate_timing_stats(timing)
+        mode_durations[mode_name] = round(time.time() - mode_start, 2)
+
+        print(f"  Pass complete: {format_duration(mode_durations[mode_name])}")
 
     save_validation_json("phase3_rankings.json", {
         "revision": VALIDATION_REVISION, "timestamp": datetime.now().isoformat(),
         "phase": 3, "duration_seconds": round(time.time() - phase_start, 2),
-        "evaluations_by_mode": {"shuffle_blind": evaluations},
-        "evaluations": evaluations,
-        "timing_stats": calculate_timing_stats(timing),
+        "mode_durations": mode_durations,
+        "evaluations_by_mode": all_evaluations,
+        "evaluations": all_evaluations["shuffle_blind"],  # backward compat
+        "timing_stats_by_mode": all_timing,
+        "timing_stats": all_timing["shuffle_blind"],  # backward compat
     })
-    print(f"  Complete in {format_duration(time.time() - phase_start)}")
+    print(f"\n  Complete in {format_duration(time.time() - phase_start)}")
     print(f"{'=' * 60}")
 
 
@@ -375,9 +409,9 @@ def phase4_ground_truth_score():
 # =============================================================================
 
 def phase5_correlation_analysis():
-    """Correlate peer scores with ground truth accuracy."""
+    """Correlate peer scores with ground truth accuracy, including ablation study."""
     print(f"\n{'=' * 60}")
-    print("  PHASE 5: Correlation Analysis")
+    print("  PHASE 5: Correlation Analysis + Ablation Study")
     print(f"{'=' * 60}")
 
     try:
@@ -394,12 +428,44 @@ def phase5_correlation_analysis():
         print("  No Phase 3 data. Run Phase 3 first.")
         return None
 
-    # Get peer scores
-    evaluations = phase3_data.get("evaluations_by_mode", {}).get("shuffle_blind", phase3_data.get("evaluations", {}))
     model_names = [n for _, _, n in MODELS]
-    scores_result = calculate_scores_from_evaluations(evaluations, model_names)
+    evaluations_by_mode = phase3_data.get("evaluations_by_mode", {})
 
+    # Check if all 3 bias modes are available for ablation study
+    has_all_modes = all(mode in evaluations_by_mode for mode in ["shuffle_only", "blind_only", "shuffle_blind"])
+
+    # Get peer scores (bias-corrected baseline from shuffle_blind)
+    evaluations = evaluations_by_mode.get("shuffle_blind", phase3_data.get("evaluations", {}))
+    scores_result = calculate_scores_from_evaluations(evaluations, model_names)
     peer_means = {m: mean(s) for m, s in scores_result["peer_scores"].items() if s}
+
+    # Calculate scores for other modes if available (for ablation)
+    shuffle_only_means = {}
+    blind_only_means = {}
+    uncorrected_means = {}
+    ablation_data = None
+
+    if has_all_modes:
+        print("\n  [Ablation Study] All 3 bias modes available")
+
+        # shuffle_only scores (has name bias, no position bias)
+        shuffle_only_eval = evaluations_by_mode["shuffle_only"]
+        shuffle_only_result = calculate_scores_from_evaluations(shuffle_only_eval, model_names)
+        shuffle_only_means = {m: mean(s) for m, s in shuffle_only_result["peer_scores"].items() if s}
+
+        # blind_only scores (has position bias, no name bias)
+        blind_only_eval = evaluations_by_mode["blind_only"]
+        blind_only_result = calculate_scores_from_evaluations(blind_only_eval, model_names)
+        blind_only_means = {m: mean(s) for m, s in blind_only_result["peer_scores"].items() if s}
+
+        # Calculate uncorrected scores: Uncorrected = shuffle_only + blind_only - shuffle_blind
+        # This is equivalent to: Peer + Name Bias + Position Bias
+        for m in model_names:
+            if m in peer_means and m in shuffle_only_means and m in blind_only_means:
+                uncorrected_means[m] = shuffle_only_means[m] + blind_only_means[m] - peer_means[m]
+    else:
+        print("\n  [Ablation Study] Only shuffle_blind mode available (run Phase 3 with all modes for ablation)")
+
     truth_means = {m: stats["mean"] for m, stats in truth_data["summary"].items() if stats["mean"] > 0}
 
     common = sorted(set(peer_means) & set(truth_means))
@@ -420,8 +486,46 @@ def phase5_correlation_analysis():
         pearson_r, pearson_p = pearsonr(peer_arr, truth_arr)
         spearman_r, spearman_p = spearmanr(peer_arr, truth_arr)
 
-    print(f"\n  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f})")
+    print(f"\n  === Bias-Corrected (Peer) vs Truth ===")
+    print(f"  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f})")
     print(f"  Spearman:   {spearman_r:.4f} (p={spearman_p:.4f})")
+
+    # Ablation: Uncorrected vs Truth
+    uncorrected_pearson_r, uncorrected_spearman_r = 0, 0
+    if has_all_modes and uncorrected_means:
+        uncorrected_common = sorted(set(uncorrected_means) & set(truth_means))
+        if len(uncorrected_common) >= 3:
+            uncorrected_arr = [uncorrected_means[m] for m in uncorrected_common]
+            truth_arr_unc = [truth_means[m] for m in uncorrected_common]
+
+            if len(set(truth_arr_unc)) > 1:
+                uncorrected_pearson_r, uncorrected_pearson_p = pearsonr(uncorrected_arr, truth_arr_unc)
+                uncorrected_spearman_r, uncorrected_spearman_p = spearmanr(uncorrected_arr, truth_arr_unc)
+
+                print(f"\n  === Uncorrected (with biases) vs Truth ===")
+                print(f"  Pearson r:  {uncorrected_pearson_r:.4f} (p={uncorrected_pearson_p:.4f})")
+                print(f"  Spearman:   {uncorrected_spearman_r:.4f} (p={uncorrected_spearman_p:.4f})")
+
+                delta_pearson = pearson_r - uncorrected_pearson_r
+                delta_spearman = spearman_r - uncorrected_spearman_r
+
+                print(f"\n  === Ablation: Effect of Bias Correction ===")
+                print(f"  Pearson Δ:  {delta_pearson:+.4f} (correction {'helped' if delta_pearson > 0 else 'hurt'})")
+                print(f"  Spearman Δ: {delta_spearman:+.4f} (correction {'helped' if delta_spearman > 0 else 'hurt'})")
+
+                ablation_data = {
+                    "corrected": {"pearson_r": pearson_r, "spearman_r": spearman_r},
+                    "uncorrected": {"pearson_r": uncorrected_pearson_r, "spearman_r": uncorrected_spearman_r},
+                    "delta": {"pearson": delta_pearson, "spearman": delta_spearman},
+                    "per_model": {m: {
+                        "peer": peer_means.get(m),
+                        "shuffle_only": shuffle_only_means.get(m),
+                        "blind_only": blind_only_means.get(m),
+                        "uncorrected": uncorrected_means.get(m),
+                        "name_bias": shuffle_only_means.get(m, 0) - peer_means.get(m, 0) if m in shuffle_only_means and m in peer_means else None,
+                        "position_bias": blind_only_means.get(m, 0) - peer_means.get(m, 0) if m in blind_only_means and m in peer_means else None,
+                    } for m in common}
+                }
 
     # Build comparison with proper tie handling
     peer_ranked = sorted(common, key=lambda m: -peer_means[m])
@@ -431,14 +535,12 @@ def phase5_correlation_analysis():
     truth_ranks = {}
     i = 0
     while i < len(truth_ranked):
-        # Find all models with same score
         score = truth_means[truth_ranked[i]]
         tied = [truth_ranked[i]]
         j = i + 1
         while j < len(truth_ranked) and truth_means[truth_ranked[j]] == score:
             tied.append(truth_ranked[j])
             j += 1
-        # Assign average rank to tied models
         avg_rank = (i + 1 + j) / 2
         for m in tied:
             truth_ranks[m] = avg_rank if len(tied) > 1 else i + 1
@@ -446,17 +548,22 @@ def phase5_correlation_analysis():
 
     peer_ranks = {m: i + 1 for i, m in enumerate(peer_ranked)}
 
-    # Build report
+    # Build comparison
     comparison = []
     for m in common:
-        comparison.append({
+        row = {
             "model": m,
             "peer_score": round(peer_means[m], 2),
             "truth_score": round(truth_means[m], 2),
             "peer_rank": peer_ranks[m],
             "truth_rank": truth_ranks[m],
             "rank_diff": peer_ranks[m] - truth_ranks[m],
-        })
+        }
+        if has_all_modes and m in uncorrected_means:
+            row["uncorrected_score"] = round(uncorrected_means[m], 2)
+            row["name_bias"] = round(shuffle_only_means.get(m, 0) - peer_means.get(m, 0), 2)
+            row["position_bias"] = round(blind_only_means.get(m, 0) - peer_means.get(m, 0), 2)
+        comparison.append(row)
     comparison.sort(key=lambda x: x["peer_rank"])
 
     # Print comparison table
@@ -484,14 +591,42 @@ Revision: {VALIDATION_REVISION}
 Models:   {len(common)}
 Questions: {num_q}
 
-## Correlation
+## Correlation (Bias-Corrected Peer vs Truth)
 
   Metric       Value    p-value   Interpretation
   ----------   ------   -------   --------------
   Pearson r    {pearson_r:>6.4f}   {pearson_p:>7.4f}   {interp}
   Spearman     {spearman_r:>6.4f}   {spearman_p:>7.4f}   {interpret(spearman_r)}
 
-## Score Comparison
+"""
+
+    # Add ablation study section if available
+    if ablation_data:
+        report += f"""## Ablation Study: Effect of Bias Correction
+
+Comparing correlation with ground truth:
+- **Corrected** (shuffle_blind): Peer scores with position and name biases removed
+- **Uncorrected**: shuffle_only + blind_only - shuffle_blind (scores with all biases)
+
+  Metric       Corrected  Uncorrected    Δ
+  ----------   ---------  -----------  ------
+  Pearson r    {pearson_r:>9.4f}  {uncorrected_pearson_r:>11.4f}  {delta_pearson:>+6.3f}
+  Spearman     {spearman_r:>9.4f}  {uncorrected_spearman_r:>11.4f}  {delta_spearman:>+6.3f}
+
+**Interpretation:** Bias correction {'improves' if delta_pearson > 0 else 'reduces'} correlation with ground truth by {abs(delta_pearson):.3f} (Pearson).
+
+### Per-Model Bias Analysis
+
+  Model                      Peer   Uncorr  Name    Pos
+  -------------------------  -----  ------  ------  ------
+"""
+        for row in comparison:
+            if "uncorrected_score" in row:
+                report += f"  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['uncorrected_score']:>6.2f}  {row['name_bias']:>+6.2f}  {row['position_bias']:>+6.2f}\n"
+
+        report += "\n*Name Bias = shuffle_only − peer | Position Bias = blind_only − peer*\n\n"
+
+    report += f"""## Score Comparison
 
   Rank  Model                      Peer   Truth  T.Rank
   ----  -------------------------  -----  -----  ------
@@ -510,20 +645,27 @@ Questions: {num_q}
     else:
         report += f"Peer evaluation shows **weak/no correlation** with ground truth (r={pearson_r:.3f})."
 
+    if ablation_data and delta_pearson > 0.05:
+        report += f"\n\n**Ablation finding:** Removing bias correction reduces correlation by {delta_pearson:.3f}, confirming that bias correction improves alignment with ground truth."
+
     report_file = TRUTH_DIR / f"TFQ_validation_report_{VALIDATION_REVISION}.md"
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(report)
     print(f"\n  Report: {report_file.name}")
 
-    save_validation_json("TFQ_analysis.json", {
+    analysis_output = {
         "revision": VALIDATION_REVISION, "timestamp": datetime.now().isoformat(),
         "correlation": {"pearson_r": round(pearson_r, 4), "pearson_p": round(pearson_p, 4),
                         "spearman_r": round(spearman_r, 4), "spearman_p": round(spearman_p, 4)},
         "comparison": comparison,
-    })
+    }
+    if ablation_data:
+        analysis_output["ablation"] = ablation_data
+
+    save_validation_json("TFQ_analysis.json", analysis_output)
 
     print(f"\n{'=' * 60}")
-    return {"pearson_r": pearson_r, "spearman_r": spearman_r}
+    return {"pearson_r": pearson_r, "spearman_r": spearman_r, "ablation": ablation_data}
 
 
 # =============================================================================
