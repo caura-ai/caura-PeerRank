@@ -551,6 +551,7 @@ def phase5_correlation_analysis():
     # Build comparison
     comparison = []
     for m in common:
+        stats = truth_data['summary'][m]
         row = {
             "model": m,
             "peer_score": round(peer_means[m], 2),
@@ -558,6 +559,9 @@ def phase5_correlation_analysis():
             "peer_rank": peer_ranks[m],
             "truth_rank": truth_ranks[m],
             "rank_diff": peer_ranks[m] - truth_ranks[m],
+            "accuracy": stats["accuracy"],
+            "correct": stats["correct"],
+            "total": stats["total"],
         }
         if has_all_modes and m in uncorrected_means:
             row["uncorrected_score"] = round(uncorrected_means[m], 2)
@@ -591,49 +595,22 @@ Revision: {VALIDATION_REVISION}
 Models:   {len(common)}
 Questions: {num_q}
 
-## Correlation (Bias-Corrected Peer vs Truth)
+## Correlation
 
   Metric       Value    p-value   Interpretation
   ----------   ------   -------   --------------
   Pearson r    {pearson_r:>6.4f}   {pearson_p:>7.4f}   {interp}
   Spearman     {spearman_r:>6.4f}   {spearman_p:>7.4f}   {interpret(spearman_r)}
 
-"""
+## Score Comparison
 
-    # Add ablation study section if available
-    if ablation_data:
-        report += f"""## Ablation Study: Effect of Bias Correction
-
-Comparing correlation with ground truth:
-- **Corrected** (shuffle_blind): Peer scores with position and name biases removed
-- **Uncorrected**: shuffle_only + blind_only - shuffle_blind (scores with all biases)
-
-  Metric       Corrected  Uncorrected    Δ
-  ----------   ---------  -----------  ------
-  Pearson r    {pearson_r:>9.4f}  {uncorrected_pearson_r:>11.4f}  {delta_pearson:>+6.3f}
-  Spearman     {spearman_r:>9.4f}  {uncorrected_spearman_r:>11.4f}  {delta_spearman:>+6.3f}
-
-**Interpretation:** Bias correction {'improves' if delta_pearson > 0 else 'reduces'} correlation with ground truth by {abs(delta_pearson):.3f} (Pearson).
-
-### Per-Model Bias Analysis
-
-  Model                      Peer   Uncorr  Name    Pos
-  -------------------------  -----  ------  ------  ------
-"""
-        for row in comparison:
-            if "uncorrected_score" in row:
-                report += f"  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['uncorrected_score']:>6.2f}  {row['name_bias']:>+6.2f}  {row['position_bias']:>+6.2f}\n"
-
-        report += "\n*Name Bias = shuffle_only − peer | Position Bias = blind_only − peer*\n\n"
-
-    report += f"""## Score Comparison
-
-  Rank  Model                      Peer   Truth  T.Rank
-  ----  -------------------------  -----  -----  ------
+  Rank  Model                      Peer   Truth  T.Rank  Accuracy
+  ----  -------------------------  -----  -----  ------  ---------------
 """
     for row in comparison:
         tr = f"{row['truth_rank']:.1f}" if row['truth_rank'] != int(row['truth_rank']) else str(int(row['truth_rank']))
-        report += f"  {row['peer_rank']:>4}  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['truth_score']:>5.2f}  {tr:>6}\n"
+        acc = f"{row['accuracy']:.1f}% ({row['correct']}/{row['total']})"
+        report += f"  {row['peer_rank']:>4}  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['truth_score']:>5.2f}  {tr:>6}  {acc}\n"
 
     report += f"\n## Conclusion\n\n"
     if pearson_r >= 0.7 and pearson_p < 0.05:
@@ -644,9 +621,6 @@ Comparing correlation with ground truth:
         report += f"**Cannot determine correlation** - all models achieved identical accuracy. Use more questions."
     else:
         report += f"Peer evaluation shows **weak/no correlation** with ground truth (r={pearson_r:.3f})."
-
-    if ablation_data and delta_pearson > 0.05:
-        report += f"\n\n**Ablation finding:** Removing bias correction reduces correlation by {delta_pearson:.3f}, confirming that bias correction improves alignment with ground truth."
 
     report_file = TRUTH_DIR / f"TFQ_validation_report_{VALIDATION_REVISION}.md"
     with open(report_file, "w", encoding="utf-8") as f:
@@ -734,7 +708,7 @@ def interactive_menu():
             except ValueError: pass
         elif choice == "R":
             rf = TRUTH_DIR / f"TFQ_validation_report_{VALIDATION_REVISION}.md"
-            if rf.exists(): print(rf.read_text())
+            if rf.exists(): print(rf.read_text(encoding="utf-8"))
             else: print("  No report yet")
         elif choice == "Q": break
 

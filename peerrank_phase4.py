@@ -76,6 +76,56 @@ def _calculate_bias_analysis(phase3_data: dict) -> dict | None:
     return analysis
 
 
+def _calculate_category_rankings(phase2_data: dict, evaluations: dict) -> dict:
+    """Calculate model rankings per category.
+
+    Returns:
+        {
+            "categories": ["reasoning/logic", ...],
+            "overall": {"model": (rank, score), ...},
+            "by_category": {"reasoning/logic": {"model": (rank, score), ...}, ...}
+        }
+    """
+    # Build question -> category mapping
+    question_category = {}
+    for q in phase2_data.get("questions", []):
+        question_category[q["text"]] = q.get("category", "unknown")
+
+    # Collect peer scores by category and model
+    # category -> model -> [scores]
+    category_scores = {}
+    overall_scores = {n: [] for _, _, n in MODELS}
+    model_names = [n for _, _, n in MODELS]
+
+    for evaluator, evals in evaluations.items():
+        for question, model_scores in evals.items():
+            category = question_category.get(question, "unknown")
+            if category not in category_scores:
+                category_scores[category] = {n: [] for n in model_names}
+
+            for model, data in model_scores.items():
+                if evaluator == model:
+                    continue  # Exclude self-evaluations
+                score = data.get("score") if isinstance(data, dict) else data
+                if isinstance(score, (int, float)) and model in model_names:
+                    category_scores[category][model].append(score)
+                    overall_scores[model].append(score)
+
+    # Calculate rankings
+    def rank_models(scores_dict):
+        """Convert {model: [scores]} to {model: (rank, avg_score)}"""
+        avgs = [(m, mean(s) if s else 0) for m, s in scores_dict.items()]
+        avgs.sort(key=lambda x: x[1], reverse=True)
+        return {m: (rank, score) for rank, (m, score) in enumerate(avgs, 1)}
+
+    result = {
+        "categories": sorted(category_scores.keys()),
+        "overall": rank_models(overall_scores),
+        "by_category": {cat: rank_models(scores) for cat, scores in category_scores.items()},
+    }
+    return result
+
+
 def _calculate_stats(phase2_data: dict, phase3_data: dict) -> dict:
     """Calculate statistics from evaluation data."""
     evaluations = phase3_data["evaluations"]
@@ -399,6 +449,37 @@ def phase4_generate_report() -> str:
                  for i, (n, avg, std, _, _, s, b, raw) in enumerate(stats["peer_data"], 1)]
     r.append("\n## Final Peer Rankings (Shuffle + Blind mode)\n\nScores from peer evaluations (excluding self-ratings):\n" +
              format_table(["#", "Model", "Peer Score", "Std", "Raw"], peer_rows, ['c', 'l', 'r', 'r', 'r']))
+
+    # Rankings by Category
+    evaluations_for_categories = phase3.get("evaluations_by_mode", {}).get("shuffle_blind", phase3.get("evaluations", {}))
+    if evaluations_for_categories:
+        cat_rankings = _calculate_category_rankings(phase2, evaluations_for_categories)
+
+        r.append("\n## Rankings by Category\n")
+        r.append("Model performance breakdown by question category (rank and score):\n")
+
+        # Build short category names for headers
+        cat_short_names = {}
+        for cat in cat_rankings["categories"]:
+            # Take first word, max 8 chars
+            short = cat.split()[0][:8]
+            cat_short_names[cat] = short
+
+        # Build table: Model | Overall | cat1 | cat2 | ...
+        header = ["Model", "Overall"] + [cat_short_names[c] for c in cat_rankings["categories"]]
+        cat_rows = []
+
+        # Sort models by overall rank
+        models_sorted = sorted(cat_rankings["overall"].items(), key=lambda x: x[1][0])
+
+        for model, (overall_rank, overall_score) in models_sorted:
+            row = [get_short_name(model), f"{overall_rank} ({overall_score:.2f})"]
+            for cat in cat_rankings["categories"]:
+                rank, score = cat_rankings["by_category"][cat].get(model, (0, 0))
+                row.append(f"{rank} ({score:.2f})")
+            cat_rows.append(row)
+
+        r.append(format_table(header, cat_rows, ['l'] + ['c'] * (len(header) - 1)))
 
     # Elo Ratings section
     evaluations_by_mode = phase3.get("evaluations_by_mode", {})
