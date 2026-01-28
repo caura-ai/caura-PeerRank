@@ -438,6 +438,7 @@ def phase5_correlation_analysis():
     evaluations = evaluations_by_mode.get("shuffle_blind", phase3_data.get("evaluations", {}))
     scores_result = calculate_scores_from_evaluations(evaluations, model_names)
     peer_means = {m: mean(s) for m, s in scores_result["peer_scores"].items() if s}
+    self_means = {m: mean(s) for m, s in scores_result["self_scores"].items() if s}
 
     # Calculate scores for other modes if available (for ablation)
     shuffle_only_means = {}
@@ -611,6 +612,53 @@ Questions: {num_q}
         tr = f"{row['truth_rank']:.1f}" if row['truth_rank'] != int(row['truth_rank']) else str(int(row['truth_rank']))
         acc = f"{row['accuracy']:.1f}% ({row['correct']}/{row['total']})"
         report += f"  {row['peer_rank']:>4}  {row['model']:<25}  {row['peer_score']:>5.2f}  {row['truth_score']:>5.2f}  {tr:>6}  {acc}\n"
+
+    # Bias Analysis section (only if all 3 modes available)
+    if has_all_modes:
+        report += """
+## Bias Analysis
+
+Three types of bias detected in the evaluation process:
+
+| Bias Type | Cause | Interpretation |
+|-----------|-------|----------------|
+| **Self Bias** | Evaluator rates own answers | + overrates self, − underrates self |
+| **Name Bias** | Brand/model recognition | + name helped, − name hurt |
+| **Position Bias** | Fixed order in answer list | + position helped, − position hurt |
+
+### Position Bias
+
+Effect of answer position in fixed-order (blind) evaluation:
+
+| Pos | Blind Score | Pos Bias |
+|:---:|------------:|---------:|
+"""
+        # Position bias by position (using MODELS order which is the fixed order in blind mode)
+        for pos, (_, _, name) in enumerate(MODELS, 1):
+            if name in blind_only_means and name in peer_means:
+                blind_score = blind_only_means[name]
+                pos_bias = blind_score - peer_means[name]
+                report += f"|  {pos}  |        {blind_score:.2f} |    {pos_bias:+.2f} |\n"
+
+        report += "\n*Pos Bias = Blind − Peer (positive = position helped)*\n"
+
+        report += """
+### Model Bias
+
+Self-favoritism and brand recognition effects:
+
+| #  | Model                  | Peer | Self | Self Bias | Shuffle | Name Bias |
+|:--:|------------------------|-----:|-----:|----------:|--------:|----------:|
+"""
+        # Model bias table sorted by peer rank
+        for i, row in enumerate(comparison, 1):
+            m = row["model"]
+            peer = peer_means.get(m, 0)
+            self_score = self_means.get(m, 0)
+            self_bias = self_score - peer if self_score else 0
+            shuffle = shuffle_only_means.get(m, 0)
+            name_bias = shuffle - peer if shuffle else 0
+            report += f"| {i}  | {m:<22} | {peer:.2f} | {self_score:.2f} |     {self_bias:+.2f} |    {shuffle:.2f} |     {name_bias:+.2f} |\n"
 
     report += f"\n## Conclusion\n\n"
     if pearson_r >= 0.7 and pearson_p < 0.05:
