@@ -91,7 +91,7 @@ MODEL_COLORS = {
     'deepseek-chat': '#E69F00',
     'llama-4-maverick': '#999999',
     'sonar-pro': '#9467BD',
-    'kimi-k2-0905': '#8C564B',
+    'kimi-k2.5': '#8C564B',
     'mistral-large': '#17BECF',
 }
 

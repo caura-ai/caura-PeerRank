@@ -103,7 +103,7 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 | DeepSeek | deepseek-chat |
 | Together AI | llama-4-maverick |
 | Perplexity | sonar-pro |
-| Moonshot AI | kimi-k2-0905 |
+| Moonshot AI | kimi-k2.5 |
 | Mistral | mistral-large |
 
 ## API Keys
