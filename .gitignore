@@ -1,0 +1,38 @@
+# Environment
+.env
+.env.*
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Credentials/Secrets
+*.json
+!package.json
+*.pem
+*.key
+
+# Data (regenerate locally)
+data/
+figures/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
