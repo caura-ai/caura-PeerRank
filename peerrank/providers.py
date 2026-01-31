@@ -384,7 +384,22 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
     chat.append(xai_user(effective_prompt))
 
     start = time.time()
-    response = await chat.sample()
+    try:
+        response = await chat.sample()
+    except Exception as e:
+        error_str = str(e).lower()
+        # Translate gRPC errors to helpful messages
+        if "permission_denied" in error_str:
+            if "content" in error_str:
+                raise RuntimeError(f"Grok content policy rejection - prompt may contain restricted content") from e
+            raise RuntimeError(f"Grok API permission denied - check GROK_API_KEY is valid") from e
+        if "unauthenticated" in error_str:
+            raise RuntimeError(f"Grok API authentication failed - check GROK_API_KEY") from e
+        if "invalid_argument" in error_str:
+            raise RuntimeError(f"Grok API invalid request - {str(e)[:100]}") from e
+        if "resource_exhausted" in error_str:
+            raise RuntimeError(f"Grok API rate limit exceeded - try again later") from e
+        raise
     duration = time.time() - start
 
     content = response.content or ""
@@ -482,11 +497,13 @@ async def call_llm(provider: str, model: str, prompt: str, max_tokens: int = MAX
         except Exception as e:
             last_error = e
             error_str = str(e).lower()
-            # Don't retry MAX_TOKENS errors - they'll always fail with the same request
-            if "max_tokens" in error_str:
+            # Don't retry errors that will always fail with the same request
+            non_retryable = ["max_tokens", "permission denied", "content policy", "authentication failed",
+                             "invalid request", "unauthenticated", "invalid_argument", "401", "403"]
+            if any(x in error_str for x in non_retryable):
                 raise
             retryable = any(x in error_str for x in ["timeout", "rate limit", "429", "500", "502", "503", "504",
-                                                      "overloaded", "capacity", "empty response"])
+                                                      "overloaded", "capacity", "empty response", "resource_exhausted"])
             if retryable and attempt < retries - 1:
                 delay = RETRY_DELAY * (2 ** attempt)
                 print(f"  [Retry {attempt + 1}] {model} - {type(e).__name__}: {str(e)[:60]}, waiting {delay}s...")
