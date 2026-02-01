@@ -71,14 +71,14 @@ def _generate_cost_analysis(phase2: dict, phase3: dict) -> str:
             cs = cost_stats[n]
             total = cs.get("total", 0)
             calls = cs.get("calls", 0)
-            input_tokens = cs.get("input_tokens", 0)
-            output_tokens = cs.get("output_tokens", 0)
+            in_tok = cs.get("in_tok", 0)
+            out_tok = cs.get("out_tok", 0)
             avg_cost = total / calls if calls > 0 else 0
             cost_rows.append([
                 n,
                 f"${total:.4f}",
-                f"{input_tokens:,}",
-                f"{output_tokens:,}",
+                f"{in_tok:,}",
+                f"{out_tok:,}",
                 f"${avg_cost:.4f}"
             ])
     cost_rows.sort(key=lambda x: float(x[1].replace("$", "")))
@@ -92,13 +92,13 @@ def _generate_cost_analysis(phase2: dict, phase3: dict) -> str:
         cs = cost_stats.get(n, {})
         total_model_cost = cs.get("total", 0)
         calls = cs.get("calls", 0)
-        input_tokens = cs.get("input_tokens", 0)
-        output_tokens = cs.get("output_tokens", 0)
+        in_tok = cs.get("in_tok", 0)
+        out_tok = cs.get("out_tok", 0)
 
         avg_cost = total_model_cost / calls if calls > 0 else 0
-        avg_input_reported = input_tokens / calls if calls > 0 else 0
+        avg_input_reported = in_tok / calls if calls > 0 else 0
         avg_input_estimated = _calc_avg_estimated_input(phase2, n)
-        avg_output = output_tokens / calls if calls > 0 else 0
+        avg_output = out_tok / calls if calls > 0 else 0
         avg_cost_cents = avg_cost * 100  # Convert to cents
 
         # Efficiency metric: (Peer Score ^ exponent) / Cost in cents
