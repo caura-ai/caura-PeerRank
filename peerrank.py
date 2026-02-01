@@ -201,11 +201,11 @@ def select_judge():
         n = int(choice)
         if 1 <= n <= len(all_names):
             selected_name = all_names[n - 1]
-            # Find the full model tuple
-            for provider, model_id, name in ALL_MODELS:
-                if name == selected_name:
-                    set_phase5_judge(provider, model_id, name)
-                    print(f"  Phase 5 judge: {name}")
+            # Find the full model dict
+            for m in ALL_MODELS:
+                if m["name"] == selected_name:
+                    set_phase5_judge(m["provider"], m["model_id"], m["name"])
+                    print(f"  Phase 5 judge: {m['name']}")
                     return
         print("  Invalid selection")
     except ValueError:
@@ -319,10 +319,10 @@ async def main():
 
     # Apply judge for Phase 5
     if args.judge:
-        for provider, model_id, name in ALL_MODELS:
-            if name.lower() == args.judge.lower():
-                set_phase5_judge(provider, model_id, name)
-                print(f"Phase 5 judge: {name}")
+        for m in ALL_MODELS:
+            if m["name"].lower() == args.judge.lower():
+                set_phase5_judge(m["provider"], m["model_id"], m["name"])
+                print(f"Phase 5 judge: {m['name']}")
                 break
         else:
             print(f"Warning: Judge model '{args.judge}' not found")

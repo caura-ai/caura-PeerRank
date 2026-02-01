@@ -410,7 +410,7 @@ if st.session_state.answers:
             st.markdown("**Position Bias**")
             st.caption("Score change when randomizing order (Peer − Blind)")
             if "shuffle_blind" in scores_by_config and "blind_only" in scores_by_config:
-                fixed_order = [n for _, _, n in ALL_MODELS]
+                fixed_order = [m["name"] for m in ALL_MODELS]
                 for pos, name in enumerate(fixed_order, 1):
                     if name in model_names:
                         peer_score = scores_by_config["shuffle_blind"].get(name, 0)
