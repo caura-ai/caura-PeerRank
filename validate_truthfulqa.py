@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import time
 from datetime import datetime
 from statistics import mean
@@ -19,9 +18,15 @@ import random
 from peerrank.config import (
     MODELS, DATA_DIR, format_duration, CATEGORIES,
     set_revision, calculate_scores_from_evaluations,
-    PROVIDER_CONCURRENCY,
+    PROVIDER_CONCURRENCY, BIAS_MODES,
 )
 from peerrank.providers import call_llm, clear_clients
+from peerrank.validation_utils import (
+    load_validation_json as _load_json,
+    save_validation_json as _save_json,
+    progress_bar,
+    get_last_completed_phase as _get_last_phase,
+)
 
 # =============================================================================
 # CONFIGURATION
@@ -61,32 +66,15 @@ def set_num_questions(n: int):
 
 
 # =============================================================================
-# FILE I/O
+# FILE I/O (wrappers for shared validation_utils)
 # =============================================================================
 
 def load_validation_json(filename: str) -> dict:
-    base, ext = filename.rsplit(".", 1)
-    filepath = TRUTH_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    if not filepath.exists():
-        raise FileNotFoundError(f"{filepath.name} not found")
-    with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return _load_json(TRUTH_DIR, filename, VALIDATION_REVISION)
 
 
 def save_validation_json(filename: str, data: dict):
-    TRUTH_DIR.mkdir(parents=True, exist_ok=True)
-    base, ext = filename.rsplit(".", 1)
-    filepath = TRUTH_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"  Saved: {filepath.name}")
-
-
-def progress_bar(completed: int, total: int, width: int = 40) -> str:
-    pct = completed * 100 // total
-    filled = pct * width // 100
-    bar = "=" * filled + ">" + "." * (width - filled - 1) if filled < width else "=" * width
-    return f"[{bar}] {pct:3}% ({completed}/{total})"
+    _save_json(TRUTH_DIR, filename, VALIDATION_REVISION, data)
 
 
 # =============================================================================
@@ -98,7 +86,7 @@ def phase1_generate(num_questions: int = 10):
     from datasets import load_dataset
 
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 1: Generate TruthfulQA Questions")
+    print("  PHASE 1: Generate TruthfulQA Questions")
     print(f"{'=' * 60}")
 
     # Load both splits - MC has answers, generation has categories
@@ -279,12 +267,7 @@ Question: {question["question"]}
 # PHASE 3: Peer Evaluation (all 3 bias modes for ablation study)
 # =============================================================================
 
-# Bias modes: (name, shuffle, blind)
-BIAS_MODES = [
-    ("shuffle_only", True, False),   # Randomized order, names visible
-    ("blind_only", False, True),     # Fixed order, names hidden
-    ("shuffle_blind", True, True),   # Both (baseline - no biases)
-]
+# BIAS_MODES imported from peerrank.config
 
 
 async def phase3_evaluate():
@@ -473,14 +456,14 @@ def phase5_correlation_analysis():
     # Check for zero variance (all scores identical)
     if len(set(truth_arr)) == 1:
         print(f"\n  WARNING: All truth scores identical ({truth_arr[0]:.1f})")
-        print(f"  Cannot compute correlation. Try more questions for variance.")
+        print("  Cannot compute correlation. Try more questions for variance.")
         pearson_r, pearson_p = 0, 1
         spearman_r, spearman_p = 0, 1
     else:
         pearson_r, pearson_p = pearsonr(peer_arr, truth_arr)
         spearman_r, spearman_p = spearmanr(peer_arr, truth_arr)
 
-    print(f"\n  === Bias-Corrected (Peer) vs Truth ===")
+    print("\n  === Bias-Corrected (Peer) vs Truth ===")
     print(f"  Pearson r:  {pearson_r:.4f} (p={pearson_p:.4f})")
     print(f"  Spearman:   {spearman_r:.4f} (p={spearman_p:.4f})")
 
@@ -495,13 +478,13 @@ def phase5_correlation_analysis():
             self_pearson_r, self_pearson_p = pearsonr(self_arr, truth_arr_self)
             self_spearman_r, self_spearman_p = spearmanr(self_arr, truth_arr_self)
 
-            print(f"\n  === Self-Evaluation vs Truth ===")
+            print("\n  === Self-Evaluation vs Truth ===")
             print(f"  Pearson r:  {self_pearson_r:.4f} (p={self_pearson_p:.4f})")
             print(f"  Spearman:   {self_spearman_r:.4f} (p={self_spearman_p:.4f})")
 
             delta_self_pearson = pearson_r - self_pearson_r
             delta_self_spearman = spearman_r - self_spearman_r
-            print(f"\n  === Ablation: Peer vs Self ===")
+            print("\n  === Ablation: Peer vs Self ===")
             print(f"  Pearson Δ:  {delta_self_pearson:+.4f} (peer {'better' if delta_self_pearson > 0 else 'worse'} than self)")
             print(f"  Spearman Δ: {delta_self_spearman:+.4f} (peer {'better' if delta_self_spearman > 0 else 'worse'} than self)")
 
@@ -667,13 +650,13 @@ Self-favoritism and brand recognition effects:
             name_bias = shuffle - peer if shuffle else 0
             report += f"| {i}  | {m:<22} | {peer:.2f} | {self_score:.2f} |     {self_bias:+.2f} |    {shuffle:.2f} |     {name_bias:+.2f} |\n"
 
-    report += f"\n## Conclusion\n\n"
+    report += "\n## Conclusion\n\n"
     if pearson_r >= 0.7 and pearson_p < 0.05:
         report += f"Peer evaluation **strongly correlates** with ground truth (r={pearson_r:.3f})."
     elif pearson_r >= 0.5 and pearson_p < 0.05:
         report += f"Peer evaluation shows **moderate correlation** with ground truth (r={pearson_r:.3f})."
     elif len(set(truth_arr)) == 1:
-        report += f"**Cannot determine correlation** - all models achieved identical accuracy. Use more questions."
+        report += "**Cannot determine correlation** - all models achieved identical accuracy. Use more questions."
     else:
         report += f"Peer evaluation shows **weak/no correlation** with ground truth (r={pearson_r:.3f})."
 
@@ -704,7 +687,7 @@ Self-favoritism and brand recognition effects:
 async def run_all_phases(num_questions: int = 10):
     """Run complete validation workflow."""
     print(f"\n{'#' * 60}")
-    print(f"  TruthfulQA VALIDATION")
+    print("  TruthfulQA VALIDATION")
     print(f"{'#' * 60}")
     print(f"  Models: {len(MODELS)} | Questions: {num_questions}")
     print(f"{'#' * 60}\n")
@@ -726,11 +709,10 @@ async def run_all_phases(num_questions: int = 10):
 # =============================================================================
 
 def get_last_completed_phase() -> int:
-    for phase, fn in [(5, "TFQ_analysis"), (4, "phase4_TFQ_scores"),
-                      (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")]:
-        if (TRUTH_DIR / f"{fn}_{VALIDATION_REVISION}.json").exists():
-            return phase
-    return 0
+    return _get_last_phase(TRUTH_DIR, VALIDATION_REVISION, [
+        (5, "TFQ_analysis"), (4, "phase4_TFQ_scores"),
+        (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")
+    ])
 
 
 def show_menu():
@@ -750,22 +732,36 @@ def show_menu():
 def interactive_menu():
     while True:
         choice = show_menu()
-        if choice == "1": phase1_generate(NUM_QUESTIONS)
-        elif choice == "2": clear_clients(); asyncio.run(phase2_answer())
-        elif choice == "3": clear_clients(); asyncio.run(phase3_evaluate())
-        elif choice == "4": phase4_ground_truth_score()
-        elif choice == "5": phase5_correlation_analysis()
-        elif choice == "A": clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
+        if choice == "1":
+            phase1_generate(NUM_QUESTIONS)
+        elif choice == "2":
+            clear_clients()
+            asyncio.run(phase2_answer())
+        elif choice == "3":
+            clear_clients()
+            asyncio.run(phase3_evaluate())
+        elif choice == "4":
+            phase4_ground_truth_score()
+        elif choice == "5":
+            phase5_correlation_analysis()
+        elif choice == "A":
+            clear_clients()
+            asyncio.run(run_all_phases(NUM_QUESTIONS))
         elif choice == "N":
             try:
                 n = int(input("  Questions (1-500): "))
-                if 1 <= n <= 500: set_num_questions(n)
-            except ValueError: pass
+                if 1 <= n <= 500:
+                    set_num_questions(n)
+            except ValueError:
+                pass
         elif choice == "R":
             rf = TRUTH_DIR / f"TFQ_validation_report_{VALIDATION_REVISION}.md"
-            if rf.exists(): print(rf.read_text(encoding="utf-8"))
-            else: print("  No report yet")
-        elif choice == "Q": break
+            if rf.exists():
+                print(rf.read_text(encoding="utf-8"))
+            else:
+                print("  No report yet")
+        elif choice == "Q":
+            break
 
 
 def main():
@@ -775,15 +771,26 @@ def main():
     parser.add_argument("--all", action="store_true")
     args = parser.parse_args()
 
-    if args.num_questions: set_num_questions(args.num_questions)
+    if args.num_questions:
+        set_num_questions(args.num_questions)
 
-    if args.phase == 1: phase1_generate(NUM_QUESTIONS)
-    elif args.phase == 2: clear_clients(); asyncio.run(phase2_answer())
-    elif args.phase == 3: clear_clients(); asyncio.run(phase3_evaluate())
-    elif args.phase == 4: phase4_ground_truth_score()
-    elif args.phase == 5: phase5_correlation_analysis()
-    elif args.all: clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
-    else: interactive_menu()
+    if args.phase == 1:
+        phase1_generate(NUM_QUESTIONS)
+    elif args.phase == 2:
+        clear_clients()
+        asyncio.run(phase2_answer())
+    elif args.phase == 3:
+        clear_clients()
+        asyncio.run(phase3_evaluate())
+    elif args.phase == 4:
+        phase4_ground_truth_score()
+    elif args.phase == 5:
+        phase5_correlation_analysis()
+    elif args.all:
+        clear_clients()
+        asyncio.run(run_all_phases(NUM_QUESTIONS))
+    else:
+        interactive_menu()
 
 
 if __name__ == "__main__":

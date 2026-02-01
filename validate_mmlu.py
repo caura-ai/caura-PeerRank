@@ -18,12 +18,10 @@ Usage:
 
 import argparse
 import asyncio
-import json
-import os
+import re
 import time
 from datetime import datetime
-from statistics import mean, stdev
-from math import sqrt
+from statistics import mean
 import random
 
 from dotenv import load_dotenv
@@ -32,9 +30,16 @@ from peerrank.config import (
     MODELS as ALL_MODELS, DATA_DIR, format_duration,
     set_revision, calculate_scores_from_evaluations,
     PROVIDER_CONCURRENCY, calculate_timing_stats, get_bias_test_config,
-    extract_json, TOKEN_COSTS,
+    extract_json,
 )
 from peerrank.providers import call_llm, clear_clients
+from peerrank.validation_utils import (
+    load_validation_json as _load_json,
+    save_validation_json as _save_json,
+    progress_bar,
+    get_last_completed_phase as _get_last_phase,
+    correlation_ci,
+)
 
 load_dotenv()
 
@@ -139,64 +144,19 @@ def get_models_display() -> str:
 
 
 # =============================================================================
-# FILE I/O
+# FILE I/O (wrappers for shared validation_utils)
 # =============================================================================
 
 def load_validation_json(filename: str) -> dict:
-    base, ext = filename.rsplit(".", 1)
-    filepath = MMLU_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    if not filepath.exists():
-        raise FileNotFoundError(f"{filepath.name} not found")
-    with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return _load_json(MMLU_DIR, filename, VALIDATION_REVISION)
 
 
 def save_validation_json(filename: str, data: dict):
-    MMLU_DIR.mkdir(parents=True, exist_ok=True)
-    base, ext = filename.rsplit(".", 1)
-    filepath = MMLU_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"  Saved: {filepath.name}")
+    _save_json(MMLU_DIR, filename, VALIDATION_REVISION, data)
 
 
-def progress_bar(completed: int, total: int, width: int = 40) -> str:
-    if total == 0:
-        return "[" + "." * width + "] 0%"
-    pct = completed * 100 // total
-    filled = pct * width // 100
-    bar = "=" * filled + ">" + "." * (width - filled - 1) if filled < width else "=" * width
-    return f"[{bar}] {pct:3}% ({completed}/{total})"
-
-
-# =============================================================================
-# CONFIDENCE INTERVAL HELPERS
-# =============================================================================
-
-def correlation_ci(r: float, n: int, alpha: float = 0.05) -> tuple[float, float]:
-    from scipy.stats import norm
-    import math
-    if abs(r) >= 1.0 or n < 4:
-        return (r, r)
-    z = 0.5 * math.log((1 + r) / (1 - r))
-    se = 1 / math.sqrt(n - 3)
-    z_crit = norm.ppf(1 - alpha / 2)
-    z_lo, z_hi = z - z_crit * se, z + z_crit * se
-    r_lo = (math.exp(2 * z_lo) - 1) / (math.exp(2 * z_lo) + 1)
-    r_hi = (math.exp(2 * z_hi) - 1) / (math.exp(2 * z_hi) + 1)
-    return (round(r_lo, 4), round(r_hi, 4))
-
-
-def wilson_ci(correct: int, total: int, alpha: float = 0.05) -> tuple[float, float]:
-    from scipy.stats import norm
-    if total == 0:
-        return (0.0, 0.0)
-    p = correct / total
-    z = norm.ppf(1 - alpha / 2)
-    denom = 1 + z**2 / total
-    center = (p + z**2 / (2 * total)) / denom
-    margin = z * sqrt((p * (1 - p) + z**2 / (4 * total)) / total) / denom
-    return (round(max(0, center - margin), 4), round(min(1, center + margin), 4))
+# Confidence interval functions imported from peerrank.validation_utils:
+# correlation_ci, wilson_ci
 
 
 # =============================================================================
@@ -208,7 +168,7 @@ def phase1_generate(num_questions: int = 50):
     from datasets import load_dataset
 
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 1: Load MMLU Questions")
+    print("  PHASE 1: Load MMLU Questions")
     print(f"{'=' * 60}")
 
     # Load MMLU dataset
@@ -343,6 +303,14 @@ async def phase2_answer():
     questions = load_validation_json("phase1_questions.json")["questions_by_model"]["MMLU"]
     model_names = [n for _, _, n in MODELS]
 
+    # Load ground truth once (not inside loop) and build lookup dict
+    gt_map = {}
+    try:
+        gt = load_validation_json("phase1_ground_truth.json")
+        gt_map = {q["question"]: LETTERS[q["answer"]] for q in gt["questions"]}
+    except Exception:
+        pass
+
     # Check for existing progress
     output_questions = []
     start_idx = 0
@@ -397,7 +365,6 @@ Answer:"""
                 answer_letter = answer_text.upper().strip(".")
             else:
                 # Pattern 2: Letter at end of response (common for reasoning models)
-                import re
                 # Match letter at end: "...the answer is C" or just "C" on last line
                 end_match = re.search(r'\b([A-D])\s*\.?\s*$', answer_text, re.IGNORECASE)
                 if end_match:
@@ -440,16 +407,8 @@ Answer:"""
         tasks = [answer_one(p, m, n, question, q_idx, semaphores[p]) for p, m, n in MODELS]
         results = await asyncio.gather(*tasks)
 
-        correct_letter = LETTERS[question.get("answer", 0)] if "answer" not in question else "?"
-        # Load ground truth for correct answer
-        try:
-            gt = load_validation_json("phase1_ground_truth.json")
-            for gtq in gt["questions"]:
-                if gtq["question"] == question["question"]:
-                    correct_letter = LETTERS[gtq["answer"]]
-                    break
-        except:
-            pass
+        # Get correct answer from pre-loaded ground truth
+        correct_letter = gt_map.get(question["question"], "?")
 
         output_questions.append({
             "text": question["question"],
@@ -506,7 +465,6 @@ Output ONLY a JSON object with scores for each response label:
 
 async def phase3_evaluate():
     """Peer evaluation of MMLU answers."""
-    from peerrank.config import MAX_TOKENS_EVAL, TEMPERATURE_EVAL
 
     set_revision(VALIDATION_REVISION)
 
@@ -573,7 +531,7 @@ async def phase3_evaluate():
                 result = (name, q_idx, remapped, duration)
             else:
                 result = (name, q_idx, {}, duration)
-        except Exception as e:
+        except Exception:
             result = (name, q_idx, {}, 0)
 
         elapsed = time.time() - start_time
@@ -698,7 +656,7 @@ def phase5_correlation_analysis():
     truth_arr = [truth_means[m] for m in common]
 
     if len(set(truth_arr)) == 1:
-        print(f"\n  WARNING: All truth scores identical")
+        print("\n  WARNING: All truth scores identical")
         pearson_r, pearson_p = 0, 1
         spearman_r, spearman_p = 0, 1
         pearson_ci = (0, 0)
@@ -784,7 +742,7 @@ Questions: {num_q}
 
 async def run_all_phases(num_questions: int = 50):
     print(f"\n{'#' * 60}")
-    print(f"  MMLU VALIDATION")
+    print("  MMLU VALIDATION")
     print(f"{'#' * 60}")
     print(f"  Models: {len(MODELS)} | Questions: {num_questions}")
     print(f"  Subjects: {get_subjects_display()}")
@@ -807,11 +765,10 @@ async def run_all_phases(num_questions: int = 50):
 # =============================================================================
 
 def get_last_completed_phase() -> int:
-    for phase, fn in [(5, "MMLU_analysis"), (4, "phase4_MMLU_scores"),
-                      (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")]:
-        if (MMLU_DIR / f"{fn}_{VALIDATION_REVISION}.json").exists():
-            return phase
-    return 0
+    return _get_last_phase(MMLU_DIR, VALIDATION_REVISION, [
+        (5, "MMLU_analysis"), (4, "phase4_MMLU_scores"),
+        (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")
+    ])
 
 
 def show_menu():

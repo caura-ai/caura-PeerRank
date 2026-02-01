@@ -8,6 +8,7 @@ responses, and produce a ranked report with bias analysis.
 from . import config  # noqa: F401
 from . import models  # noqa: F401
 from . import providers  # noqa: F401
+from . import validation_utils  # noqa: F401
 
-__all__ = ["config", "models", "providers"]
+__all__ = ["config", "models", "providers", "validation_utils"]
 __version__ = "1.0.0"

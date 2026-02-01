@@ -194,7 +194,7 @@ async def phase5_final_analysis() -> str:
     revision = get_revision()
 
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 5: Final Analysis")
+    print("  PHASE 5: Final Analysis")
     print(f"{'-' * 60}")
     print(f"  Revision:    {revision}")
     print(f"  Judge:       {judge_name}")

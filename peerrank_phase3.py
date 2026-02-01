@@ -196,7 +196,7 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
     providers = set(p for p, _, _ in MODELS)
     semaphores = {p: asyncio.Semaphore(PROVIDER_CONCURRENCY.get(p, 5)) for p in providers}
 
-    print(f"    Processing all evaluators in parallel...", flush=True)
+    print("    Processing all evaluators in parallel...", flush=True)
 
     # Run all evaluators in parallel
     results = await asyncio.gather(*[
@@ -274,7 +274,7 @@ async def phase3_evaluate_answers() -> dict:
     if web_search:
         print(f"  Web grounding: ON ({grounding_count}/{len(questions)} questions from Phase 2)")
     else:
-        print(f"  Web grounding: OFF")
+        print("  Web grounding: OFF")
     if resumed_from:
         print(f"  Resuming:    Skipping {len(resumed_from)} completed mode(s)")
     print(f"{'=' * 60}")

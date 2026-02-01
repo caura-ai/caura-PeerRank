@@ -160,11 +160,14 @@ peerrank/                # Core package (pip installable)
   models.py              # Model definitions and pricing
   config.py              # Settings and utilities
   providers.py           # LLM API implementations
+  validation_utils.py    # Shared utilities for validation scripts
 peerrank.py              # CLI entry point
 peerrank_ui.py           # Streamlit web interface
 peerrank_phase1-5.py     # Pipeline phases
 generate_figures_*.py    # Publication figure generation
 validate_truthfulqa.py   # TruthfulQA validation
+validate_gsm8k.py        # GSM8K math validation
+validate_mmlu.py         # MMLU benchmark validation
 pyproject.toml           # Package configuration
 ```
 
@@ -191,6 +194,10 @@ python generate_figures_TFQ.py            # Generate figures
 # GSM8K - mathematical reasoning
 python validate_gsm8k.py --all            # Run validation (r=0.986)
 python validate_gsm8k.py --difficulty hard  # Hard questions only
+
+# MMLU - multitask language understanding
+python validate_mmlu.py --all             # Run validation
+python validate_mmlu.py --subjects math,physics  # Specific subjects
 ```
 
 ## Contributing

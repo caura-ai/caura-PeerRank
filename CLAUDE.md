@@ -94,10 +94,11 @@ python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K w
 
 ```
 peerrank/                      # Core package (pip installable)
-  __init__.py                  # Package exports (config, models, providers)
+  __init__.py                  # Package exports (config, models, providers, validation_utils)
   models.py                    # Model definitions and pricing (ALL_MODELS)
   config.py                    # Settings, utilities, derived model lists
   providers.py                 # LLM API calls with grounding injection
+  validation_utils.py          # Shared utilities for validation scripts
 peerrank.py                    # CLI entry point
 peerrank_ui.py                 # Streamlit UI (live comparison)
 peerrank_phase1.py             # Question generation
@@ -109,6 +110,7 @@ generate_figures_PeerRank.py   # Publication-quality figure generation (Figs 4-6
 generate_figures_TFQ.py        # TruthfulQA validation figures (Figs 10-14)
 validate_truthfulqa.py         # TruthfulQA validation (correlate peer rankings with ground truth)
 validate_gsm8k.py              # GSM8K validation (correlate peer rankings with math accuracy)
+validate_mmlu.py               # MMLU validation (correlate peer rankings with benchmark accuracy)
 pyproject.toml                 # Package configuration for pip install
 data/
   phase1_questions_{rev}.json
@@ -709,8 +711,8 @@ python generate_figures_TFQ.py --stats-only       # Print stats without figures
 ### Token Limits
 Model-specific maximum token limits for API calls:
 ```python
-MAX_TOKENS_SHORT = 2048         # Short responses
-MAX_TOKENS_ANSWER = 8192        # Phase 2 answers
+MAX_TOKENS_SHORT = 4096         # Phase 1 question generation (increased for verbose models)
+MAX_TOKENS_ANSWER = 16384       # Phase 2 answers
 MAX_TOKENS_EVAL = 32000         # Phase 3 evaluations
 MAX_TOKENS_DEEPSEEK = 8192      # DeepSeek-specific limit
 MAX_ANSWER_WORDS = 200          # Phase 2 answer word limit
@@ -718,18 +720,19 @@ MAX_ANSWER_WORDS = 200          # Phase 2 answer word limit
 
 ### Temperature Settings
 ```python
-TEMPERATURE_DEFAULT = 0.7       # Generation (Phase 1, 2)
+TEMPERATURE_DEFAULT = 0.5       # Generation (Phase 1, 2)
 TEMPERATURE_EVAL = 0            # Evaluation (Phase 3)
 
 # Model-specific overrides for models that don't support certain values
 MODEL_TEMPERATURE_OVERRIDES = {
-    "gpt-5-mini": 1.0,          # GPT-5-mini doesn't support 0.7
+    "gpt-5-mini": 1.0,          # GPT-5-mini doesn't support 0.5
+    "kimi-k2.5": 1.0,           # Kimi only allows temperature=1
 }
 ```
 
 ### Retry & Timeout
 ```python
-DEFAULT_TIMEOUT = 200           # API call timeout (seconds)
+DEFAULT_TIMEOUT = 180           # API call timeout (seconds)
 MAX_RETRIES = 5                 # Number of retry attempts
 RETRY_DELAY = 4                 # Base delay between retries (exponential backoff)
 ```
@@ -743,10 +746,12 @@ GOOGLE_THINKING_BUDGET = 8192   # -1=dynamic, N=fixed budget (0 invalid for thin
 Maximum concurrent requests per provider for parallel processing:
 ```python
 PROVIDER_CONCURRENCY = {
-    "openai": 8, "anthropic": 8, "google": 8, "grok": 8,
-    "deepseek": 8, "together": 8, "perplexity": 8, "kimi": 8,
+    "openai": 8, "anthropic": 8, "google": 3, "grok": 8,
+    "deepseek": 8, "together": 8, "perplexity": 8, "kimi": 10,
+    "mistral": 8,
 }
 ```
+Note: Google concurrency reduced to 3 to avoid MAX_TOKENS errors with thinking models.
 
 ### Utility Functions
 Core helper functions used across multiple files:
@@ -786,6 +791,29 @@ Core helper functions used across multiple files:
 
 **API Keys**:
 - `get_api_key(provider)` - Fetch API key from environment variables
+
+### Validation Utilities (peerrank/validation_utils.py)
+
+Shared utilities for validation scripts (GSM8K, TruthfulQA, MMLU):
+
+```python
+# File I/O with revision suffix
+load_validation_json(directory, filename, revision) -> dict
+save_validation_json(directory, filename, revision, data)
+
+# Progress display
+progress_bar(completed, total, width=40) -> str  # "[=====>....] 50% (5/10)"
+
+# Phase detection
+get_last_completed_phase(directory, revision, phase_files) -> int
+
+# Confidence intervals
+correlation_ci(r, n, alpha=0.05) -> (low, high)   # Fisher z-transform for Pearson r
+wilson_ci(correct, total, alpha=0.05) -> (low, high)  # Wilson score for proportions
+peer_score_ci(scores, alpha=0.05) -> (low, high)  # t-distribution for means
+```
+
+Used by: validate_gsm8k.py, validate_truthfulqa.py, validate_mmlu.py
 
 ## Contributing
 

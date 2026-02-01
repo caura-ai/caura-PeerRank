@@ -16,12 +16,10 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import re
 import time
 from datetime import datetime
-from statistics import mean, stdev
-from math import sqrt
+from statistics import mean
 import random
 
 from peerrank.config import (
@@ -30,6 +28,15 @@ from peerrank.config import (
     PROVIDER_CONCURRENCY, calculate_timing_stats, get_bias_test_config,
 )
 from peerrank.providers import call_llm, clear_clients
+from peerrank.validation_utils import (
+    load_validation_json as _load_json,
+    save_validation_json as _save_json,
+    progress_bar,
+    get_last_completed_phase as _get_last_phase,
+    correlation_ci,
+    wilson_ci,
+    peer_score_ci,
+)
 
 # =============================================================================
 # MATH-SPECIFIC EVALUATION PROMPT
@@ -109,32 +116,15 @@ def get_difficulties_display() -> str:
 
 
 # =============================================================================
-# FILE I/O
+# FILE I/O (wrappers for shared validation_utils)
 # =============================================================================
 
 def load_validation_json(filename: str) -> dict:
-    base, ext = filename.rsplit(".", 1)
-    filepath = GSM8K_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    if not filepath.exists():
-        raise FileNotFoundError(f"{filepath.name} not found")
-    with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return _load_json(GSM8K_DIR, filename, VALIDATION_REVISION)
 
 
 def save_validation_json(filename: str, data: dict):
-    GSM8K_DIR.mkdir(parents=True, exist_ok=True)
-    base, ext = filename.rsplit(".", 1)
-    filepath = GSM8K_DIR / f"{base}_{VALIDATION_REVISION}.{ext}"
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"  Saved: {filepath.name}")
-
-
-def progress_bar(completed: int, total: int, width: int = 40) -> str:
-    pct = completed * 100 // total
-    filled = pct * width // 100
-    bar = "=" * filled + ">" + "." * (width - filled - 1) if filled < width else "=" * width
-    return f"[{bar}] {pct:3}% ({completed}/{total})"
+    _save_json(GSM8K_DIR, filename, VALIDATION_REVISION, data)
 
 
 # =============================================================================
@@ -246,60 +236,8 @@ def categorize_difficulty(solution: str) -> str:
     return "hard"  # Default for very complex problems
 
 
-# =============================================================================
-# CONFIDENCE INTERVAL HELPERS
-# =============================================================================
-
-def correlation_ci(r: float, n: int, alpha: float = 0.05) -> tuple[float, float]:
-    """Compute CI for Pearson r using Fisher z-transformation."""
-    from scipy.stats import norm
-    import math
-
-    if abs(r) >= 1.0 or n < 4:
-        return (r, r)
-
-    z = 0.5 * math.log((1 + r) / (1 - r))  # Fisher z
-    se = 1 / math.sqrt(n - 3)
-    z_crit = norm.ppf(1 - alpha / 2)
-
-    z_lo, z_hi = z - z_crit * se, z + z_crit * se
-    r_lo = (math.exp(2 * z_lo) - 1) / (math.exp(2 * z_lo) + 1)
-    r_hi = (math.exp(2 * z_hi) - 1) / (math.exp(2 * z_hi) + 1)
-
-    return (round(r_lo, 4), round(r_hi, 4))
-
-
-def wilson_ci(correct: int, total: int, alpha: float = 0.05) -> tuple[float, float]:
-    """Wilson score interval for binomial proportion (accuracy)."""
-    from scipy.stats import norm
-
-    if total == 0:
-        return (0.0, 0.0)
-
-    p = correct / total
-    z = norm.ppf(1 - alpha / 2)
-
-    denom = 1 + z**2 / total
-    center = (p + z**2 / (2 * total)) / denom
-    margin = z * sqrt((p * (1 - p) + z**2 / (4 * total)) / total) / denom
-
-    return (round(max(0, center - margin), 4), round(min(1, center + margin), 4))
-
-
-def peer_score_ci(scores: list[float], alpha: float = 0.05) -> tuple[float, float]:
-    """CI for mean peer score using t-distribution."""
-    from scipy.stats import t
-
-    if len(scores) < 2:
-        m = scores[0] if scores else 0
-        return (m, m)
-
-    n = len(scores)
-    m = mean(scores)
-    se = stdev(scores) / sqrt(n)
-    t_crit = t.ppf(1 - alpha / 2, n - 1)
-
-    return (round(m - t_crit * se, 2), round(m + t_crit * se, 2))
+# Confidence interval functions imported from peerrank.validation_utils:
+# correlation_ci, wilson_ci, peer_score_ci
 
 
 # =============================================================================
@@ -311,7 +249,7 @@ def phase1_generate(num_questions: int = 50):
     from datasets import load_dataset
 
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 1: Load GSM8K Questions")
+    print("  PHASE 1: Load GSM8K Questions")
     print(f"{'=' * 60}")
 
     # Load GSM8K test split
@@ -568,7 +506,7 @@ async def phase3_evaluate():
     print(f"\n{'=' * 60}")
     print("  PHASE 3: Math Peer Evaluation (verify correctness)")
     print(f"{'=' * 60}")
-    print(f"  Evaluators instructed to verify arithmetic themselves")
+    print("  Evaluators instructed to verify arithmetic themselves")
 
     # Check for existing progress to resume
     evaluations = {n: {} for _, _, n in MODELS}
@@ -858,7 +796,7 @@ def phase5_correlation_analysis():
     # Check for zero variance
     if len(set(truth_arr)) == 1:
         print(f"\n  WARNING: All truth scores identical ({truth_arr[0]:.1f})")
-        print(f"  Cannot compute correlation. Try more questions for variance.")
+        print("  Cannot compute correlation. Try more questions for variance.")
         pearson_r, pearson_p = 0, 1
         spearman_r, spearman_p = 0, 1
         pearson_ci = (0, 0)
@@ -967,7 +905,7 @@ Questions: {num_q}
 
     # Add reasoning mode analysis section
     if reasoning_data:
-        report += f"""
+        report += """
 ## Reasoning Mode Analysis
 
 Models with internal chain-of-thought (CoT) reasoning use hidden "thinking" tokens
@@ -983,7 +921,7 @@ normal text is ~2.5 chars/token.
             mode_str = data['reasoning_mode']
             report += f"  {model:<24} {data['avg_tokens']:>7,.0f} {data['avg_chars']:>7,.0f} {data['ratio']:>7.2f}   {mode_str}\n"
 
-        report += f"""
+        report += """
 ### Error Rate by Difficulty & Reasoning Mode
 
   Model                    Easy   Medium    Hard   Total   Reasoning
@@ -1024,15 +962,15 @@ normal text is ~2.5 chars/token.
                 report += f"  - {outliers[0]} at {max_std:.0f}% is an outlier among standard models on hard questions\n"
 
         if cot_models:
-            report += f"  - Models like gpt-5-mini outperform larger models due to hidden reasoning tokens\n"
+            report += "  - Models like gpt-5-mini outperform larger models due to hidden reasoning tokens\n"
 
-    report += f"\n## Conclusion\n\n"
+    report += "\n## Conclusion\n\n"
     if pearson_r >= 0.7 and pearson_p < 0.05:
         report += f"Peer evaluation **strongly correlates** with math accuracy (r={pearson_r:.3f})."
     elif pearson_r >= 0.5 and pearson_p < 0.05:
         report += f"Peer evaluation shows **moderate correlation** with math accuracy (r={pearson_r:.3f})."
     elif len(set(truth_arr)) == 1:
-        report += f"**Cannot determine correlation** - all models achieved identical accuracy. Use more questions."
+        report += "**Cannot determine correlation** - all models achieved identical accuracy. Use more questions."
     else:
         report += f"Peer evaluation shows **weak/no correlation** with math accuracy (r={pearson_r:.3f})."
 
@@ -1066,7 +1004,7 @@ normal text is ~2.5 chars/token.
 async def run_all_phases(num_questions: int = 50):
     """Run complete validation workflow."""
     print(f"\n{'#' * 60}")
-    print(f"  GSM8K VALIDATION")
+    print("  GSM8K VALIDATION")
     print(f"{'#' * 60}")
     print(f"  Models: {len(MODELS)} | Questions: {num_questions}")
     print(f"  Difficulty: {get_difficulties_display()}")
@@ -1089,11 +1027,10 @@ async def run_all_phases(num_questions: int = 50):
 # =============================================================================
 
 def get_last_completed_phase() -> int:
-    for phase, fn in [(5, "GSM8K_analysis"), (4, "phase4_GSM8K_scores"),
-                      (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")]:
-        if (GSM8K_DIR / f"{fn}_{VALIDATION_REVISION}.json").exists():
-            return phase
-    return 0
+    return _get_last_phase(GSM8K_DIR, VALIDATION_REVISION, [
+        (5, "GSM8K_analysis"), (4, "phase4_GSM8K_scores"),
+        (3, "phase3_rankings"), (2, "phase2_answers"), (1, "phase1_questions")
+    ])
 
 
 def show_menu():
@@ -1114,17 +1051,28 @@ def show_menu():
 def interactive_menu():
     while True:
         choice = show_menu()
-        if choice == "1": phase1_generate(NUM_QUESTIONS)
-        elif choice == "2": clear_clients(); asyncio.run(phase2_answer())
-        elif choice == "3": clear_clients(); asyncio.run(phase3_evaluate())
-        elif choice == "4": phase4_ground_truth_score()
-        elif choice == "5": phase5_correlation_analysis()
-        elif choice == "A": clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
+        if choice == "1":
+            phase1_generate(NUM_QUESTIONS)
+        elif choice == "2":
+            clear_clients()
+            asyncio.run(phase2_answer())
+        elif choice == "3":
+            clear_clients()
+            asyncio.run(phase3_evaluate())
+        elif choice == "4":
+            phase4_ground_truth_score()
+        elif choice == "5":
+            phase5_correlation_analysis()
+        elif choice == "A":
+            clear_clients()
+            asyncio.run(run_all_phases(NUM_QUESTIONS))
         elif choice == "N":
             try:
                 n = int(input("  Questions (1-1000): "))
-                if 1 <= n <= 1000: set_num_questions(n)
-            except ValueError: pass
+                if 1 <= n <= 1000:
+                    set_num_questions(n)
+            except ValueError:
+                pass
         elif choice == "D":
             print(f"  Current: {get_difficulties_display()}")
             print("  Options: easy, medium, hard (comma-separated)")
@@ -1132,13 +1080,16 @@ def interactive_menu():
             user_input = input("  > ").strip().lower()
             if user_input:
                 levels = [d.strip() for d in user_input.split(",")]
-                result = set_difficulties(levels)
+                set_difficulties(levels)
                 print(f"  Set to: {get_difficulties_display()}")
         elif choice == "R":
             rf = GSM8K_DIR / f"GSM8K_validation_report_{VALIDATION_REVISION}.md"
-            if rf.exists(): print(rf.read_text())
-            else: print("  No report yet")
-        elif choice == "Q": break
+            if rf.exists():
+                print(rf.read_text())
+            else:
+                print("  No report yet")
+        elif choice == "Q":
+            break
 
 
 def main():
@@ -1155,13 +1106,23 @@ def main():
         levels = [d.strip() for d in args.difficulty.split(",")]
         set_difficulties(levels)
 
-    if args.phase == 1: phase1_generate(NUM_QUESTIONS)
-    elif args.phase == 2: clear_clients(); asyncio.run(phase2_answer())
-    elif args.phase == 3: clear_clients(); asyncio.run(phase3_evaluate())
-    elif args.phase == 4: phase4_ground_truth_score()
-    elif args.phase == 5: phase5_correlation_analysis()
-    elif args.all: clear_clients(); asyncio.run(run_all_phases(NUM_QUESTIONS))
-    else: interactive_menu()
+    if args.phase == 1:
+        phase1_generate(NUM_QUESTIONS)
+    elif args.phase == 2:
+        clear_clients()
+        asyncio.run(phase2_answer())
+    elif args.phase == 3:
+        clear_clients()
+        asyncio.run(phase3_evaluate())
+    elif args.phase == 4:
+        phase4_ground_truth_score()
+    elif args.phase == 5:
+        phase5_correlation_analysis()
+    elif args.all:
+        clear_clients()
+        asyncio.run(run_all_phases(NUM_QUESTIONS))
+    else:
+        interactive_menu()
 
 
 if __name__ == "__main__":

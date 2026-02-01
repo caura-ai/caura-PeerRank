@@ -263,7 +263,7 @@ def generate_fig4_peer_rankings(data: dict, output_dir: Path):
     stds = [r['peer_std'] for r in rankings]
     colors = [get_color(r['model']) for r in rankings]
 
-    bars = ax.barh(y_pos, scores, xerr=stds, color=colors,
+    ax.barh(y_pos, scores, xerr=stds, color=colors,
                    edgecolor='white', linewidth=0.5,
                    error_kw={'capsize': 3, 'capthick': 1, 'elinewidth': 1},
                    alpha=0.9)
@@ -373,7 +373,7 @@ def generate_fig5_cross_eval_heatmap(data: dict, output_dir: Path):
     fig, ax = plt.subplots(figsize=(8, 6))
 
     # Mask for diagonal (self-ratings)
-    mask = np.eye(len(models), dtype=bool)
+    np.eye(len(models), dtype=bool)
 
     # Create heatmap
     sns.heatmap(matrix, annot=True, fmt='.1f', cmap='RdYlGn',
@@ -586,7 +586,7 @@ def generate_fig16_judge_generosity(data: dict, output_dir: Path):
     colors = [get_color(r['model']) for r in by_gen]
 
     y_pos = np.arange(len(models))
-    bars = ax.barh(y_pos, avgs, xerr=stds, color=colors, edgecolor='white', alpha=0.85,
+    ax.barh(y_pos, avgs, xerr=stds, color=colors, edgecolor='white', alpha=0.85,
                    error_kw={'capsize': 3, 'capthick': 1, 'elinewidth': 1})
 
     mean_avg = np.mean(avgs)
@@ -623,7 +623,7 @@ def generate_fig17_judge_generosity_vs_peer(data: dict, output_dir: Path):
     rankings = get_rankings(data)
 
     # Prepare data
-    models = [r['model'] for r in rankings]
+    [r['model'] for r in rankings]
     peer_scores = [r['peer_score'] for r in rankings]
     judge_generosity = [r['judge_avg'] for r in rankings]
 
@@ -1037,7 +1037,7 @@ def generate_fig6_question_autopsy(data: dict, output_dir: Path):
     fig, ax = plt.subplots(figsize=(10, 7))
 
     # Main scatter plot
-    scatter = ax.scatter(avgs, stds, c=colors, s=80, alpha=0.7,
+    ax.scatter(avgs, stds, c=colors, s=80, alpha=0.7,
                          edgecolors='white', linewidths=0.5)
 
     # Highlight extremes with markers (no emojis - Times New Roman doesn't support them)
@@ -1192,7 +1192,7 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
         offset = (i - n_models / 2 + 0.5) * width
         full_name = short_to_full.get(model, model)
         color = get_color(full_name)
-        bars = ax.bar(x + offset, scores, width, label=model,
+        ax.bar(x + offset, scores, width, label=model,
                       color=color, edgecolor='white', alpha=0.85)
 
     ax.set_xlabel('Question Category', fontweight='bold', fontsize=14)
@@ -1369,8 +1369,8 @@ def main():
         print("Error: No data files found. Run peerrank.py first.")
         return 1
 
-    print(f"PeerRank Figure Generator")
-    print(f"=" * 40)
+    print("PeerRank Figure Generator")
+    print("=" * 40)
     print(f"Revision: {revision}")
     print(f"Data dir: {data_dir}")
     print(f"Output:   {output_dir}")

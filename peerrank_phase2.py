@@ -142,7 +142,7 @@ async def phase2_answer_questions() -> dict:
     if web_search:
         grounding, grounding_cost = await _fetch_web_grounding(questions, get_revision())
 
-    print(f"\n  Processing all models in parallel...", flush=True)
+    print("\n  Processing all models in parallel...", flush=True)
 
     model_names = [n for _, _, n in MODELS]
     timing = {n: [] for n in model_names}

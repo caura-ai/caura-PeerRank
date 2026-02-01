@@ -19,7 +19,7 @@ import argparse
 import json
 from pathlib import Path
 from datetime import datetime
-from statistics import mean, stdev
+from statistics import mean
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -261,7 +261,7 @@ def generate_fig11_correlation_scatter(data: dict, output_dir: Path):
 
     peer_scores = [c['peer_score'] for c in comparison]
     truth_scores = [c['truth_score'] for c in comparison]
-    models = [c['model'] for c in comparison]
+    [c['model'] for c in comparison]
 
     # Scatter plot with model colors
     for i, c in enumerate(comparison):
@@ -593,7 +593,7 @@ def generate_stats_report(data: dict, output_dir: Path):
         report_lines.append("")
         report_lines.append(f"  Peer evaluation explains {(r**2)*100:.1f}% of the variance in math accuracy,")
         report_lines.append(f"  suggesting that peer rankings {'can' if r >= 0.5 else 'may not'} serve as a proxy")
-        report_lines.append(f"  for objective mathematical reasoning ability on GSM8K-style problems.")
+        report_lines.append("  for objective mathematical reasoning ability on GSM8K-style problems.")
     else:
         report_lines.append("  [Cannot compute correlation - scipy required]")
 

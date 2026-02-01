@@ -204,7 +204,7 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
 
     # Warn if truncated but still return partial content
     if finish_reason and 'MAX_TOKENS' in str(finish_reason) and content:
-        print(f"      [WARN] Google response truncated (MAX_TOKENS), using partial content", flush=True)
+        print("      [WARN] Google response truncated (MAX_TOKENS), using partial content", flush=True)
 
     # Extract token usage (include thinking tokens for models that use them)
     input_tokens = 0
@@ -391,14 +391,14 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
         # Translate gRPC errors to helpful messages
         if "permission_denied" in error_str:
             if "content" in error_str:
-                raise RuntimeError(f"Grok content policy rejection - prompt may contain restricted content") from e
-            raise RuntimeError(f"Grok API permission denied - check GROK_API_KEY is valid") from e
+                raise RuntimeError("Grok content policy rejection - prompt may contain restricted content") from e
+            raise RuntimeError("Grok API permission denied - check GROK_API_KEY is valid") from e
         if "unauthenticated" in error_str:
-            raise RuntimeError(f"Grok API authentication failed - check GROK_API_KEY") from e
+            raise RuntimeError("Grok API authentication failed - check GROK_API_KEY") from e
         if "invalid_argument" in error_str:
             raise RuntimeError(f"Grok API invalid request - {str(e)[:100]}") from e
         if "resource_exhausted" in error_str:
-            raise RuntimeError(f"Grok API rate limit exceeded - try again later") from e
+            raise RuntimeError("Grok API rate limit exceeded - try again later") from e
         raise
     duration = time.time() - start
 

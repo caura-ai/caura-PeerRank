@@ -209,7 +209,7 @@ def _welch_ttest(group1: list, group2: list) -> tuple:
     # Welch-Satterthwaite degrees of freedom
     num = (var1 / n1 + var2 / n2) ** 2
     denom = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
-    df = num / denom if denom else 100
+    num / denom if denom else 100
     # Approximate p-value (normal approximation for large df)
     z = abs(t_stat)
     p_value = 2 * (1 - 0.5 * (1 + math.erf(z / math.sqrt(2))))
@@ -336,7 +336,7 @@ def _calculate_home_advantage(phase1_data: dict, evaluations: dict) -> dict | No
 def phase4_generate_report() -> str:
     """Phase 4: Generate markdown report from evaluation data."""
     print(f"\n{'=' * 60}")
-    print(f"  PHASE 4: Report Generation")
+    print("  PHASE 4: Report Generation")
     print(f"{'-' * 60}")
     print(f"  Revision:    {get_revision()}")
     print(f"{'=' * 60}")
@@ -361,7 +361,7 @@ def phase4_generate_report() -> str:
 
     # Model Order (fixed position used in blind_only mode)
     model_order = [f"{i}. {n}" for i, (_, _, n) in enumerate(MODELS, 1)]
-    r.append(f"\n## Model Order\n\nFixed position order used in blind evaluation mode:\n\n" + "\n".join(model_order))
+    r.append("\n## Model Order\n\nFixed position order used in blind evaluation mode:\n\n" + "\n".join(model_order))
 
     # Timing
     mode_durations = phase3.get("mode_durations", {})
@@ -684,7 +684,7 @@ def phase4_generate_report() -> str:
         all_diffs = [res["diff"] for res in home_adv["results"]]
         avg_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
 
-        r.append(f"\n*Significance: \\* p<0.05, \\*\\* p<0.01, \\*\\*\\* p<0.001 | Cohen's d: |d|<0.2 negligible, 0.2-0.5 small, 0.5-0.8 medium, >0.8 large*")
+        r.append("\n*Significance: \\* p<0.05, \\*\\* p<0.01, \\*\\*\\* p<0.001 | Cohen's d: |d|<0.2 negligible, 0.2-0.5 small, 0.5-0.8 medium, >0.8 large*")
         r.append(f"\n**Summary:** {sig_pos} models better on own questions, {sig_neg} worse, {not_sig} not significant. Average home advantage: {avg_diff:+.3f} points.")
 
         # Question difficulty by source
