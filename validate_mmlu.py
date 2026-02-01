@@ -5,15 +5,20 @@ Features:
     - Choose participating LLMs from 12 available models
     - Choose judge LLM for evaluation
     - Choose number of questions (1-14042)
-    - Choose from 57 subject categories
+    - Choose from 57 subject categories or 11 domain-specific subsets
     - 5-phase pipeline with correlation analysis
 
 Usage:
-    python validate_mmlu.py                    # Interactive menu
-    python validate_mmlu.py --all              # Run all phases
-    python validate_mmlu.py --phase 1-5        # Run specific phase
+    python validate_mmlu.py                           # Interactive menu
+    python validate_mmlu.py --all                     # Run all phases
+    python validate_mmlu.py --phase 1-5               # Run specific phase
     python validate_mmlu.py --num-questions 50
-    python validate_mmlu.py --subjects math,physics,chemistry
+    python validate_mmlu.py --subset medical --all    # Medical subset (9 subjects)
+    python validate_mmlu.py --subset law --all        # Law subset (5 subjects)
+    python validate_mmlu.py --subjects anatomy,virology --all  # Custom subjects
+
+Subsets: medical, law, computer_science, math, physics, chemistry, biology,
+         history, psychology, economics, philosophy
 """
 
 import argparse
@@ -82,7 +87,7 @@ ALL_SUBJECTS = [
     "sociology", "us_foreign_policy", "virology", "world_religions"
 ]
 
-# Subject categories for grouping
+# Subject categories for grouping (broad)
 SUBJECT_CATEGORIES = {
     "STEM": ["abstract_algebra", "anatomy", "astronomy", "college_biology", "college_chemistry",
              "college_computer_science", "college_mathematics", "college_physics", "computer_security",
@@ -100,17 +105,94 @@ SUBJECT_CATEGORIES = {
     "Other": ["global_facts", "human_aging", "miscellaneous", "moral_disputes", "moral_scenarios", "nutrition"]
 }
 
+# Domain-specific subsets (focused evaluation)
+SUBJECT_SUBSETS = {
+    "medical": [
+        "clinical_knowledge", "medical_genetics", "anatomy", "professional_medicine",
+        "college_biology", "virology", "nutrition", "human_aging"
+        # college_medicine excluded: ~30% mislabeled physics/chemistry (MCAT prep questions)
+    ],
+    "law": [
+        "professional_law", "international_law", "jurisprudence", "moral_disputes", "moral_scenarios"
+    ],
+    "computer_science": [
+        "college_computer_science", "high_school_computer_science", "computer_security", "machine_learning"
+    ],
+    "math": [
+        "abstract_algebra", "college_mathematics", "high_school_mathematics",
+        "elementary_mathematics", "high_school_statistics", "econometrics"
+    ],
+    "physics": [
+        "college_physics", "high_school_physics", "conceptual_physics", "astronomy"
+    ],
+    "chemistry": [
+        "college_chemistry", "high_school_chemistry"
+    ],
+    "biology": [
+        "college_biology", "high_school_biology", "anatomy", "virology", "medical_genetics"
+    ],
+    "history": [
+        "high_school_european_history", "high_school_us_history", "high_school_world_history", "prehistory"
+    ],
+    "psychology": [
+        "high_school_psychology", "professional_psychology", "human_sexuality", "human_aging"
+    ],
+    "economics": [
+        "econometrics", "high_school_macroeconomics", "high_school_microeconomics",
+        "management", "marketing", "business_ethics"
+    ],
+    "philosophy": [
+        "philosophy", "formal_logic", "logical_fallacies", "moral_disputes", "moral_scenarios", "world_religions"
+    ],
+}
+
+# Track active subset name for display
+ACTIVE_SUBSET = None
+
 
 def set_num_questions(n: int):
     global NUM_QUESTIONS
     NUM_QUESTIONS = n
 
 
-def set_subjects(subjects: list[str]):
-    global SUBJECTS
+def set_subjects(subjects: list[str], subset_name: str = None):
+    global SUBJECTS, ACTIVE_SUBSET
     SUBJECTS.clear()
     SUBJECTS.extend([s.strip().lower().replace(" ", "_") for s in subjects if s.strip()])
+    ACTIVE_SUBSET = subset_name
     return SUBJECTS
+
+
+def set_subset(subset_name: str) -> list[str]:
+    """Set subjects from a predefined subset (e.g., 'medical', 'law', 'math')."""
+    global ACTIVE_SUBSET
+    subset_lower = subset_name.lower()
+
+    # Check domain-specific subsets first
+    if subset_lower in SUBJECT_SUBSETS:
+        set_subjects(SUBJECT_SUBSETS[subset_lower], subset_lower)
+        return SUBJECTS
+
+    # Check broad categories
+    for cat_name, cat_subjects in SUBJECT_CATEGORIES.items():
+        if cat_name.lower() == subset_lower:
+            set_subjects(cat_subjects, cat_name)
+            return SUBJECTS
+
+    # No match found
+    print(f"  Unknown subset: {subset_name}")
+    print(f"  Available: {', '.join(list(SUBJECT_SUBSETS.keys()) + list(SUBJECT_CATEGORIES.keys()))}")
+    return SUBJECTS
+
+
+def list_subsets():
+    """Print available subsets and their subjects."""
+    print("\n  --- Domain-Specific Subsets ---")
+    for name, subjects in SUBJECT_SUBSETS.items():
+        print(f"  {name}: {len(subjects)} subjects")
+        for s in subjects:
+            print(f"    - {s}")
+    print()
 
 
 def set_judge(provider: str, model_id: str, name: str):
@@ -136,6 +218,8 @@ def toggle_model(model_name: str) -> bool:
 def get_subjects_display() -> str:
     if not SUBJECTS:
         return "all (57)"
+    if ACTIVE_SUBSET:
+        return f"{ACTIVE_SUBSET} ({len(SUBJECTS)})"
     return f"{len(SUBJECTS)} selected"
 
 
@@ -842,35 +926,77 @@ def select_judge_menu():
 
 def select_subjects_menu():
     """Interactive subject selection."""
-    print("\n  --- Subject Categories ---")
-    print("  [1] STEM (20 subjects)")
-    print("  [2] Humanities (8 subjects)")
-    print("  [3] Social Sciences (11 subjects)")
-    print("  [4] Professional (12 subjects)")
+    print("\n  --- Domain-Specific Subsets ---")
+    print("  [M] Medical (9 subjects)      [L] Law (5 subjects)")
+    print("  [CS] Computer Science (4)     [MA] Math (6 subjects)")
+    print("  [PH] Physics (4 subjects)     [CH] Chemistry (2 subjects)")
+    print("  [BI] Biology (5 subjects)     [HI] History (4 subjects)")
+    print("  [PS] Psychology (4 subjects)  [EC] Economics (6 subjects)")
+    print("  [PL] Philosophy (6 subjects)")
+    print()
+    print("  --- Broad Categories ---")
+    print("  [1] STEM (20 subjects)        [2] Humanities (8 subjects)")
+    print("  [3] Social Sciences (11)      [4] Professional (12 subjects)")
     print("  [5] Other (6 subjects)")
-    print("  [A] All subjects")
-    print("  [L] List all 57 subjects")
-    print("  [X] Custom (comma-separated)")
+    print()
+    print("  --- Other ---")
+    print("  [A] All subjects (57)         [V] View current selection")
+    print("  [X] Custom (comma-separated)  [?] List all subjects")
 
     choice = input("\n  > ").strip().upper()
 
-    if choice == "1":
-        set_subjects(SUBJECT_CATEGORIES["STEM"])
+    # Domain-specific subsets
+    if choice == "M":
+        set_subset("medical")
+    elif choice == "L":
+        set_subset("law")
+    elif choice == "CS":
+        set_subset("computer_science")
+    elif choice == "MA":
+        set_subset("math")
+    elif choice == "PH":
+        set_subset("physics")
+    elif choice == "CH":
+        set_subset("chemistry")
+    elif choice == "BI":
+        set_subset("biology")
+    elif choice == "HI":
+        set_subset("history")
+    elif choice == "PS":
+        set_subset("psychology")
+    elif choice == "EC":
+        set_subset("economics")
+    elif choice == "PL":
+        set_subset("philosophy")
+    # Broad categories
+    elif choice == "1":
+        set_subjects(SUBJECT_CATEGORIES["STEM"], "STEM")
     elif choice == "2":
-        set_subjects(SUBJECT_CATEGORIES["Humanities"])
+        set_subjects(SUBJECT_CATEGORIES["Humanities"], "Humanities")
     elif choice == "3":
-        set_subjects(SUBJECT_CATEGORIES["Social Sciences"])
+        set_subjects(SUBJECT_CATEGORIES["Social Sciences"], "Social Sciences")
     elif choice == "4":
-        set_subjects(SUBJECT_CATEGORIES["Professional"])
+        set_subjects(SUBJECT_CATEGORIES["Professional"], "Professional")
     elif choice == "5":
-        set_subjects(SUBJECT_CATEGORIES["Other"])
+        set_subjects(SUBJECT_CATEGORIES["Other"], "Other")
+    # Other options
     elif choice == "A":
         set_subjects([])
-    elif choice == "L":
+    elif choice == "V":
+        if SUBJECTS:
+            print(f"\n  Current: {ACTIVE_SUBSET or 'custom'} ({len(SUBJECTS)} subjects)")
+            for s in sorted(SUBJECTS):
+                print(f"    - {s}")
+        else:
+            print("\n  Current: all (57 subjects)")
+        input("\n  Press Enter to continue...")
+        return
+    elif choice == "?" or choice == "LIST":
         print("\n  All MMLU subjects:")
         for i, s in enumerate(ALL_SUBJECTS, 1):
             print(f"  {i:2}. {s}")
         input("\n  Press Enter to continue...")
+        return
     elif choice == "X":
         custom = input("  Enter subjects (comma-separated): ")
         subjects = [s.strip() for s in custom.split(",")]
@@ -922,15 +1048,43 @@ def interactive_menu():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MMLU Validation")
+    parser = argparse.ArgumentParser(
+        description="MMLU Validation",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Subsets:
+  medical      clinical_knowledge, medical_genetics, anatomy, professional_medicine,
+               college_medicine, college_biology, virology, nutrition, human_aging
+  law          professional_law, international_law, jurisprudence, moral_disputes, moral_scenarios
+  computer_science  college_computer_science, high_school_computer_science, computer_security, machine_learning
+  math         abstract_algebra, college_mathematics, high_school_mathematics,
+               elementary_mathematics, high_school_statistics, econometrics
+  physics      college_physics, high_school_physics, conceptual_physics, astronomy
+  chemistry    college_chemistry, high_school_chemistry
+  biology      college_biology, high_school_biology, anatomy, virology, medical_genetics
+  history      high_school_european_history, high_school_us_history, high_school_world_history, prehistory
+  psychology   high_school_psychology, professional_psychology, human_sexuality, human_aging
+  economics    econometrics, high_school_macroeconomics, high_school_microeconomics, management, marketing, business_ethics
+  philosophy   philosophy, formal_logic, logical_fallacies, moral_disputes, moral_scenarios, world_religions
+
+Examples:
+  python validate_mmlu.py --subset medical --num-questions 50 --all
+  python validate_mmlu.py --subset law --all
+  python validate_mmlu.py --subjects anatomy,virology --num-questions 20 --all
+"""
+    )
     parser.add_argument("--phase", type=int, choices=[1, 2, 3, 4, 5])
     parser.add_argument("--num-questions", type=int, default=None)
-    parser.add_argument("--subjects", type=str, default=None, help="Comma-separated subjects")
+    parser.add_argument("--subset", type=str, default=None,
+                        help="Predefined subset: medical, law, computer_science, math, physics, chemistry, biology, history, psychology, economics, philosophy")
+    parser.add_argument("--subjects", type=str, default=None, help="Comma-separated subjects (overrides --subset)")
     parser.add_argument("--all", action="store_true")
     args = parser.parse_args()
 
     if args.num_questions:
         set_num_questions(args.num_questions)
+    if args.subset:
+        set_subset(args.subset)
     if args.subjects:
         subjects = [s.strip() for s in args.subjects.split(",")]
         set_subjects(subjects)

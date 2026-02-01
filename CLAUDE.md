@@ -67,6 +67,9 @@ python generate_figures_PeerRank.py --revision v1 --output figures/  # Generate 
 python generate_figures_TFQ.py --output figures/              # Generate TFQ validation figures
 python validate_gsm8k.py --all --num-questions 50                      # Run GSM8K math validation
 python validate_gsm8k.py --difficulty hard --num-questions 20          # GSM8K with hard questions only
+python validate_mmlu.py --all --num-questions 50                       # Run MMLU validation (all subjects)
+python validate_mmlu.py --subset medical --num-questions 30            # MMLU medical domain only
+python validate_mmlu.py --subset law --num-questions 30                # MMLU law domain only
 ```
 
 ## Interactive Menu
@@ -121,6 +124,7 @@ data/
   phase5_analysis_{rev}.md
   TRUTH/                       # TruthfulQA validation output files
   GSM8K/                       # GSM8K validation output files
+  MMLU/                        # MMLU validation output files
 ```
 
 ## Revision System
@@ -656,6 +660,55 @@ python validate_gsm8k.py --difficulty hard         # Only hard questions
 3. `therefore/so/thus... number` - Reasoning conclusion
 4. `\boxed{number}` - LaTeX format
 5. Last standalone number - Fallback
+
+## MMLU Validation (`validate_mmlu.py`)
+Correlates peer rankings with MMLU (Massive Multitask Language Understanding) ground truth across 57 subjects:
+- 5-phase pipeline mirroring main PeerRank system
+- Uses multiple choice questions (A/B/C/D) with known correct answers
+- Supports domain-specific subsets for focused evaluation
+- Computes Pearson/Spearman correlation between peer scores and accuracy
+
+**Usage**:
+```bash
+python validate_mmlu.py                           # Interactive menu
+python validate_mmlu.py --all                     # Run all phases
+python validate_mmlu.py --phase 1-5               # Run specific phase
+python validate_mmlu.py --num-questions 50        # Set question count
+python validate_mmlu.py --subset medical          # Focus on medical subjects
+python validate_mmlu.py --subset law              # Focus on law subjects
+python validate_mmlu.py --subset computer_science # Focus on CS subjects
+```
+
+**Domain-Specific Subsets** (11 domains):
+| Subset | Subjects | Description |
+|--------|----------|-------------|
+| `medical` | 8 | clinical_knowledge, medical_genetics, anatomy, professional_medicine, college_biology, virology, nutrition, human_aging |
+| `law` | 5 | professional_law, international_law, jurisprudence, moral_disputes, moral_scenarios |
+| `computer_science` | 4 | college_computer_science, high_school_computer_science, computer_security, machine_learning |
+| `math` | 6 | abstract_algebra, college_mathematics, high_school_mathematics, elementary_mathematics, high_school_statistics, econometrics |
+| `physics` | 4 | college_physics, high_school_physics, conceptual_physics, astronomy |
+| `chemistry` | 2 | college_chemistry, high_school_chemistry |
+| `biology` | 5 | college_biology, high_school_biology, anatomy, virology, medical_genetics |
+| `history` | 4 | high_school_european_history, high_school_us_history, high_school_world_history, prehistory |
+| `psychology` | 4 | high_school_psychology, professional_psychology, human_sexuality, human_aging |
+| `economics` | 6 | econometrics, high_school_macroeconomics, high_school_microeconomics, management, marketing, business_ethics |
+| `philosophy` | 6 | philosophy, formal_logic, logical_fallacies, moral_disputes, moral_scenarios, world_religions |
+
+**Interactive Menu Options**:
+- `[S] Subjects` - Select individual subjects or subsets
+- `[L] List subsets` - Show all domain subsets and their subjects
+- Domain subsets appear as menu options (e.g., `[12] medical (9 subjects)`)
+
+**Output files** (in `data/MMLU/`):
+- `phase1_questions_MMLU.json` - MC questions from selected subjects
+- `phase1_ground_truth_MMLU.json` - Correct answers (A/B/C/D)
+- `phase2_answers_MMLU.json` - Model responses with extracted answers
+- `phase3_rankings_MMLU.json` - Peer evaluations
+- `phase4_MMLU_scores_MMLU.json` - Ground truth accuracy scores
+- `MMLU_analysis_MMLU.json` - Correlation analysis
+- `MMLU_validation_report_MMLU.md` - Final report
+
+**Key difference from TruthfulQA**: MMLU covers 57 academic subjects with domain-specific subsets, enabling targeted evaluation of model expertise in specific fields (e.g., medical knowledge for healthcare applications).
 
 ### Figure Generation (`generate_figures_PeerRank.py`)
 Publication-quality figure generation for research papers:
