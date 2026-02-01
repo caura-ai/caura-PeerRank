@@ -10,3 +10,7 @@ aiohttp
 xai_sdk
 mistralai
 scipy
+together
+tavily-python
+numpy
+pandas
