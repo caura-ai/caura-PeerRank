@@ -526,19 +526,23 @@ Answer:"""
 # PHASE 3: Peer Evaluation
 # =============================================================================
 
-EVAL_PROMPT = """You are evaluating multiple-choice answers. Score each response 1-10.
+EVAL_PROMPT = """You are evaluating multiple-choice answers. You must verify correctness yourself.
 
-Scoring:
-- 10: Correct letter chosen
-- 5: Wrong letter but shows reasoning attempt
-- 1: Wrong letter, no reasoning
+Scoring rubric (1-10 integer):
+- 10: Correct answer with sound reasoning or justification.
+- 8-9: Correct answer, reasoning mostly sound with minor gaps.
+- 6-7: Likely correct OR wrong answer with reasonable approach.
+- 4-5: Wrong answer but shows partial understanding.
+- 1-3: Wrong answer, fundamentally flawed or no reasoning.
+
+CRITICAL: You must determine the correct answer yourself based on your knowledge.
+Do NOT guess - if you are uncertain about the correct answer, evaluate based on
+reasoning quality and internal consistency.
 
 Question: {question}
 
 Choices:
 {choices}
-
-Correct Answer: {correct_letter}
 
 Responses:
 {responses}
@@ -594,7 +598,6 @@ async def phase3_evaluate():
         prompt = EVAL_PROMPT.format(
             question=q["text"],
             choices=choices_text,
-            correct_letter=q.get("correct_letter", "?"),
             responses=responses_text
         )
 
