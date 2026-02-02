@@ -697,7 +697,7 @@ python validate_mmlu.py --subset computer_science # Focus on CS subjects
 **Interactive Menu Options**:
 - `[S] Subjects` - Select individual subjects or subsets
 - `[L] List subsets` - Show all domain subsets and their subjects
-- Domain subsets appear as menu options (e.g., `[12] medical (9 subjects)`)
+- Domain subsets appear as menu options (e.g., `[M] Medical (8 subjects)`)
 
 **Output files** (in `data/MMLU/`):
 - `phase1_questions_MMLU.json` - MC questions from selected subjects

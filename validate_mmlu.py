@@ -13,7 +13,7 @@ Usage:
     python validate_mmlu.py --all                     # Run all phases
     python validate_mmlu.py --phase 1-5               # Run specific phase
     python validate_mmlu.py --num-questions 50
-    python validate_mmlu.py --subset medical --all    # Medical subset (9 subjects)
+    python validate_mmlu.py --subset medical --all    # Medical subset (8 subjects)
     python validate_mmlu.py --subset law --all        # Law subset (5 subjects)
     python validate_mmlu.py --subjects anatomy,virology --all  # Custom subjects
 
@@ -930,7 +930,7 @@ def select_judge_menu():
 def select_subjects_menu():
     """Interactive subject selection."""
     print("\n  --- Domain-Specific Subsets ---")
-    print("  [M] Medical (9 subjects)      [L] Law (5 subjects)")
+    print("  [M] Medical (8 subjects)      [L] Law (5 subjects)")
     print("  [CS] Computer Science (4)     [MA] Math (6 subjects)")
     print("  [PH] Physics (4 subjects)     [CH] Chemistry (2 subjects)")
     print("  [BI] Biology (5 subjects)     [HI] History (4 subjects)")
