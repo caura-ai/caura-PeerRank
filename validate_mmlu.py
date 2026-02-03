@@ -423,14 +423,15 @@ async def phase2_answer():
 
         choices_text = "\n".join(f"{LETTERS[j]}. {c}" for j, c in enumerate(question["choices"]))
 
-        prompt = f"""Answer this multiple-choice question with ONLY the letter (A, B, C, or D).
-No explanation. Just the letter.
+        prompt = f"""Answer this multiple-choice question.
+
+Output format (strict):
+First line: exactly one letter (A, B, C, or D) and nothing else.
+Second line: 1-2 sentence explanation of why this answer is correct.
 
 Question: {question["question"]}
 
-{choices_text}
-
-Answer:"""
+{choices_text}"""
 
         start_time = time.time()
         try:
@@ -444,22 +445,25 @@ Answer:"""
             answer_text = response.strip()
             answer_letter = "?"
 
-            # Pattern 1: Single letter response (most reliable)
-            if len(answer_text) <= 3 and answer_text.upper().strip(".") in LETTERS:
+            # Pattern 1: First line contains just a letter (new format with explanation)
+            first_line = answer_text.split('\n')[0].strip().upper().strip(".")
+            if len(first_line) <= 2 and first_line in LETTERS:
+                answer_letter = first_line
+            # Pattern 2: Single letter response (legacy format)
+            elif len(answer_text) <= 3 and answer_text.upper().strip(".") in LETTERS:
                 answer_letter = answer_text.upper().strip(".")
             else:
-                # Pattern 2: Letter at end of response (common for reasoning models)
-                # Match letter at end: "...the answer is C" or just "C" on last line
+                # Pattern 3: Letter at end of response (common for reasoning models)
                 end_match = re.search(r'\b([A-D])\s*\.?\s*$', answer_text, re.IGNORECASE)
                 if end_match:
                     answer_letter = end_match.group(1).upper()
                 else:
-                    # Pattern 3: "Answer: X" or "Answer is X" pattern
+                    # Pattern 4: "Answer: X" or "Answer is X" pattern
                     answer_match = re.search(r'(?:answer|choice)[:\s]+([A-D])\b', answer_text, re.IGNORECASE)
                     if answer_match:
                         answer_letter = answer_match.group(1).upper()
                     else:
-                        # Fallback: first letter found (original behavior)
+                        # Fallback: first letter found
                         answer_letter = next((c for c in answer_text.upper() if c in LETTERS), "?")
 
             result = {
@@ -590,7 +594,7 @@ async def phase3_evaluate():
         for idx, (model_name, ans) in enumerate(response_items):
             label = f"Response {chr(65 + idx)}"
             label_to_model[label] = model_name
-            answer_text = ans.get("text", "No response")[:100]
+            answer_text = ans.get("text", "No response")[:500]  # Increased to capture explanation
             responses_text += f"\n{label}: {answer_text}"
 
         choices_text = "\n".join(f"{LETTERS[j]}. {c}" for j, c in enumerate(q["choices"]))
