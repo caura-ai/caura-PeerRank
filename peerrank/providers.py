@@ -38,6 +38,23 @@ def clear_clients():
     _clients.clear()
 
 
+async def close_clients():
+    """Properly close all async clients to avoid event loop cleanup errors.
+
+    Call this at the end of async operations, before the event loop closes.
+    Prevents 'Event loop is closed' errors from httpx cleanup tasks.
+    """
+    global _clients
+    for key, client in list(_clients.items()):
+        try:
+            # OpenAI and Anthropic clients have close() method
+            if hasattr(client, 'close'):
+                await client.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
+    _clients.clear()
+
+
 def sanitize_prompt(text: str) -> str:
     """Replace known problematic characters for API compatibility.
 
