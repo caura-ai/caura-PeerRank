@@ -344,6 +344,18 @@ def phase4_generate_report() -> str:
     phase1 = load_json("phase1_questions.json")
     phase2 = load_json("phase2_answers.json")
     phase3 = load_json("phase3_rankings.json")
+
+    if not phase3.get("complete", False):
+        completed = list(phase3.get("evaluations_by_mode", {}).keys())
+        remaining = [m for m in ["shuffle_only", "blind_only", "shuffle_blind"] if m not in completed]
+        print(f"\n  Phase 3 data is incomplete ({len(completed)}/3 modes finished).")
+        if completed:
+            print(f"  Completed: {', '.join(completed)}")
+        print(f"  Remaining: {', '.join(remaining)}")
+        print(f"\n  Please re-run Phase 3 to finish the remaining mode(s).")
+        print(f"  It will resume from the checkpoint automatically.\n")
+        return ""
+
     stats = _calculate_stats(phase2, phase3)
 
     revision = get_revision()
