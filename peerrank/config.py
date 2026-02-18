@@ -172,6 +172,7 @@ PROVIDER_MAP = {
     'sonar-pro': 'Perplexity',
     'kimi-k2.5': 'Moonshot',
     'mistral-large': 'Mistral',
+    'minimax-m2.5-highspeed': 'MiniMax',
 }
 
 # Short names for compact display
@@ -180,6 +181,7 @@ MODEL_SHORTCUTS = {
     'claude-opus-4-5': 'opus-4.5', 'claude-sonnet-4-5': 'sonnet-4.5',
     'llama-4-maverick': 'llama-4', 'deepseek-chat': 'deepseek',
     'kimi-k2.5': 'kimi', 'grok-4-1-fast': 'grok-4', 'mistral-large': 'mistral',
+    'minimax-m2.5-highspeed': 'minimax',
 }
 
 
@@ -207,6 +209,7 @@ PROVIDER_CONCURRENCY = {
     "perplexity": 8,
     "kimi": 10,
     "mistral": 8,
+    "minimax": 8,
 }
 
 
@@ -252,7 +255,7 @@ def get_api_key(provider: str) -> str:
         "google": "GOOGLE_API_KEY", "grok": "XAI_API_KEY",
         "deepseek": "DEEPSEEK_API_KEY", "together": "TOGETHER_API_KEY",
         "perplexity": "PERPLEXITY_API_KEY", "kimi": "KIMI_API_KEY",
-        "mistral": "MISTRAL_API_KEY",
+        "mistral": "MISTRAL_API_KEY", "minimax": "MINIMAX_API_KEY",
     }
     env_var = key_map.get(provider)
     if not env_var:

@@ -471,11 +471,12 @@ _call_deepseek = _make_openai_caller("https://api.deepseek.com", max_tokens_limi
 _call_together = _make_openai_caller("https://api.together.xyz/v1")
 _call_perplexity = _make_openai_caller("https://api.perplexity.ai", supports_response_format=False)  # Perplexity is inherently a search model
 _call_kimi = _make_openai_caller("https://api.moonshot.ai/v1")
+_call_minimax = _make_openai_caller("https://api.minimax.io/v1")
 
 _PROVIDER_CALLS = {
     "openai": _call_openai, "anthropic": _call_anthropic, "google": _call_google,
     "grok": _call_grok, "deepseek": _call_deepseek, "together": _call_together, "perplexity": _call_perplexity,
-    "kimi": _call_kimi, "mistral": _call_mistral,
+    "kimi": _call_kimi, "mistral": _call_mistral, "minimax": _call_minimax,
 }
 
 
