@@ -12,7 +12,7 @@ Usage:
   python peerrank.py --phase 1    # Run specific phase
   python peerrank.py --all        # All phases
   python peerrank.py --resume     # Resume from last completed
-  python peerrank.py --models gpt-5.2,claude-opus-4-5  # Include only these models
+  python peerrank.py --models gpt-5.4,claude-opus-4-5  # Include only these models
   python peerrank.py --exclude gemini-3-pro-preview    # Exclude these models
   python peerrank.py --seed 42    # Reproducible shuffle ordering
 """

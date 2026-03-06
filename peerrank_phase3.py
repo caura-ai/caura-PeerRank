@@ -68,8 +68,8 @@ def format_responses_for_eval(question: dict, shuffle: bool, blind: bool, seed: 
         (formatted_text, label_to_model_map)
 
     label_to_model_map maps the label used in prompt -> actual model name
-    For non-blind: {"gpt-5.2": "gpt-5.2", ...}
-    For blind: {"Response A": "gpt-5.2", "Response B": "claude-opus-4-5", ...}
+    For non-blind: {"gpt-5.4": "gpt-5.4", ...}
+    For blind: {"Response A": "gpt-5.4", "Response B": "claude-opus-4-5", ...}
     """
     model_names = [m[2] for m in MODELS]
     answers = question.get("answers", {})

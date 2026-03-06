@@ -69,7 +69,7 @@ STYLE_CONFIG = {
 
 # Colorblind-safe palette for 12 models (expanded Paul Tol palette)
 MODEL_COLORS = {
-    'gpt-5.2': '#0047AB',              # Cobalt Blue (darker)
+    'gpt-5.4': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',           # Light Blue
     'claude-opus-4-5': '#029E73',      # Green
     'claude-sonnet-4-5': '#78C679',    # Light Green
@@ -1164,7 +1164,7 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
     # Map short names to full model names for colors
     short_to_full = {
         'gpt-5-mini': 'gpt-5-mini',
-        'gpt-5.2': 'gpt-5.2',
+        'gpt-5.4': 'gpt-5.4',
         'gem-3-pro': 'gemini-3-pro-preview',
         'opus-4.5': 'claude-opus-4-5',
         'sonnet-4.5': 'claude-sonnet-4-5',

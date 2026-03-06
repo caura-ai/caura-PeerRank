@@ -134,7 +134,7 @@ def set_phase3_web_search(enabled: bool):
 BIAS_TEST_SEED = None  # Random seed for reproducible shuffling (None = random)
 
 # Phase 5 judge model (provider, model_id, display_name)
-PHASE5_JUDGE = ("openai", "gpt-5.2", "gpt-5.2")
+PHASE5_JUDGE = ("openai", "gpt-5.4", "gpt-5.4")
 
 
 def get_phase5_judge() -> tuple:
@@ -163,7 +163,7 @@ MODELS = PEERRANK_MODELS.copy()
 
 # Model display name to provider mapping (for figures and analysis)
 PROVIDER_MAP = {
-    'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+    'gpt-5.4': 'OpenAI', 'gpt-5-mini': 'OpenAI',
     'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
     'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
     'grok-4-1-fast': 'xAI',
@@ -667,7 +667,7 @@ def calculate_cost(model_id: str, input_tokens: int, output_tokens: int) -> floa
     Calculate API cost for a given model and token usage.
 
     Args:
-        model_id: Model identifier (e.g., "gpt-5.2", "claude-opus-4-5")
+        model_id: Model identifier (e.g., "gpt-5.4", "claude-opus-4-5")
         input_tokens: Number of input tokens used
         output_tokens: Number of output tokens generated
 

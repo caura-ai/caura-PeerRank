@@ -5,7 +5,7 @@ models.py - Model definitions and pricing for PeerRank.ai
 # Models with pricing - Costs updated Jan 2026
 # peerrank: whether model participates in PeerRank evaluation
 ALL_MODELS = [
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
+    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.4", "name": "gpt-5.4", "cost": (1.75, 14.00)},
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
     {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-6", "name": "claude-opus-4-6", "cost": (5.00, 25.00)},
     {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-5", "name": "claude-sonnet-4-5", "cost": (3.00, 15.00)},
@@ -30,7 +30,7 @@ ALL_MODELS = [
 # # Models with pricing - Arxiv Article cut offFeb 2026
 # # peerrank: whether model participates in PeerRank evaluation
 # ALL_MODELS = [
-#     {"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
+#     {"peerrank": True, "provider": "openai", "model_id": "gpt-5.4", "name": "gpt-5.4", "cost": (1.75, 14.00)},
 #     {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
 #     {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-5", "name": "claude-opus-4-5", "cost": (5.00, 25.00)},
 #     {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-5", "name": "claude-sonnet-4-5", "cost": (3.00, 15.00)},

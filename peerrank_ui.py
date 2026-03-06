@@ -84,7 +84,7 @@ async def generate_random_question() -> str:
     prompt = """Generate one interesting, thought-provoking question that would test an AI's knowledge or reasoning.
 The question should be specific and answerable. Return ONLY the question, nothing else."""
 
-    response, _, _, _, _ = await call_llm("openai", "gpt-5.2", prompt, max_tokens=200, use_web_search=False)
+    response, _, _, _, _ = await call_llm("openai", "gpt-5.4", prompt, max_tokens=200, use_web_search=False)
     return response.strip()
 
 
