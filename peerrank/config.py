@@ -203,7 +203,7 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 3,  # Reduced to avoid MAX_TOKENS errors with thinking models
+    "google": 2,  # Reduced to avoid rate limits with thinking models
     "grok": 8,
     "deepseek": 8,
     "together": 8,
