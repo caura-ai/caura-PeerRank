@@ -63,7 +63,8 @@ TEMPERATURE_EVAL = 0
 
 # Model-specific temperature overrides (for models that don't support certain values)
 MODEL_TEMPERATURE_OVERRIDES = {
-    "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
+    "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.5
+    "gpt-5-nano": 1.0,  # GPT-5-nano doesn't support 0.5
     "kimi-k2.5": 1.0,  # Kimi only allows temperature=1
 }
 
