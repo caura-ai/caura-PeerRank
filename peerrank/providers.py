@@ -4,6 +4,7 @@ providers.py - LLM provider implementations for PeerRank.ai
 
 import asyncio
 import os
+import re
 import time
 
 from openai import AsyncOpenAI
@@ -471,7 +472,17 @@ _call_deepseek = _make_openai_caller("https://api.deepseek.com", max_tokens_limi
 _call_together = _make_openai_caller("https://api.together.xyz/v1")
 _call_perplexity = _make_openai_caller("https://api.perplexity.ai", supports_response_format=False)  # Perplexity is inherently a search model
 _call_kimi = _make_openai_caller("https://api.moonshot.ai/v1")
-_call_minimax = _make_openai_caller("https://api.minimax.io/v1")
+_call_minimax_raw = _make_openai_caller("https://api.minimax.io/v1")
+
+async def _call_minimax(model, prompt, api_key, max_tokens, timeout,
+                        use_web_search, response_format, temperature,
+                        grounding_text=None):
+    """MiniMax wrapper: strip <think> tags from response."""
+    content, duration, in_tok, out_tok, reserved = await _call_minimax_raw(
+        model, prompt, api_key, max_tokens, timeout,
+        use_web_search, response_format, temperature, grounding_text)
+    content = re.sub(r'<think>.*?</think>\s*', '', content, flags=re.DOTALL)
+    return (content.strip(), duration, in_tok, out_tok, reserved)
 
 _PROVIDER_CALLS = {
     "openai": _call_openai, "anthropic": _call_anthropic, "google": _call_google,
