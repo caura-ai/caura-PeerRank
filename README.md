@@ -220,12 +220,3 @@ Contributions welcome! Please:
 MIT License - see [LICENSE](LICENSE) for details.
 
 ## Citation
-
-```bibtex
-@software{peerrank2026,
-  title = {PeerRank: LLM Peer Evaluation System},
-  author = {Caura AI},
-  year = {2026},
-  url = {https://github.com/caura-ai/caura-PeerRank}
-}
-```
