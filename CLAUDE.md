@@ -199,7 +199,7 @@ ALL_MODELS = [
     {"peerrank": True, "provider": "google", "model_id": "gemini-3-flash-preview", "name": "gemini-3-flash-preview", "cost": (0.50, 3.00)},
     {"peerrank": True, "provider": "grok", "model_id": "grok-4-1-fast", "name": "grok-4-1-fast", "cost": (0.60, 3.00)},
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-chat", "name": "deepseek-chat", "cost": (0.28, 0.42)},
-    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "name": "llama-4-maverick", "cost": (0.27, 0.27)},
+    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
     {"peerrank": True, "provider": "perplexity", "model_id": "sonar-pro", "name": "sonar-pro", "cost": (3.00, 15.00)},
     {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
     {"peerrank": True, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
@@ -544,7 +544,7 @@ PROVIDER_MAP = {
     'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
     'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
     'grok-4-1-fast': 'xAI', 'deepseek-chat': 'DeepSeek',
-    'llama-4-maverick': 'Meta', 'sonar-pro': 'Perplexity',
+    'llama-3.3-70b': 'Meta', 'sonar-pro': 'Perplexity',
     'kimi-k2.5': 'Moonshot', 'mistral-large': 'Mistral',
 }
 
@@ -552,7 +552,7 @@ PROVIDER_MAP = {
 MODEL_SHORTCUTS = {
     "gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-preview": "gem-3-flash",
     "claude-opus-4-5": "opus-4.5", "claude-sonnet-4-5": "sonnet-4.5",
-    "llama-4-maverick": "llama-4", "deepseek-chat": "deepseek",
+    "llama-3.3-70b": "llama-3.3", "deepseek-chat": "deepseek",
     "kimi-k2.5": "kimi", "grok-4-1-fast": "grok-4", "mistral-large": "mistral",
 }
 

@@ -65,6 +65,8 @@ TEMPERATURE_EVAL = 0
 MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
     "kimi-k2.5": 1.0,  # Kimi only allows temperature=1
+    "gpt-5.5": 1.0,  # GPT-5.5 only allows temperature=1
+    "claude-opus-4-7": 1.0,  # Opus 4.7 requires temperature=1 (extended thinking)
 }
 
 # Efficiency calculation exponent - rewards higher peer scores
@@ -168,7 +170,7 @@ PROVIDER_MAP = {
     'gemini-3-pro-preview': 'Google', 'gemini-3.5-flash': 'Google',
     'grok-4-1-fast': 'xAI',
     'deepseek-chat': 'DeepSeek',
-    'llama-4-maverick': 'Meta',
+    'llama-3.3-70b': 'Meta',
     'sonar-pro': 'Perplexity',
     'kimi-k2.5': 'Moonshot',
     'mistral-large': 'Mistral',
@@ -179,7 +181,7 @@ PROVIDER_MAP = {
 MODEL_SHORTCUTS = {
     'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.5-flash': 'gem-3.5-flash',
     'claude-opus-4-5': 'opus-4.5', 'claude-sonnet-4-5': 'sonnet-4.5',
-    'llama-4-maverick': 'llama-4', 'deepseek-chat': 'deepseek',
+    'llama-3.3-70b': 'llama-3.3', 'deepseek-chat': 'deepseek',
     'kimi-k2.5': 'kimi', 'grok-4-1-fast': 'grok-4', 'mistral-large': 'mistral',
     'minimax-m2.5-highspeed': 'minimax',
 }

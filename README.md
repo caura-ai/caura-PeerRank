@@ -101,7 +101,7 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 | Google | gemini-3-pro-preview, gemini-3.5-flash |
 | xAI | grok-4-1-fast |
 | DeepSeek | deepseek-chat |
-| Together AI | llama-4-maverick |
+| Together AI | llama-3.3-70b |
 | Perplexity | sonar-pro |
 | Moonshot AI | kimi-k2.5 |
 | Mistral | mistral-large |

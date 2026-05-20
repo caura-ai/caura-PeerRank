@@ -89,7 +89,7 @@ MODEL_COLORS = {
     'gemini-3.5-flash': '#F0E442',
     'grok-4-1-fast': '#CC79A7',
     'deepseek-chat': '#E69F00',
-    'llama-4-maverick': '#999999',
+    'llama-3.3-70b': '#999999',
     'sonar-pro': '#9467BD',
     'kimi-k2.5': '#8C564B',
     'mistral-large': '#17BECF',

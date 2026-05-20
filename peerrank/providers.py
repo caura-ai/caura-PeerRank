@@ -151,7 +151,8 @@ async def _call_anthropic(model: str, prompt: str, api_key: str, max_tokens: int
                           use_web_search: bool, response_format: dict | None, temperature: float,
                           grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_anthropic_client(api_key, timeout)
-    kwargs = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens, "temperature": temperature}
+    effective_temp = _get_temperature(model, temperature)
+    kwargs = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens, "temperature": effective_temp}
 
     # Inject grounding text as system context
     if grounding_text:

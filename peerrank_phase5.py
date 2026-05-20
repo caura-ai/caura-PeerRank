@@ -180,7 +180,7 @@ Based on this evaluation, which models would you recommend for:
 
 Generate 5 attention-grabbing headlines for tech news coverage. Be specific with numbers and model names. Examples of tone:
 - "GPT-5.2 Crowned King by AI Peers, But Claude Shows Surprising Self-Doubt"
-- "Speed vs Smarts: Llama-4 Answers 3x Faster But Scores 30% Lower"
+- "Speed vs Smarts: Llama-3.3 Answers 3x Faster But Scores 30% Lower"
 - "AI Models Rate Themselves 15% Higher Than Peers - Except One"
 
 Make them punchy, factual, and newsworthy. Include the most surprising or counterintuitive findings.

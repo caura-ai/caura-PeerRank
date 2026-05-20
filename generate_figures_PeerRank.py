@@ -77,7 +77,7 @@ MODEL_COLORS = {
     'gemini-3.5-flash': '#F0E442', # Yellow
     'grok-4-1-fast': '#CC79A7',        # Pink
     'deepseek-chat': '#E69F00',        # Orange-Brown
-    'llama-4-maverick': '#999999',     # Gray
+    'llama-3.3-70b': '#999999',        # Gray
     'sonar-pro': '#9467BD',            # Purple
     'kimi-k2.5': '#8C564B',         # Brown
     'mistral-large': '#17BECF',        # Cyan
@@ -1173,7 +1173,7 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
         'deepseek': 'deepseek-chat',
         'grok-4': 'grok-4-1-fast',
         'sonar-pro': 'sonar-pro',
-        'llama-4': 'llama-4-maverick',
+        'llama-3.3': 'llama-3.3-70b',
         'kimi-k2.5': 'kimi-k2.5',
     }
 
