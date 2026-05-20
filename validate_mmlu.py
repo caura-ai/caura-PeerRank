@@ -63,8 +63,8 @@ EXCLUDED_MODELS = set()
 
 # Judge model
 JUDGE_PROVIDER = "openai"
-JUDGE_MODEL_ID = "gpt-5.4"
-JUDGE_NAME = "gpt-5.4"
+JUDGE_MODEL_ID = "gpt-5.5"
+JUDGE_NAME = "gpt-5.5"
 
 # Active subjects (empty = all)
 SUBJECTS = []

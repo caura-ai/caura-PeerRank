@@ -77,7 +77,7 @@ python peerrank.py --resume         # Resume from last completed
 python peerrank.py --health         # Test API connectivity
 
 # Model selection
-python peerrank.py --models gpt-5.2,claude-opus-4-5     # Include only these
+python peerrank.py --models gpt-5.5,claude-opus-4-7     # Include only these
 python peerrank.py --exclude deepseek-chat              # Exclude these
 
 # Configuration
@@ -96,9 +96,9 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 
 | Provider | Models |
 |----------|--------|
-| OpenAI | gpt-5.2, gpt-5-mini |
+| OpenAI | gpt-5.5, gpt-5-mini |
 | Anthropic | claude-opus-4-5, claude-sonnet-4-5 |
-| Google | gemini-3-pro-preview, gemini-3-flash-preview |
+| Google | gemini-3-pro-preview, gemini-3.5-flash |
 | xAI | grok-4-1-fast |
 | DeepSeek | deepseek-chat |
 | Together AI | llama-4-maverick |

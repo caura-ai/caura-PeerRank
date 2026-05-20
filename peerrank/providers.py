@@ -173,10 +173,7 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
                        grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
     client = _get_google_client()
 
-    # Handle gemini-3-flash-preview variant (maps to gemini-2.5-flash)
     actual_model = model
-    if model == "gemini-3-flash-preview":
-        actual_model = "gemini-2.5-flash"
 
     # Limit thinking budget to save tokens (default can be very high)
     effective_max_tokens = max_tokens

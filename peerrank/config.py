@@ -63,8 +63,7 @@ TEMPERATURE_EVAL = 0
 
 # Model-specific temperature overrides (for models that don't support certain values)
 MODEL_TEMPERATURE_OVERRIDES = {
-    "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.5
-    "gpt-5-nano": 1.0,  # GPT-5-nano doesn't support 0.5
+    "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
     "kimi-k2.5": 1.0,  # Kimi only allows temperature=1
 }
 
@@ -135,7 +134,7 @@ def set_phase3_web_search(enabled: bool):
 BIAS_TEST_SEED = None  # Random seed for reproducible shuffling (None = random)
 
 # Phase 5 judge model (provider, model_id, display_name)
-PHASE5_JUDGE = ("openai", "gpt-5.4", "gpt-5.4")
+PHASE5_JUDGE = ("openai", "gpt-5.5", "gpt-5.5")
 
 
 def get_phase5_judge() -> tuple:
@@ -164,9 +163,9 @@ MODELS = PEERRANK_MODELS.copy()
 
 # Model display name to provider mapping (for figures and analysis)
 PROVIDER_MAP = {
-    'gpt-5.4': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+    'gpt-5.5': 'OpenAI', 'gpt-5-mini': 'OpenAI',
     'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
-    'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
+    'gemini-3-pro-preview': 'Google', 'gemini-3.5-flash': 'Google',
     'grok-4-1-fast': 'xAI',
     'deepseek-chat': 'DeepSeek',
     'llama-4-maverick': 'Meta',
@@ -178,7 +177,7 @@ PROVIDER_MAP = {
 
 # Short names for compact display
 MODEL_SHORTCUTS = {
-    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3-flash-preview': 'gem-3-flash',
+    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.5-flash': 'gem-3.5-flash',
     'claude-opus-4-5': 'opus-4.5', 'claude-sonnet-4-5': 'sonnet-4.5',
     'llama-4-maverick': 'llama-4', 'deepseek-chat': 'deepseek',
     'kimi-k2.5': 'kimi', 'grok-4-1-fast': 'grok-4', 'mistral-large': 'mistral',
@@ -203,7 +202,7 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 2,  # Reduced to avoid rate limits with thinking models
+    "google": 3,  # Reduced to avoid MAX_TOKENS errors with thinking models
     "grok": 8,
     "deepseek": 8,
     "together": 8,
@@ -668,7 +667,7 @@ def calculate_cost(model_id: str, input_tokens: int, output_tokens: int) -> floa
     Calculate API cost for a given model and token usage.
 
     Args:
-        model_id: Model identifier (e.g., "gpt-5.4", "claude-opus-4-5")
+        model_id: Model identifier (e.g., "gpt-5.5", "claude-opus-4-7")
         input_tokens: Number of input tokens used
         output_tokens: Number of output tokens generated
 

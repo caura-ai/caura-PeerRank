@@ -69,12 +69,12 @@ STYLE_CONFIG = {
 
 # Colorblind-safe palette for 12 models (expanded Paul Tol palette)
 MODEL_COLORS = {
-    'gpt-5.4': '#0047AB',              # Cobalt Blue (darker)
+    'gpt-5.5': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',           # Light Blue
     'claude-opus-4-5': '#029E73',      # Green
     'claude-sonnet-4-5': '#78C679',    # Light Green
     'gemini-3-pro-preview': '#D55E00', # Orange
-    'gemini-3-flash-preview': '#F0E442', # Yellow
+    'gemini-3.5-flash': '#F0E442', # Yellow
     'grok-4-1-fast': '#CC79A7',        # Pink
     'deepseek-chat': '#E69F00',        # Orange-Brown
     'llama-4-maverick': '#999999',     # Gray
@@ -1164,12 +1164,12 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
     # Map short names to full model names for colors
     short_to_full = {
         'gpt-5-mini': 'gpt-5-mini',
-        'gpt-5.4': 'gpt-5.4',
+        'gpt-5.5': 'gpt-5.5',
         'gem-3-pro': 'gemini-3-pro-preview',
         'opus-4.5': 'claude-opus-4-5',
         'sonnet-4.5': 'claude-sonnet-4-5',
         'mistral': 'mistral-large',
-        'gem-3-flash': 'gemini-3-flash-preview',
+        'gem-3.5-flash': 'gemini-3.5-flash',
         'deepseek': 'deepseek-chat',
         'grok-4': 'grok-4-1-fast',
         'sonar-pro': 'sonar-pro',
