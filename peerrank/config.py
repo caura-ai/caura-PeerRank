@@ -210,7 +210,7 @@ PROVIDER_CONCURRENCY = {
     "together": 8,
     "perplexity": 8,
     "kimi": 10,
-    "mistral": 8,
+    "mistral": 2,  # Mistral tier has strict per-minute rate limits
     "minimax": 8,
 }
 

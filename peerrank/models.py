@@ -15,7 +15,7 @@ ALL_MODELS = [
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-chat", "name": "deepseek-chat", "cost": (0.28, 0.42)},
     {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
     {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
-    {"peerrank": True, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
+    {"peerrank": False, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
     {"peerrank": True, "provider": "minimax", "model_id": "minimax-m2.5-highspeed", "name": "minimax-m2.5-highspeed", "cost": (0.30, 2.40)},
     {"peerrank": False, "provider": "deepseek", "model_id": "deepseek-reasoner", "name": "deepseek-reasoner", "cost": (0.28, 0.42)},
     {"peerrank": False, "provider": "perplexity", "model_id": "sonar-reasoning-pro", "name": "sonar-reasoning-pro", "cost": (2.00, 8.00)},
