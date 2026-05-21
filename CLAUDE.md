@@ -48,7 +48,7 @@ python peerrank.py              # Interactive menu
 python peerrank.py --phase 1    # Run specific phase (1-5)
 python peerrank.py --all        # Run all phases (1-5)
 python peerrank.py --resume     # Resume from last completed
-python peerrank.py --models gpt-5.2,claude-opus-4-5    # Include only these models
+python peerrank.py --models gpt-5.5,claude-opus-4-7    # Include only these models
 python peerrank.py --exclude gemini-3-pro-preview      # Exclude these models
 python peerrank.py --categories factual,reasoning      # Include only these categories
 python peerrank.py --exclude-categories creative       # Exclude these categories
@@ -193,12 +193,12 @@ Defined in `peerrank/models.py`. Each model has:
 ALL_MODELS = [
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-5", "name": "claude-opus-4-5", "cost": (5.00, 25.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-5", "name": "claude-sonnet-4-5", "cost": (3.00, 15.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-7", "name": "claude-opus-4-7", "cost": (5.00, 25.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-6", "name": "claude-sonnet-4-6", "cost": (3.00, 15.00)},
     {"peerrank": True, "provider": "google", "model_id": "gemini-3-pro-preview", "name": "gemini-3-pro-preview", "cost": (2.00, 12.00)},
     {"peerrank": True, "provider": "google", "model_id": "gemini-3-flash-preview", "name": "gemini-3-flash-preview", "cost": (0.50, 3.00)},
-    {"peerrank": True, "provider": "grok", "model_id": "grok-4-1-fast", "name": "grok-4-1-fast", "cost": (0.60, 3.00)},
-    {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-chat", "name": "deepseek-chat", "cost": (0.28, 0.42)},
+    {"peerrank": True, "provider": "grok", "model_id": "grok-4.3", "name": "grok-4.3", "cost": (1.25, 2.50)},
+    {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash", "cost": (0.14, 0.28)},
     {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
     {"peerrank": True, "provider": "perplexity", "model_id": "sonar-pro", "name": "sonar-pro", "cost": (3.00, 15.00)},
     {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
@@ -541,9 +541,9 @@ UI_DISPLAY_MODES = [
 # Model to provider mapping (for clustering analysis and figures)
 PROVIDER_MAP = {
     'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
-    'claude-opus-4-5': 'Anthropic', 'claude-sonnet-4-5': 'Anthropic',
+    'claude-opus-4-7': 'Anthropic', 'claude-sonnet-4-6': 'Anthropic',
     'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
-    'grok-4-1-fast': 'xAI', 'deepseek-chat': 'DeepSeek',
+    'grok-4.3': 'xAI', 'deepseek-v4-flash': 'DeepSeek',
     'llama-3.3-70b': 'Meta', 'sonar-pro': 'Perplexity',
     'kimi-k2.5': 'Moonshot', 'mistral-large': 'Mistral',
 }
@@ -551,9 +551,9 @@ PROVIDER_MAP = {
 # Short display names for compact tables
 MODEL_SHORTCUTS = {
     "gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-preview": "gem-3-flash",
-    "claude-opus-4-5": "opus-4.5", "claude-sonnet-4-5": "sonnet-4.5",
-    "llama-3.3-70b": "llama-3.3", "deepseek-chat": "deepseek",
-    "kimi-k2.5": "kimi", "grok-4-1-fast": "grok-4", "mistral-large": "mistral",
+    "claude-opus-4-7": "opus-4.7", "claude-sonnet-4-6": "sonnet-4.6",
+    "llama-3.3-70b": "llama-3.3", "deepseek-v4-flash": "deepseek",
+    "kimi-k2.5": "kimi", "grok-4.3": "grok-4.3", "mistral-large": "mistral",
 }
 
 get_short_name(model, max_len=12) -> str  # Returns shortened display name
