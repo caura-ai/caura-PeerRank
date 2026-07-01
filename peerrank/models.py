@@ -7,13 +7,13 @@ models.py - Model definitions and pricing for PeerRank.ai
 ALL_MODELS = [
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5.5", "name": "gpt-5.5", "cost": (5.00, 30.00)},
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-7", "name": "claude-opus-4-7", "cost": (5.00, 25.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-6", "name": "claude-sonnet-4-6", "cost": (3.00, 15.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-8", "name": "claude-opus-4-8", "cost": (5.00, 25.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-5", "name": "claude-sonnet-5", "cost": (2.00, 10.00)},  # intro pricing thru 2026-08-31; standard is (3.00, 15.00)
     {"peerrank": True, "provider": "google", "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
     {"peerrank": True, "provider": "google", "model_id": "gemini-3.5-flash", "name": "gemini-3.5-flash", "cost": (1.50, 9.00)},
     {"peerrank": True, "provider": "grok", "model_id": "grok-4.3", "name": "grok-4.3", "cost": (1.25, 2.50)},
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash", "cost": (0.14, 0.28)},
-    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
+    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},  # Llama 4 not available serverless on Together (needs dedicated endpoint)
     {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
     {"peerrank": False, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
     {"peerrank": True, "provider": "anthropic", "model_id": "claude-fable-5", "name": "claude-fable-5", "cost": (10.00, 50.00)},

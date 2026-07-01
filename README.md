@@ -77,14 +77,14 @@ python peerrank.py --resume         # Resume from last completed
 python peerrank.py --health         # Test API connectivity
 
 # Model selection
-python peerrank.py --models gpt-5.5,claude-opus-4-7     # Include only these
+python peerrank.py --models gpt-5.5,claude-opus-4-8     # Include only these
 python peerrank.py --exclude deepseek-v4-flash          # Exclude these
 
 # Configuration
 python peerrank.py --web-search off           # Disable web grounding (test pure knowledge)
 python peerrank.py --grounding-provider serpapi  # Use SerpAPI instead of Tavily
 python peerrank.py --seed 42                  # Reproducible shuffle ordering
-python peerrank.py --judge claude-opus-4-7    # Set Phase 5 judge model
+python peerrank.py --judge claude-opus-4-8    # Set Phase 5 judge model
 python peerrank.py --rev v2                   # Set revision tag for output files
 
 # UI and figures
@@ -97,7 +97,7 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 | Provider | Models |
 |----------|--------|
 | OpenAI | gpt-5.5, gpt-5-mini |
-| Anthropic | claude-opus-4-7, claude-sonnet-4-6 |
+| Anthropic | claude-opus-4-8, claude-sonnet-5 |
 | Google | gemini-3-pro-preview, gemini-3.5-flash |
 | xAI | grok-4.3 |
 | DeepSeek | deepseek-v4-flash |

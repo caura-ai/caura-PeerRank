@@ -71,8 +71,8 @@ STYLE_CONFIG = {
 MODEL_COLORS = {
     'gpt-5.5': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',           # Light Blue
-    'claude-opus-4-7': '#029E73',      # Green
-    'claude-sonnet-4-6': '#78C679',    # Light Green
+    'claude-opus-4-8': '#029E73',      # Green
+    'claude-sonnet-5': '#78C679',    # Light Green
     'gemini-3-pro-preview': '#D55E00', # Orange
     'gemini-3.5-flash': '#F0E442', # Yellow
     'grok-4.3': '#CC79A7',             # Pink
@@ -1166,8 +1166,8 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
         'gpt-5-mini': 'gpt-5-mini',
         'gpt-5.5': 'gpt-5.5',
         'gem-3-pro': 'gemini-3-pro-preview',
-        'opus-4.7': 'claude-opus-4-7',
-        'sonnet-4.6': 'claude-sonnet-4-6',
+        'opus-4.8': 'claude-opus-4-8',
+        'sonnet-5': 'claude-sonnet-5',
         'mistral': 'mistral-large',
         'gem-3.5-flash': 'gemini-3.5-flash',
         'deepseek': 'deepseek-v4-flash',
