@@ -426,6 +426,13 @@ def phase4_generate_report() -> str:
 
     # Response time (Phase 2 - answering)
     ts = stats["timing_stats"]
+    # Count blank/refused answers per model (empty text on a non-error call — e.g. safety refusals).
+    # The API counts these as "OK" (HTTP 200), so OK/Total alone hides them.
+    refusals_by_model = {}
+    for q in phase2.get("questions", []):
+        for m, a in q.get("answers", {}).items():
+            if isinstance(a, dict) and a.get("refused"):
+                refusals_by_model[m] = refusals_by_model.get(m, 0) + 1
     answer_rows = []
     failed_models = []
     for _, _, n in MODELS:
@@ -433,15 +440,26 @@ def phase4_generate_report() -> str:
         avg = stats_n.get('avg', 0)
         successes = stats_n.get('successes', 0)
         count = stats_n.get('count', 0)
-        answer_rows.append([n, f"{avg:.2f}s", f"{successes}/{count}"])
+        n_blank = refusals_by_model.get(n, 0)
+        answer_rows.append([n, f"{avg:.2f}s", f"{successes}/{count}", str(n_blank) if n_blank else "—"])
         if successes == 0 and count > 0:
             failed_models.append(n)
     answer_rows.sort(key=lambda x: float(x[1].replace("s", "")))
-    r.append("\n## Answers\n" + format_table(["Model", "Avg Time", "OK/Total"], answer_rows, ['l', 'r', 'r']))
+    r.append("\n## Answers\n" + format_table(["Model", "Avg Time", "OK/Total", "Blank"], answer_rows, ['l', 'r', 'r', 'r']))
 
     # Warning for models with no successful answers
     if failed_models:
         r.append(f"\n**Warning:** {', '.join(failed_models)} failed to answer any questions. Peer scores for these models may be invalid (scored on missing/error responses).")
+
+    # Note for blank/refused answers (returned no text; API-OK but scored as non-answers by peers)
+    if refusals_by_model:
+        parts = ", ".join(f"{m} ({c})" for m, c in sorted(refusals_by_model.items(), key=lambda x: -x[1]))
+        r.append(
+            f"\n**Blank/refused answers:** {parts}. "
+            "These returned no text (HTTP 200, empty body — e.g. safety refusals), so the API counts them as OK, "
+            "but peers score them as non-answers (~1/10). **They remain in the peer-score means below**, "
+            "so an affected model's category/overall score is dragged down by non-answers rather than answer quality."
+        )
 
     # Evaluation time (Phase 3 - judging)
     ets = stats["eval_timing_stats"]

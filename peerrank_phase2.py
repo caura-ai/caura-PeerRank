@@ -178,8 +178,13 @@ async def phase2_answer_questions() -> dict:
                 ])
 
             for idx, ans, dur, in_tok, out_tok, llm_cost, err in results:
+                # Blank/refused: API call succeeded (no exception) but returned no text.
+                # This is how safety refusals / content filters surface (HTTP 200, empty body).
+                # A normal answer is never empty; caught errors are stored as "Error: ..." strings.
+                refused = err is None and not str(ans).strip()
                 answers[idx] = {"text": ans, "in_tok": in_tok, "out_tok": out_tok,
-                                "llm_cost": round(llm_cost, 6), "cost": round(llm_cost, 6)}
+                                "llm_cost": round(llm_cost, 6), "cost": round(llm_cost, 6),
+                                "refused": refused}
                 times.append(dur)
                 c["total"] += llm_cost
                 c["llm"] += llm_cost
@@ -191,7 +196,9 @@ async def phase2_answer_questions() -> dict:
 
         avg_t = mean(times) if times else 0
         avg_c = c["total"] / c["calls"] if c["calls"] else 0
-        print(f"  {name}: {len(questions)}/{len(questions)} (avg {avg_t:.2f}s/q, ${avg_c:.4f}/q) | {format_duration(time.time() - model_start)} | ${c['llm']:.4f}", flush=True)
+        n_refused = sum(1 for a in answers.values() if a.get("refused"))
+        refused_str = f" | ⚠ {n_refused} blank/refused" if n_refused else ""
+        print(f"  {name}: {len(questions)}/{len(questions)} (avg {avg_t:.2f}s/q, ${avg_c:.4f}/q) | {format_duration(time.time() - model_start)} | ${c['llm']:.4f}{refused_str}", flush=True)
         return name, answers, times, c, errs
 
     # Create semaphores per provider for rate limiting
@@ -215,6 +222,14 @@ async def phase2_answer_questions() -> dict:
     total_llm = sum(c["llm"] for c in costs.values())
     total = total_llm + grounding_cost
 
+    # Collect blank/refused answers (returned no text; not exceptions, so counted "OK" by the API)
+    refusals = [
+        {"model": name, "q_idx": idx, "category": questions[idx]["category"], "question": questions[idx]["text"]}
+        for name, adict in all_answers.items()
+        for idx, a in adict.items()
+        if a.get("refused")
+    ]
+
     output = {
         "revision": get_revision(),
         "timestamp": datetime.now().isoformat(),
@@ -231,9 +246,12 @@ async def phase2_answer_questions() -> dict:
         "questions": questions,
         "errors": errors,
         "error_count": len(errors),
+        "refusals": refusals,
+        "refusal_count": len(refusals),
     }
     save_json("phase2_answers.json", output)
 
     grounding_str = f" (LLM: ${total_llm:.4f} + Grounding: ${grounding_cost:.4f})" if grounding_cost > 0 else ""
-    print(f"\n{'=' * 60}\nPhase 2 complete: {len(questions) * len(MODELS)} answers ({len(errors)} errors) in {format_duration(time.time() - phase_start)}\nTotal Cost: ${total:.4f}{grounding_str}\n{'=' * 60}")
+    refusal_str = f", {len(refusals)} blank/refused" if refusals else ""
+    print(f"\n{'=' * 60}\nPhase 2 complete: {len(questions) * len(MODELS)} answers ({len(errors)} errors{refusal_str}) in {format_duration(time.time() - phase_start)}\nTotal Cost: ${total:.4f}{grounding_str}\n{'=' * 60}")
     return output
