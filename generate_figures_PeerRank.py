@@ -79,7 +79,7 @@ MODEL_COLORS = {
     'deepseek-v4-flash': '#E69F00',    # Orange-Brown
     'llama-3.3-70b': '#999999',        # Gray
     'sonar-pro': '#9467BD',            # Purple
-    'kimi-k2.5': '#8C564B',         # Brown
+    'kimi-k2.6': '#8C564B',         # Brown
     'mistral-large': '#17BECF',        # Cyan
 }
 
@@ -1174,7 +1174,7 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
         'grok-4.3': 'grok-4.3',
         'sonar-pro': 'sonar-pro',
         'llama-3.3': 'llama-3.3-70b',
-        'kimi-k2.5': 'kimi-k2.5',
+        'kimi-k2.6': 'kimi-k2.6',
     }
 
     # Get all models

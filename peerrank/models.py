@@ -14,7 +14,7 @@ ALL_MODELS = [
     {"peerrank": True, "provider": "grok", "model_id": "grok-4.3", "name": "grok-4.3", "cost": (1.25, 2.50)},
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash", "cost": (0.14, 0.28)},
     {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},  # Llama 4 not available serverless on Together (needs dedicated endpoint)
-    {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
+    {"peerrank": False, "provider": "kimi", "model_id": "kimi-k2.6", "name": "kimi-k2.6", "cost": (0.55, 3.20)},
     {"peerrank": False, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
     {"peerrank": True, "provider": "anthropic", "model_id": "claude-fable-5", "name": "claude-fable-5", "cost": (10.00, 50.00)},
     {"peerrank": False, "provider": "deepseek", "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro", "cost": (0.435, 0.87)},

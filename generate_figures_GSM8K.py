@@ -91,7 +91,7 @@ MODEL_COLORS = {
     'deepseek-v4-flash': '#E69F00',
     'llama-3.3-70b': '#999999',
     'sonar-pro': '#9467BD',
-    'kimi-k2.5': '#8C564B',
+    'kimi-k2.6': '#8C564B',
     'mistral-large': '#17BECF',
 }
 
