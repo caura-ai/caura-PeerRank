@@ -170,7 +170,7 @@ PROVIDER_MAP = {
     'gpt-5.5': 'OpenAI', 'gpt-5-mini': 'OpenAI',
     'claude-opus-4-8': 'Anthropic', 'claude-sonnet-5': 'Anthropic',
     'gemini-3-pro-preview': 'Google', 'gemini-3.5-flash': 'Google',
-    'grok-4.3': 'xAI',
+    'grok-4.5': 'xAI',
     'deepseek-v4-flash': 'DeepSeek',
     'llama-3.3-70b': 'Meta',
     'sonar-pro': 'Perplexity',
@@ -184,7 +184,7 @@ MODEL_SHORTCUTS = {
     'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.5-flash': 'gem-3.5-flash',
     'claude-opus-4-8': 'opus-4.8', 'claude-sonnet-5': 'sonnet-5',
     'llama-3.3-70b': 'llama-3.3', 'deepseek-v4-flash': 'deepseek',
-    'kimi-k3': 'kimi', 'grok-4.3': 'grok-4.3', 'mistral-large': 'mistral',
+    'kimi-k3': 'kimi', 'grok-4.5': 'grok-4.5', 'mistral-large': 'mistral',
     'minimax-m2.5-highspeed': 'minimax',
 }
 
