@@ -64,8 +64,8 @@ TEMPERATURE_EVAL = 0
 # Model-specific temperature overrides (for models that don't support certain values)
 MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
-    "kimi-k2.6": 1.0,  # Kimi only allows temperature=1
-    "gpt-5.5": 1.0,  # GPT-5.5 only allows temperature=1
+    "kimi-k3": 1.0,  # Kimi only allows temperature=1
+    "gpt-5.6": 1.0,  # GPT-5.6 only allows temperature=1
     "claude-opus-4-8": 1.0,  # Opus 4.8 requires temperature=1 (adaptive thinking)
     "claude-fable-5": 1.0,  # Fable 5 requires temperature=1 (extended thinking)
     "claude-sonnet-5": 1.0,  # Sonnet 5 requires temperature=1 (adaptive thinking)
@@ -174,7 +174,7 @@ PROVIDER_MAP = {
     'deepseek-v4-flash': 'DeepSeek',
     'llama-3.3-70b': 'Meta',
     'sonar-pro': 'Perplexity',
-    'kimi-k2.6': 'Moonshot',
+    'kimi-k3': 'Moonshot',
     'mistral-large': 'Mistral',
     'minimax-m2.5-highspeed': 'MiniMax',
 }
@@ -184,7 +184,7 @@ MODEL_SHORTCUTS = {
     'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.5-flash': 'gem-3.5-flash',
     'claude-opus-4-8': 'opus-4.8', 'claude-sonnet-5': 'sonnet-5',
     'llama-3.3-70b': 'llama-3.3', 'deepseek-v4-flash': 'deepseek',
-    'kimi-k2.6': 'kimi', 'grok-4.3': 'grok-4.3', 'mistral-large': 'mistral',
+    'kimi-k3': 'kimi', 'grok-4.3': 'grok-4.3', 'mistral-large': 'mistral',
     'minimax-m2.5-highspeed': 'minimax',
 }
 
