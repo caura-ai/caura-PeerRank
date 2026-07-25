@@ -83,7 +83,7 @@ STYLE_CONFIG = {
 MODEL_COLORS = {
     'gpt-5.5': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',
-    'claude-opus-4-8': '#029E73',
+    'claude-opus-5': '#029E73',
     'claude-sonnet-5': '#78C679',
     'gemini-3-pro-preview': '#D55E00',
     'gemini-3.5-flash': '#F0E442',

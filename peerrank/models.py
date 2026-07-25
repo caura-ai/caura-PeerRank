@@ -7,7 +7,7 @@ models.py - Model definitions and pricing for PeerRank.ai
 ALL_MODELS = [
     {"peerrank": True, "provider": "openai", "model_id": "gpt-5.6", "name": "gpt-5.6", "cost": (5.00, 30.00)},
     {"peerrank": False, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
-    {"peerrank": False, "provider": "anthropic", "model_id": "claude-opus-4-8", "name": "claude-opus-4-8", "cost": (5.00, 25.00)},
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-5", "name": "claude-opus-5", "cost": (5.00, 25.00)},
     {"peerrank": False, "provider": "anthropic", "model_id": "claude-sonnet-5", "name": "claude-sonnet-5", "cost": (2.00, 10.00)},  # intro pricing thru 2026-08-31; standard is (3.00, 15.00)
     {"peerrank": False, "provider": "google", "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
     {"peerrank": False, "provider": "google", "model_id": "gemini-3.5-flash", "name": "gemini-3.5-flash", "cost": (1.50, 9.00)},

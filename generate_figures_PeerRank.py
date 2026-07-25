@@ -22,8 +22,13 @@ from scipy import stats
 from peerrank.config import (
     calculate_scores_from_evaluations, calculate_judge_agreement, calculate_question_stats,
     calculate_elo_ratings, _pearson_correlation, _spearman_correlation,
-    PROVIDER_MAP,
+    PROVIDER_MAP, get_short_name,
 )
+from peerrank.models import ALL_MODELS
+
+# Map the short names emitted in the Phase 4 report back to full model names,
+# derived from config so it stays in sync with model renames.
+SHORT_TO_FULL = {get_short_name(m["name"]): m["name"] for m in ALL_MODELS}
 
 # =============================================================================
 # Publication-Quality Style Settings
@@ -69,17 +74,17 @@ STYLE_CONFIG = {
 
 # Colorblind-safe palette for 12 models (expanded Paul Tol palette)
 MODEL_COLORS = {
-    'gpt-5.5': '#0047AB',              # Cobalt Blue (darker)
+    'gpt-5.6': '#0047AB',              # Cobalt Blue (darker)
     'gpt-5-mini': '#56B4E9',           # Light Blue
-    'claude-opus-4-8': '#029E73',      # Green
+    'claude-opus-5': '#029E73',      # Green
     'claude-sonnet-5': '#78C679',    # Light Green
-    'gemini-3-pro-preview': '#D55E00', # Orange
+    'claude-fable-5': '#9467BD',       # Purple
+    'gemini-3.1-pro-preview': '#D55E00', # Orange
     'gemini-3.5-flash': '#F0E442', # Yellow
-    'grok-4.3': '#CC79A7',             # Pink
+    'grok-4.5': '#CC79A7',             # Pink
     'deepseek-v4-flash': '#E69F00',    # Orange-Brown
     'llama-3.3-70b': '#999999',        # Gray
-    'sonar-pro': '#9467BD',            # Purple
-    'kimi-k2.6': '#8C564B',         # Brown
+    'kimi-k3': '#8C564B',         # Brown
     'mistral-large': '#17BECF',        # Cyan
 }
 
@@ -1161,21 +1166,8 @@ def generate_fig4a_category_rankings(data: dict, output_dir: Path):
         print("  Skipping: No valid data parsed")
         return
 
-    # Map short names to full model names for colors
-    short_to_full = {
-        'gpt-5-mini': 'gpt-5-mini',
-        'gpt-5.5': 'gpt-5.5',
-        'gem-3-pro': 'gemini-3-pro-preview',
-        'opus-4.8': 'claude-opus-4-8',
-        'sonnet-5': 'claude-sonnet-5',
-        'mistral': 'mistral-large',
-        'gem-3.5-flash': 'gemini-3.5-flash',
-        'deepseek': 'deepseek-v4-flash',
-        'grok-4.3': 'grok-4.3',
-        'sonar-pro': 'sonar-pro',
-        'llama-3.3': 'llama-3.3-70b',
-        'kimi-k2.6': 'kimi-k2.6',
-    }
+    # Map short names to full model names for colors (derived from config)
+    short_to_full = SHORT_TO_FULL
 
     # Get all models
     models = list(model_scores.keys())
