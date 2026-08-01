@@ -66,6 +66,8 @@ MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
     "kimi-k3": 1.0,  # Kimi only allows temperature=1
     "gpt-5.6": 1.0,  # GPT-5.6 only allows temperature=1
+    "gpt-5.6-terra": 1.0,  # GPT-5.6 family only allows temperature=1
+    "gpt-5.6-luna": 1.0,  # GPT-5.6 family only allows temperature=1
     "claude-opus-5": 1.0,  # Opus 5 requires temperature=1 (thinking on by default)
     "claude-fable-5": 1.0,  # Fable 5 requires temperature=1 (extended thinking)
     "claude-sonnet-5": 1.0,  # Sonnet 5 requires temperature=1 (adaptive thinking)
@@ -168,8 +170,9 @@ MODELS = PEERRANK_MODELS.copy()
 # Model display name to provider mapping (for figures and analysis)
 PROVIDER_MAP = {
     'gpt-5.6': 'OpenAI', 'gpt-5-mini': 'OpenAI',
+    'gpt-5.6-terra': 'OpenAI', 'gpt-5.6-luna': 'OpenAI',
     'claude-opus-5': 'Anthropic', 'claude-sonnet-5': 'Anthropic',
-    'gemini-3.1-pro-preview': 'Google', 'gemini-3.5-flash': 'Google',
+    'gemini-3.1-pro-preview': 'Google', 'gemini-3.6-flash': 'Google',
     'grok-4.5': 'xAI',
     'deepseek-v4-flash': 'DeepSeek',
     'llama-3.3-70b': 'Meta',
@@ -181,10 +184,11 @@ PROVIDER_MAP = {
 
 # Short names for compact display
 MODEL_SHORTCUTS = {
-    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.5-flash': 'gem-3.5-flash',
+    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.6-flash': 'gem-3.6-flash',
     'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
     'llama-3.3-70b': 'llama-3.3', 'deepseek-v4-flash': 'deepseek',
     'kimi-k3': 'kimi', 'grok-4.5': 'grok-4.5', 'mistral-large': 'mistral',
+    'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
     'minimax-m2.5-highspeed': 'minimax',
 }
 

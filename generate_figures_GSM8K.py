@@ -86,7 +86,7 @@ MODEL_COLORS = {
     'claude-opus-5': '#029E73',
     'claude-sonnet-5': '#78C679',
     'gemini-3-pro-preview': '#D55E00',
-    'gemini-3.5-flash': '#F0E442',
+    'gemini-3.6-flash': '#F0E442',
     'grok-4.3': '#CC79A7',
     'deepseek-v4-flash': '#E69F00',
     'llama-3.3-70b': '#999999',

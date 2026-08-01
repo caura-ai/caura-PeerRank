@@ -75,12 +75,14 @@ STYLE_CONFIG = {
 # Colorblind-safe palette for 12 models (expanded Paul Tol palette)
 MODEL_COLORS = {
     'gpt-5.6': '#0047AB',              # Cobalt Blue (darker)
+    'gpt-5.6-terra': '#1F77B4',        # Medium Blue
+    'gpt-5.6-luna': '#A6CEE3',         # Pale Blue
     'gpt-5-mini': '#56B4E9',           # Light Blue
     'claude-opus-5': '#029E73',      # Green
     'claude-sonnet-5': '#78C679',    # Light Green
     'claude-fable-5': '#9467BD',       # Purple
     'gemini-3.1-pro-preview': '#D55E00', # Orange
-    'gemini-3.5-flash': '#F0E442', # Yellow
+    'gemini-3.6-flash': '#F0E442', # Yellow
     'grok-4.5': '#CC79A7',             # Pink
     'deepseek-v4-flash': '#E69F00',    # Orange-Brown
     'llama-3.3-70b': '#999999',        # Gray
