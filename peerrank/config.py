@@ -176,7 +176,7 @@ PROVIDER_MAP = {
     'grok-4.5': 'xAI',
     'deepseek-v4-flash': 'DeepSeek',
     'llama-3.3-70b': 'Meta',
-    'sonar-pro': 'Perplexity',
+    'pplx-agent-medium': 'Perplexity',
     'kimi-k3': 'Moonshot',
     'mistral-large': 'Mistral',
     'minimax-m2.5-highspeed': 'MiniMax',
@@ -189,7 +189,7 @@ MODEL_SHORTCUTS = {
     'llama-3.3-70b': 'llama-3.3', 'deepseek-v4-flash': 'deepseek',
     'kimi-k3': 'kimi', 'grok-4.5': 'grok-4.5', 'mistral-large': 'mistral',
     'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
-    'minimax-m2.5-highspeed': 'minimax',
+    'minimax-m2.5-highspeed': 'minimax', 'pplx-agent-medium': 'pplx-med',
 }
 
 

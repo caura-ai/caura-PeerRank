@@ -7,6 +7,8 @@ import os
 import re
 import time
 
+import httpx
+
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
@@ -48,8 +50,10 @@ async def close_clients():
     global _clients
     for key, client in list(_clients.items()):
         try:
-            # OpenAI and Anthropic clients have close() method
-            if hasattr(client, 'close'):
+            # OpenAI/Anthropic expose close(); httpx.AsyncClient exposes aclose()
+            if hasattr(client, 'aclose'):
+                await client.aclose()
+            elif hasattr(client, 'close'):
                 await client.close()
         except Exception:
             pass  # Ignore errors during cleanup
@@ -107,6 +111,13 @@ def _get_google_client() -> genai.Client:
                 raise ValueError("GOOGLE_API_KEY not set")
             _clients["google"] = genai.Client(api_key=api_key)
     return _clients["google"]
+
+
+def _get_httpx_client(timeout: int) -> httpx.AsyncClient:
+    cache_key = f"httpx:{timeout}"
+    if cache_key not in _clients:
+        _clients[cache_key] = httpx.AsyncClient(timeout=timeout)
+    return _clients[cache_key]
 
 
 def _get_mistral_client(api_key: str) -> Mistral:
@@ -468,7 +479,6 @@ async def _call_mistral(model: str, prompt: str, api_key: str, max_tokens: int, 
 # Provider instances (native web search removed - using standardized Tavily grounding)
 _call_deepseek = _make_openai_caller("https://api.deepseek.com", max_tokens_limit=MAX_TOKENS_DEEPSEEK)
 _call_together = _make_openai_caller("https://api.together.xyz/v1")
-_call_perplexity = _make_openai_caller("https://api.perplexity.ai", supports_response_format=False)  # Perplexity is inherently a search model
 _call_kimi = _make_openai_caller("https://api.moonshot.ai/v1")
 _call_minimax_raw = _make_openai_caller("https://api.minimax.io/v1")
 
@@ -481,6 +491,84 @@ async def _call_minimax(model, prompt, api_key, max_tokens, timeout,
         use_web_search, response_format, temperature, grounding_text)
     content = re.sub(r'<think>.*?</think>\s*', '', content, flags=re.DOTALL)
     return (content.strip(), duration, in_tok, out_tok, reserved)
+
+# Perplexity Agent API (replaces the retired Sonar chat-completions surface).
+# Presets select Perplexity's own optimised configuration; a provider-qualified
+# id (e.g. "openai/gpt-5.6-sol") overrides the preset's default model.
+PERPLEXITY_AGENT_URL = "https://api.perplexity.ai/v1/agent"
+PERPLEXITY_PRESETS = {"fast", "low", "medium", "high", "xhigh", "wide-research"}
+
+# Measured 2026-08-24: a preset's search is intrinsic and CANNOT be switched off -
+# passing tools=[] alongside preset="medium" still returned live news with [web:N]
+# citations (and cost more input tokens, 14k vs 5k). Search is only avoidable by
+# passing a raw model id instead of a preset, e.g. model="openai/gpt-5.6-luna",
+# which measured in=43 tokens and no web access. So the same caveat that applied to
+# Sonar still applies: this participant sees more context than the others.
+# None = accept the preset's default tools; a list overrides them (raw models only).
+PERPLEXITY_AGENT_TOOLS: list[dict] | None = None
+
+
+def _extract_agent_text(payload: dict) -> str:
+    """Collect output_text parts from an Agent API response, skipping reasoning/tool items."""
+    parts = []
+    for item in payload.get("output") or []:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+            continue
+        for block in content or []:
+            if isinstance(block, dict) and block.get("type") == "output_text":
+                parts.append(block.get("text") or "")
+    return "\n".join(part for part in parts if part)
+
+
+async def _call_perplexity(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
+                           use_web_search: bool, response_format: dict | None, temperature: float,
+                           grounding_text: str | None = None) -> tuple[str, float, int, int, float]:
+    """Perplexity Agent API. `model` is either a preset name or a provider-qualified model id."""
+    client = _get_httpx_client(timeout)
+
+    body: dict = {
+        "input": prompt,
+        "temperature": _get_temperature(model, temperature),
+        "max_output_tokens": max_tokens,
+    }
+    body["preset" if model in PERPLEXITY_PRESETS else "model"] = model
+    if PERPLEXITY_AGENT_TOOLS is not None:
+        body["tools"] = PERPLEXITY_AGENT_TOOLS
+    if grounding_text:
+        body["instructions"] = ("Use this current information to answer accurately. "
+                                f"Do not mention searching or sources.\n\n{grounding_text}")
+
+    start = time.time()
+    response = await client.post(
+        PERPLEXITY_AGENT_URL, json=body,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+    duration = time.time() - start
+
+    if response.status_code != 200:
+        detail = response.text[:200]
+        if response.status_code == 401:
+            raise RuntimeError("Perplexity authentication failed (401) - check PERPLEXITY_API_KEY "
+                               f"and that the account has credits: {detail}")
+        if response.status_code == 429:
+            raise RuntimeError(f"Perplexity rate limit exceeded (429): {detail}")
+        raise RuntimeError(f"Perplexity API error {response.status_code}: {detail}")
+
+    payload = response.json()
+    status = payload.get("status")
+    if status and status != "completed":
+        raise RuntimeError(f"Perplexity agent run did not complete (status={status})")
+
+    content = _extract_agent_text(payload)
+    content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
+
+    usage = payload.get("usage") or {}
+    return (content.strip(), duration,
+            usage.get("input_tokens") or 0, usage.get("output_tokens") or 0, 0.0)
+
 
 _PROVIDER_CALLS = {
     "openai": _call_openai, "anthropic": _call_anthropic, "google": _call_google,
