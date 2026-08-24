@@ -429,10 +429,13 @@ def phase4_generate_report() -> str:
     # Count blank/refused answers per model (empty text on a non-error call — e.g. safety refusals).
     # The API counts these as "OK" (HTTP 200), so OK/Total alone hides them.
     refusals_by_model = {}
+    errors_by_model = {}
     for q in phase2.get("questions", []):
         for m, a in q.get("answers", {}).items():
             if isinstance(a, dict) and a.get("refused"):
                 refusals_by_model[m] = refusals_by_model.get(m, 0) + 1
+            if isinstance(a, dict) and a.get("error"):
+                errors_by_model[m] = errors_by_model.get(m, 0) + 1
     answer_rows = []
     failed_models = []
     for _, _, n in MODELS:
@@ -441,15 +444,26 @@ def phase4_generate_report() -> str:
         successes = stats_n.get('successes', 0)
         count = stats_n.get('count', 0)
         n_blank = refusals_by_model.get(n, 0)
-        answer_rows.append([n, f"{avg:.2f}s", f"{successes}/{count}", str(n_blank) if n_blank else "—"])
+        n_err = errors_by_model.get(n, 0)
+        answer_rows.append([n, f"{avg:.2f}s", f"{successes}/{count}", str(n_blank) if n_blank else "—", str(n_err) if n_err else "—"])
         if successes == 0 and count > 0:
             failed_models.append(n)
     answer_rows.sort(key=lambda x: float(x[1].replace("s", "")))
-    r.append("\n## Answers\n" + format_table(["Model", "Avg Time", "OK/Total", "Blank"], answer_rows, ['l', 'r', 'r', 'r']))
+    r.append("\n## Answers\n" + format_table(["Model", "Avg Time", "OK/Total", "Blank", "Err"], answer_rows, ['l', 'r', 'r', 'r', 'r']))
 
     # Warning for models with no successful answers
     if failed_models:
         r.append(f"\n**Warning:** {', '.join(failed_models)} failed to answer any questions. Peer scores for these models may be invalid (scored on missing/error responses).")
+
+    # Note for errored answers (raised an API exception — excluded from evaluation, so they cannot skew scores)
+    if errors_by_model:
+        parts = ", ".join(f"{m} ({c})" for m, c in sorted(errors_by_model.items(), key=lambda x: -x[1]))
+        r.append(
+            f"\n**Errored answers (excluded from scoring):** {parts}. "
+            "These raised an API exception (e.g. timeout or rate limit), so they are omitted from the evaluation "
+            "lineup and have **no effect on peer scores or Elo**. A high count means the model's remaining scores "
+            "rest on fewer questions."
+        )
 
     # Note for blank/refused answers (returned no text; API-OK but scored as non-answers by peers)
     if refusals_by_model:
