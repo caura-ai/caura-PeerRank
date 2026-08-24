@@ -508,6 +508,13 @@ PERPLEXITY_PRESETS = {"fast", "low", "medium", "high", "xhigh", "wide-research"}
 PERPLEXITY_AGENT_TOOLS: list[dict] | None = None
 
 
+# Preset runs cite their sources inline as [web:3], [fetch:1] etc. No other provider in
+# the set emits these, so they act as a style fingerprint that could identify this
+# participant during blind evaluation - exactly what shuffle_blind exists to prevent.
+# Matches an optional leading space so "... prime. [web:1]" strips cleanly.
+_PPLX_CITATION_RE = re.compile(r"[ 	]*\[(?:web|fetch|finance|sandbox)[:_]\d+(?:\s*,\s*\d+)*\]")
+
+
 def _extract_agent_text(payload: dict) -> str:
     """Collect output_text parts from an Agent API response, skipping reasoning/tool items."""
     parts = []
@@ -543,9 +550,17 @@ async def _call_perplexity(model: str, prompt: str, api_key: str, max_tokens: in
                                 f"Do not mention searching or sources.\n\n{grounding_text}")
 
     start = time.time()
-    response = await client.post(
-        PERPLEXITY_AGENT_URL, json=body,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+    try:
+        response = await client.post(
+            PERPLEXITY_AGENT_URL, json=body,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+    except httpx.TimeoutException as e:
+        # httpx timeouts stringify to "", which matches neither the retryable nor the
+        # non-retryable list in call_llm's classifier - so they would be raised on the
+        # first attempt and never retried. Name the condition explicitly.
+        raise RuntimeError(f"Perplexity request timeout after {timeout}s") from e
+    except httpx.HTTPError as e:
+        raise RuntimeError(f"Perplexity transport error - {type(e).__name__}: {e}") from e
     duration = time.time() - start
 
     if response.status_code != 200:
@@ -564,6 +579,11 @@ async def _call_perplexity(model: str, prompt: str, api_key: str, max_tokens: in
 
     content = _extract_agent_text(payload)
     content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
+    # Keep the original if stripping citations would empty the answer, so a citation-only
+    # response is not misreported as a blank/refused one by phase 2.
+    stripped = _PPLX_CITATION_RE.sub("", content)
+    if stripped.strip():
+        content = stripped
 
     usage = payload.get("usage") or {}
     return (content.strip(), duration,

@@ -168,8 +168,12 @@ async def phase2_answer_questions() -> dict:
         answers, times, errs = {}, [], []
         c = _empty_costs()
 
-        for i in range(0, len(questions), 5):
-            batch = range(i, min(i + 5, len(questions)))
+        # PROVIDER_CONCURRENCY gates concurrent batches, so cap the batch itself too -
+        # otherwise a provider set to 1 still puts 5 requests in flight. Perplexity's
+        # Agent API allows exactly 1 concurrent request (measured 2026-08-24).
+        step = min(5, PROVIDER_CONCURRENCY.get(provider, 5))
+        for i in range(0, len(questions), step):
+            batch = range(i, min(i + step, len(questions)))
             async with semaphore:
                 # Pass grounding text for each question (empty string if no grounding)
                 results = await asyncio.gather(*[
@@ -184,7 +188,7 @@ async def phase2_answer_questions() -> dict:
                 refused = err is None and not str(ans).strip()
                 answers[idx] = {"text": ans, "in_tok": in_tok, "out_tok": out_tok,
                                 "llm_cost": round(llm_cost, 6), "cost": round(llm_cost, 6),
-                                "refused": refused}
+                                "refused": refused, "error": err is not None}
                 times.append(dur)
                 c["total"] += llm_cost
                 c["llm"] += llm_cost

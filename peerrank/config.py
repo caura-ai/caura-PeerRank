@@ -216,7 +216,7 @@ PROVIDER_CONCURRENCY = {
     "grok": 8,
     "deepseek": 8,
     "together": 8,
-    "perplexity": 8,
+    "perplexity": 1,  # Agent API allows only 1 in-flight request: measured 2026-08-24, 2 concurrent -> 1x429, 8 concurrent -> 7x429 (request_rate_limit_exceeded, no Retry-After header). Sequential back-to-back is fine.
     "kimi": 10,
     "mistral": 2,  # Mistral tier has strict per-minute rate limits
     "minimax": 8,

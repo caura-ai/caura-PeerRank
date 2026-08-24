@@ -74,8 +74,18 @@ def format_responses_for_eval(question: dict, shuffle: bool, blind: bool, seed: 
     model_names = [m[2] for m in MODELS]
     answers = question.get("answers", {})
 
-    # Create list of (model_name, answer) pairs - extract text from answer object
-    pairs = [(m, answers.get(m, {}).get("text", "N/A")) for m in model_names]
+    # Create list of (model_name, answer) pairs - extract text from answer object.
+    # Skip infrastructure errors and genuinely-missing answers so they are never scored:
+    # an errored answer is stored by Phase 2 as "Error: ..." text (with error=True), and
+    # presenting it to evaluators as a real response corrupts peer means and Elo. Blank/refused
+    # answers (empty text, API-OK) are intentionally kept and scored as non-answers, matching the
+    # transparency note in the Phase 4 report.
+    pairs = []
+    for m in model_names:
+        a = answers.get(m)
+        if not isinstance(a, dict) or a.get("error"):
+            continue
+        pairs.append((m, a.get("text", "")))
 
     # Shuffle if requested (use question text + seed for reproducible per-question shuffle)
     if shuffle:
@@ -163,11 +173,15 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
         model_start = time.time()
         model_evaluations = {}
         model_timing = []
-        total_batches = (len(questions) + 4) // 5
+        # PROVIDER_CONCURRENCY gates concurrent batches, so cap the batch itself too -
+        # otherwise a provider set to 1 still puts 5 requests in flight. Perplexity's
+        # Agent API allows exactly 1 concurrent request (measured 2026-08-24).
+        step = min(5, PROVIDER_CONCURRENCY.get(provider, 5))
+        total_batches = (len(questions) + step - 1) // step
 
-        for i in range(0, len(questions), 5):
-            batch_num = i // 5 + 1
-            batch_indices = range(i, min(i + 5, len(questions)))
+        for i in range(0, len(questions), step):
+            batch_num = i // step + 1
+            batch_indices = range(i, min(i + step, len(questions)))
             batch_start = time.time()
 
             async with semaphore:
@@ -176,7 +190,7 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
                 ])
 
             batch_duration = time.time() - batch_start
-            completed = min(i + 5, len(questions))
+            completed = min(i + step, len(questions))
 
             for _, question, scores, duration in results:
                 model_evaluations[question] = scores
