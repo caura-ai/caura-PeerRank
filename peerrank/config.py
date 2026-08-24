@@ -167,29 +167,31 @@ CATEGORIES = ALL_CATEGORIES.copy()
 PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
 MODELS = PEERRANK_MODELS.copy()
 
-# Model display name to provider mapping (for figures and analysis)
-PROVIDER_MAP = {
-    'gpt-5.6': 'OpenAI', 'gpt-5-mini': 'OpenAI',
-    'gpt-5.6-terra': 'OpenAI', 'gpt-5.6-luna': 'OpenAI',
-    'claude-opus-5': 'Anthropic', 'claude-sonnet-5': 'Anthropic',
-    'gemini-3.1-pro-preview': 'Google', 'gemini-3.6-flash': 'Google',
-    'grok-4.5': 'xAI',
-    'deepseek-v4-flash': 'DeepSeek',
-    'llama-3.3-70b': 'Meta',
-    'pplx-agent-medium': 'Perplexity',
-    'kimi-k3': 'Moonshot',
-    'mistral-large': 'Mistral',
-    'minimax-m2.5-highspeed': 'MiniMax',
+# Provider key -> display label (for figures and clustering analysis).
+# 'together' maps to Meta because the label names the model family, not the host.
+PROVIDER_LABELS = {
+    'openai': 'OpenAI', 'anthropic': 'Anthropic', 'google': 'Google',
+    'grok': 'xAI', 'deepseek': 'DeepSeek', 'together': 'Meta',
+    'kimi': 'Moonshot', 'mistral': 'Mistral', 'perplexity': 'Perplexity',
+    'minimax': 'MiniMax',
 }
+
+# Model display name -> provider label, derived from ALL_MODELS so that renaming
+# a model cannot silently drop it out of provider clustering (it did: gpt-5.6-sol,
+# claude-fable-5, gemini-3.7-flash and grok-4.6 were all missing before 2026-08-24).
+PROVIDER_MAP = {m['name']: PROVIDER_LABELS.get(m['provider'], m['provider'].title())
+                for m in ALL_MODELS}
 
 # Short names for compact display
 MODEL_SHORTCUTS = {
-    'gemini-3-pro-preview': 'gem-3-pro', 'gemini-3.6-flash': 'gem-3.6-flash',
-    'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
-    'llama-3.3-70b': 'llama-3.3', 'deepseek-v4-flash': 'deepseek',
-    'kimi-k3': 'kimi', 'grok-4.5': 'grok-4.5', 'mistral-large': 'mistral',
-    'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
-    'minimax-m2.5-highspeed': 'minimax', 'pplx-agent-medium': 'pplx-med',
+    'gpt-5.6-sol': 'gpt-sol', 'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
+    'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
+    'claude-haiku-4-5': 'haiku-4.5',
+    'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
+    'grok-4.6': 'grok-4.6', 'grok-code-fast-1': 'grok-code',
+    'deepseek-v4-flash': 'deepseek', 'deepseek-v4-pro': 'deepseek-pro',
+    'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',
+    'pplx-agent-medium': 'pplx-med',
 }
 
 
