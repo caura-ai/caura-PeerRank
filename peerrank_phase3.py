@@ -142,6 +142,10 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
 
     async def evaluate(provider, model_id, name, q, q_idx):
         responses_text, label_to_model = format_responses_for_eval(q, shuffle, blind, seed)
+        expected_models = set(label_to_model.values())
+        if not expected_models:
+            # No scorable answers for this question (all errored/missing) — nothing to grade.
+            return (name, q["text"], {}, 0)
         label_example = "Response A" if blind else list(label_to_model.keys())[0]
         prompt = EVAL_PROMPT.format(
             question=q["text"],
@@ -158,10 +162,25 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
                 grounding_text=grounding_text if grounding_text else None
             )
             scores = extract_json(response)
-            if scores and isinstance(scores, dict):
-                remapped_scores = remap_scores_to_models(scores, label_to_model)
-                return (name, q["text"], remapped_scores, duration)
-            return (name, q["text"], {}, duration)
+            if not (scores and isinstance(scores, dict)):
+                # Unparseable / truncated (e.g. a MAX_TOKENS overrun). Drop the whole evaluation
+                # with duration 0 so it counts as a failure, instead of storing {} with the real
+                # duration — which calculate_timing_stats would report as a successful evaluation
+                # while silently removing this judge's scores for the question.
+                print(f"      [PARSE-FAIL] {name} Q#{q_idx + 1}: judge returned no valid JSON "
+                      f"({len(response or '')} chars) — evaluation dropped", flush=True)
+                return (name, q["text"], {}, 0)
+            remapped_scores = remap_scores_to_models(scores, label_to_model)
+            missing = expected_models - set(remapped_scores.keys())
+            if missing:
+                # Incomplete: the judge omitted some responses. Drop the whole evaluation rather
+                # than keeping a partial set — an asymmetric per-mode sample manufactures the very
+                # name/position bias the report is meant to measure.
+                print(f"      [INCOMPLETE] {name} Q#{q_idx + 1}: scored "
+                      f"{len(remapped_scores)}/{len(expected_models)}, missing {sorted(missing)} "
+                      "— evaluation dropped", flush=True)
+                return (name, q["text"], {}, 0)
+            return (name, q["text"], remapped_scores, duration)
         except Exception as e:
             q_idx_display = q_idx + 1
             print(f"      [ERROR] {name} Q#{q_idx_display}: {type(e).__name__}: {str(e)[:200]}", flush=True)
