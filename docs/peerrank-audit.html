@@ -1,0 +1,448 @@
+<title>PeerRank Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f5f6f9; --surface:#ffffff; --surface-2:#eef1f6; --surface-3:#e7ebf2;
+    --ink:#1a2030; --ink-2:#39415440; --muted:#586176; --faint:#8a93a6;
+    --border:#e0e5ee; --border-2:#d3d9e5;
+    --accent:#3b53cf; --accent-soft:#eaeefb;
+    --high:#c62a3c; --high-bg:#fbe8ea; --high-line:#e0546150;
+    --med:#a5620f;  --med-bg:#f6eed9;  --med-line:#cf9a3a50;
+    --low:#4f6488; --low-bg:#e9edf4; --low-line:#93a4c250;
+    --dot-bug:#dd5147; --dot-discrepancy:#3781c0; --dot-inefficiency:#b5842a; --dot-unused:#7a8699;
+    --shadow:0 1px 2px rgba(20,28,50,.04), 0 4px 16px rgba(20,28,50,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d1220; --surface:#151c2c; --surface-2:#1c2436; --surface-3:#232d43;
+      --ink:#e7ecf5; --muted:#98a3ba; --faint:#6b7793;
+      --border:#26314799; --border-2:#334160;
+      --accent:#8296f4; --accent-soft:#1b2540;
+      --high:#f0707f; --high-bg:#2c1a20; --high-line:#7a323d;
+      --med:#e0a94a;  --med-bg:#2a2415;  --med-line:#6d5525;
+      --low:#93a6c6;  --low-bg:#1a2334;  --low-line:#3a4966;
+      --dot-bug:#ef7168; --dot-discrepancy:#5aa0dc; --dot-inefficiency:#d5a44e; --dot-unused:#93a0b8;
+      --shadow:0 1px 2px rgba(0,0,0,.25), 0 6px 20px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+      --bg:#0d1220; --surface:#151c2c; --surface-2:#1c2436; --surface-3:#232d43;
+      --ink:#e7ecf5; --muted:#98a3ba; --faint:#6b7793;
+      --border:#26314799; --border-2:#334160;
+      --accent:#8296f4; --accent-soft:#1b2540;
+      --high:#f0707f; --high-bg:#2c1a20; --high-line:#7a323d;
+      --med:#e0a94a;  --med-bg:#2a2415;  --med-line:#6d5525;
+      --low:#93a6c6;  --low-bg:#1a2334;  --low-line:#3a4966;
+      --dot-bug:#ef7168; --dot-discrepancy:#5aa0dc; --dot-inefficiency:#d5a44e; --dot-unused:#93a0b8;
+      --shadow:0 1px 2px rgba(0,0,0,.25), 0 6px 20px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:clamp(20px,4vw,52px) clamp(16px,4vw,40px) 80px}
+  a{color:var(--accent)}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+
+  /* ---- header ---- */
+  header.head{margin-bottom:34px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 12px; font-weight:500;
+  }
+  h1{
+    font-family:"Archivo",sans-serif; font-weight:800; font-size:clamp(32px,6vw,52px);
+    line-height:1.02; letter-spacing:-.02em; margin:0 0 14px; text-wrap:balance;
+  }
+  .lede{font-size:clamp(16px,2.2vw,18.5px); color:var(--muted); max-width:66ch; margin:0}
+  .lede b{color:var(--ink); font-weight:600}
+
+  /* ---- pipeline strip ---- */
+  .pipe{
+    display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin:30px 0 8px;
+  }
+  .pstat{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px 18px; box-shadow:var(--shadow); flex:1 1 130px; min-width:120px;
+  }
+  .pstat .n{font-family:"Archivo",sans-serif; font-weight:700; font-size:26px; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+  .pstat .l{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .pstat.hi .n{color:var(--high)} .pstat.md .n{color:var(--med)} .pstat.lo .n{color:var(--low)}
+  .pipe .arrow{align-self:center; color:var(--faint); font-size:20px; padding:0 2px}
+
+  /* ---- themes summary ---- */
+  h2.sec{
+    font-family:"Archivo",sans-serif; font-weight:700; font-size:14px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); margin:46px 0 16px; padding-bottom:10px;
+    border-bottom:1px solid var(--border);
+  }
+  .themes{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px}
+  .theme{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:20px 20px 18px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .theme .tnum{
+    font-family:"Archivo",sans-serif; font-weight:800; font-size:13px; color:var(--accent);
+    letter-spacing:.05em;
+  }
+  .theme h3{font-family:"Archivo",sans-serif; font-weight:700; font-size:17.5px; margin:6px 0 8px; letter-spacing:-.01em; text-wrap:balance}
+  .theme p{margin:0; font-size:14.5px; color:var(--muted); line-height:1.5}
+
+  /* ---- controls ---- */
+  .controls{
+    position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:14px 0 12px; margin-top:8px; border-bottom:1px solid var(--border);
+  }
+  .filtrow{display:flex; flex-wrap:wrap; gap:8px 8px; align-items:center}
+  .grp{display:inline-flex; gap:6px; flex-wrap:wrap}
+  .chip{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:500;
+    border:1px solid var(--border-2); background:var(--surface); color:var(--muted);
+    padding:6px 12px; border-radius:999px; cursor:pointer; transition:background .12s,color .12s,border-color .12s;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+  .chip:hover{border-color:var(--accent); color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+  :root[data-theme="dark"] .chip[aria-pressed="true"], :root:not([data-theme="light"]) .chip[aria-pressed="true"]{color:#0d1220}
+  @media (prefers-color-scheme:light){:root:not([data-theme]) .chip[aria-pressed="true"]{color:#fff}}
+  .chip .dot{width:8px; height:8px; border-radius:50%}
+  .chip .ct{font-variant-numeric:tabular-nums; opacity:.8; font-size:11.5px}
+  .sev-chip[data-sev="high"][aria-pressed="true"]{background:var(--high); border-color:var(--high)}
+  .sev-chip[data-sev="medium"][aria-pressed="true"]{background:var(--med); border-color:var(--med)}
+  .sev-chip[data-sev="low"][aria-pressed="true"]{background:var(--low); border-color:var(--low)}
+  .search{
+    margin-left:auto; flex:1 1 200px; max-width:320px; min-width:160px;
+    font-family:"IBM Plex Sans",sans-serif; font-size:14px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--border-2); border-radius:999px;
+    padding:8px 15px;
+  }
+  .search::placeholder{color:var(--faint)}
+  .search:focus,.chip:focus-visible,.tgl:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .count{font-size:13px; color:var(--muted); margin:14px 2px 0; font-variant-numeric:tabular-nums}
+
+  /* ---- findings ---- */
+  .grouplabel{
+    font-family:"Archivo",sans-serif; font-weight:700; font-size:13px; letter-spacing:.12em;
+    text-transform:uppercase; margin:34px 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  .grouplabel .bar{width:26px; height:4px; border-radius:2px}
+  .grouplabel[data-sev="high"]{color:var(--high)} .grouplabel[data-sev="high"] .bar{background:var(--high)}
+  .grouplabel[data-sev="medium"]{color:var(--med)} .grouplabel[data-sev="medium"] .bar{background:var(--med)}
+  .grouplabel[data-sev="low"]{color:var(--low)} .grouplabel[data-sev="low"] .bar{background:var(--low)}
+  .grouplabel .gc{margin-left:auto; font-family:"IBM Plex Mono",monospace; font-weight:400; letter-spacing:0; color:var(--faint); font-size:12px}
+
+  .cards{display:flex; flex-direction:column; gap:12px}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:13px;
+    box-shadow:var(--shadow); border-left:4px solid var(--low-line);
+    padding:16px 20px 17px; scroll-margin-top:120px;
+  }
+  .card[data-sev="high"]{border-left-color:var(--high)}
+  .card[data-sev="medium"]{border-left-color:var(--med)}
+  .card[data-sev="low"]{border-left-color:var(--low-line)}
+  .crow{display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:9px}
+  .sevpill{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500; letter-spacing:.06em;
+    text-transform:uppercase; padding:3px 9px; border-radius:6px;
+  }
+  .card[data-sev="high"] .sevpill{background:var(--high-bg); color:var(--high)}
+  .card[data-sev="medium"] .sevpill{background:var(--med-bg); color:var(--med)}
+  .card[data-sev="low"] .sevpill{background:var(--low-bg); color:var(--low)}
+  .cat{
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--muted); display:inline-flex; align-items:center; gap:6px;
+  }
+  .cat .dot{width:8px; height:8px; border-radius:50%}
+  .floc{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--border); padding:2px 9px; border-radius:6px;
+    margin-left:auto; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  }
+  .floc .ln{color:var(--accent)}
+  .card h4{
+    font-family:"Archivo",sans-serif; font-weight:700; font-size:17.5px; line-height:1.28;
+    margin:2px 0 8px; letter-spacing:-.01em; text-wrap:balance;
+  }
+  .card p{margin:0; font-size:14.5px; color:var(--muted); line-height:1.56}
+  .card .note{
+    margin-top:10px; font-size:13.5px; color:var(--ink); background:var(--surface-2);
+    border:1px dashed var(--border-2); border-radius:9px; padding:9px 13px;
+  }
+  .card .note b{color:var(--med); font-weight:600; font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.05em; text-transform:uppercase; margin-right:6px}
+  .empty{color:var(--muted); padding:40px 4px; text-align:center; display:none}
+
+  footer{margin-top:52px; padding-top:22px; border-top:1px solid var(--border); color:var(--faint); font-size:13px; line-height:1.6}
+  footer b{color:var(--muted); font-weight:600}
+
+  /* theme toggle */
+  .tgl{
+    position:fixed; top:14px; right:14px; z-index:20;
+    background:var(--surface); border:1px solid var(--border-2); color:var(--muted);
+    border-radius:999px; padding:7px 13px; font-family:"IBM Plex Mono",monospace; font-size:12px;
+    cursor:pointer; box-shadow:var(--shadow);
+  }
+  .tgl:hover{color:var(--ink); border-color:var(--accent)}
+  @media (max-width:560px){ .floc{margin-left:0; order:9; flex-basis:100%} .search{margin-left:0} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+</style>
+
+<button class="tgl" id="tgl" aria-label="Toggle color theme">◐ theme</button>
+
+<div class="wrap">
+  <header class="head">
+    <p class="eyebrow">Code Audit · caura-PeerRank · 2026-08-24</p>
+    <h1>PeerRank Audit</h1>
+    <p class="lede">An 11-reviewer fan-out with adversarial per-file verification and a completeness gap round. <b>97 findings survived verification, none refuted.</b> The pipeline itself is sound in the happy path — the risk concentrates in how it treats failure: errored, blank, and unparseable model responses are quietly scored as if they were real answers, corrupting the peer means, Elo, and the very bias signals the report exists to measure.</p>
+
+    <div class="pipe" aria-label="verification pipeline">
+      <div class="pstat"><div class="n">141</div><div class="l">raw findings</div></div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="pstat"><div class="n">82</div><div class="l">after dedup</div></div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="pstat"><div class="n" id="ps-total">97</div><div class="l">confirmed</div></div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="pstat"><div class="n">0</div><div class="l">refuted</div></div>
+    </div>
+    <div class="pipe" aria-label="severity counts">
+      <div class="pstat hi"><div class="n" id="ps-high">–</div><div class="l">high severity</div></div>
+      <div class="pstat md"><div class="n" id="ps-med">–</div><div class="l">medium severity</div></div>
+      <div class="pstat lo"><div class="n" id="ps-low">–</div><div class="l">low severity</div></div>
+    </div>
+  </header>
+
+  <h2 class="sec">The six themes</h2>
+  <div class="themes">
+    <div class="theme"><div class="tnum">01</div><h3>Silent scoring corruption</h3><p>Exceptions are stored as the literal answer text “Error: …”, unparseable judge output is stored as {} and counted a success, and missing answers become “N/A” — all fed to evaluators and graded 1–3. Zero-filled per-mode means then fabricate name/position bias the size of a whole score.</p></div>
+    <div class="theme"><div class="tnum">02</div><h3>Incomplete model-rename churn</h3><p>New names in <span class="mono">models.py</span> never reached <span class="mono">PROVIDER_MAP</span>, shortcuts, three figure color maps, the judge default, the UI, or the docs. One path crashes outright (figure generation, <span class="mono">KeyError</span>); the rest degrade in silence.</p></div>
+    <div class="theme"><div class="tnum">03</div><h3>Broken crash-recovery</h3><p><span class="mono">get_last_completed_phase</span> checks only that files exist — it ignores Phase 3’s <span class="mono">complete</span> flag and never sees phases 4–5. So <span class="mono">--resume</span> skips a half-finished Phase 3 and re-runs the paid Phase-5 judge on stale data.</p></div>
+    <div class="theme"><div class="tnum">04</div><h3>Dead concurrency control</h3><p>The provider semaphore is taken once per five-request batch instead of per request, so <span class="mono">PROVIDER_CONCURRENCY</span> never actually throttles — the knob added to prevent 429 / MAX_TOKENS storms does nothing.</p></div>
+    <div class="theme"><div class="tnum">05</div><h3>Validation-script drift</h3><p>Three near-identical validators (GSM8K / TruthfulQA / MMLU) have drifted: robust answer extraction, the <span class="mono">total&gt;0</span> filter, checkpointing, tie-averaged ranks, and CIs each landed in one script and were never ported to the others.</p></div>
+    <div class="theme"><div class="tnum">06</div><h3>Provider &amp; packaging gaps</h3><p>Null-content refusals crash instead of registering as refusals; three providers ignore the timeout; and <span class="mono">scipy</span> is missing from core deps, so every documented command crashes at import right after <span class="mono">pip install -e .</span></p></div>
+  </div>
+
+  <h2 class="sec">All findings</h2>
+  <div class="controls">
+    <div class="filtrow">
+      <div class="grp" id="sevfilter">
+        <button class="chip sev-chip" data-sev="high" aria-pressed="false">High <span class="ct" data-ct="high"></span></button>
+        <button class="chip sev-chip" data-sev="medium" aria-pressed="false">Medium <span class="ct" data-ct="medium"></span></button>
+        <button class="chip sev-chip" data-sev="low" aria-pressed="false">Low <span class="ct" data-ct="low"></span></button>
+      </div>
+      <div class="grp" id="catfilter">
+        <button class="chip cat-chip" data-cat="bug" aria-pressed="false"><span class="dot" style="background:var(--dot-bug)"></span>bug <span class="ct" data-ct="bug"></span></button>
+        <button class="chip cat-chip" data-cat="discrepancy" aria-pressed="false"><span class="dot" style="background:var(--dot-discrepancy)"></span>discrepancy <span class="ct" data-ct="discrepancy"></span></button>
+        <button class="chip cat-chip" data-cat="inefficiency" aria-pressed="false"><span class="dot" style="background:var(--dot-inefficiency)"></span>inefficiency <span class="ct" data-ct="inefficiency"></span></button>
+        <button class="chip cat-chip" data-cat="unused" aria-pressed="false"><span class="dot" style="background:var(--dot-unused)"></span>unused <span class="ct" data-ct="unused"></span></button>
+      </div>
+      <input class="search" id="search" type="search" placeholder="Filter by file, symbol, text…" aria-label="Search findings">
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <div id="list"></div>
+  <div class="empty" id="empty">No findings match those filters.</div>
+
+  <footer>
+    <b>Method.</b> 11 subsystem reviewers ran in parallel, findings were deduplicated, then each was re-checked by an adversarial verifier told to refute it (defaulting to refuted when uncertain); a completeness critic then opened a second gap round, itself verified. Seven findings were severity-<b>adjusted</b> by the verifier (noted inline). <b>Caveat:</b> a few findings anchor to an uncommitted working-tree state (e.g. the <span class="mono">gemini-3.7-flash</span> rename) — re-verify against current HEAD before fixing.
+  </footer>
+</div>
+
+<script>
+const F = [
+/* ---------------- HIGH ---------------- */
+{id:1009,sev:"high",cat:"bug",file:"peerrank_phase2.py",line:164,title:"Errored answers are stored as \"Error: …\" text and scored as real responses",desc:"answer() turns any exception into the literal answer string \"Error: {e}\" with refused=False, so Phase 3 hands that text to every evaluator (under the model's real name in shuffle_only) where the rubric maps it to 1–3. Phase 4's transparency only covers blanks/refusals and only warns when successes==0, so a run with, say, 10 of 48 timeouts silently drags an ~8-point model down by a point-plus and forces ~1,210 Elo losses — with no note. The phase2 'errors' array is written but never read anywhere."},
+{id:1008,sev:"high",cat:"bug",file:"peerrank_phase3.py",line:151,title:"No completeness check on judge JSON — partial output fabricates bias signal",desc:"The prompt demands an entry for every label, but evaluate() accepts any non-empty dict and remap_scores_to_models silently drops unmapped labels with no length check. Judges routinely omit blank/refused entries, and a single MAX_TOKENS overrun makes extract_json return None (discarding all 12 scores) while still recording a 'success'. Because name/position bias is a difference of independent per-mode means, asymmetric missingness between modes manufactures bias of exactly the magnitude the report claims to detect."},
+{id:1007,sev:"high",cat:"bug",file:"peerrank_phase3.py",line:154,title:"Unparseable judge responses stored as {} but counted as successful evaluations",desc:"On extract_json failure, evaluate() stores {} yet records the real API duration, and calculate_timing_stats defines success as duration>0 — so a judge whose every response failed to parse shows 48/48 OK. No empty-score counter exists; a fully broken judge silently removes everyone else's scores, is dropped from Judge Generosity, and appears in the agreement matrix as a 0.0 row surfaced as 'least similar judges' rather than as broken. Unlike the exception path, this prints nothing."},
+{id:1000,sev:"high",cat:"bug",file:"peerrank_phase5.py",line:222,title:"Judge is told to analyze efficiency but never receives any cost data",desc:"The judge prompt is built only from the Phase 4 report, which contains no cost/efficiency section, yet the prompt says 'consider both score and efficiency'. The judge invents per-model costs from stale priors (guaranteed wrong for the renamed roster) or skips the dimension — then the cost tables are prepended to the output after the call, so the document reads as if the analysis was informed by tables the judge never saw. One-line fix: include cost_analysis in the prompt."},
+{id:1004,sev:"high",cat:"bug",file:"peerrank.py",line:55,title:"--resume treats an interrupted Phase-3 checkpoint as a completed Phase 3",desc:"Phase 3 writes its crash-recovery checkpoint to the same phase3_rankings file with complete:false, but get_last_completed_phase tests only file existence. After a 1/3 or 2/3 interruption, the documented --resume command prints 'Resuming from phase 4', never re-runs Phase 3 (the only phase with checkpoint resume), Phase 4 then returns \"\", and Phase 5 burns a paid judge call on a stale report or dies with FileNotFoundError."},
+{id:1,sev:"high",cat:"bug",file:"peerrank/config.py",line:480,title:"calculate_scores_from_evaluations crashes (KeyError) or silently drops scores on renamed models",desc:"_record_score fuzzy-matches rated names against the current global MODELS, then indexes buckets keyed by the caller's model_names with no membership check. Reproduced: figure generation over data/phase3_rankings_v1.json raises KeyError 'gpt-5.6-sol' because 'gpt-5.6' in the data fuzzy-matches the current display name. Names that no longer match anything return None and vanish silently. The sibling _convert_to_pairwise_matches has the correct 'matched in model_names' guard; this function needs the same."},
+{id:2,sev:"high",cat:"bug",file:"pyproject.toml",line:10,title:"scipy missing from core dependencies — the documented Quick Start crashes at import",desc:"peerrank_phase4.py does 'from scipy import stats' at module top, and peerrank.py imports phase4 at startup, so every documented command including --health raises ModuleNotFoundError after 'pip install -e .' (neither README nor CLAUDE.md mentions requirements.txt). scipy is only in the optional figures/all extras. validation_utils needs it too. The deps list already includes 'datasets' for repo scripts, so the omission is an oversight."},
+
+/* ---------------- MEDIUM ---------------- */
+{id:42,sev:"medium",cat:"discrepancy",file:"CLAUDE.md",line:215,title:"CLAUDE.md is a stale snapshot: roster, judge default, concurrency, temps, retries all contradict code",desc:"Seven verified drifts: the '12 models / 8 providers' roster excerpt matches almost nothing in models.py; the Phase-5 judge default is documented as gpt-5.2 (actual gpt-5.6); mistral concurrency documented 8 vs actual 2 (and 'minimax' entry omitted); temperature overrides list 2 vs actual 8 entries; '4 retries' contradicts 'MAX_RETRIES = 5'; the cost/efficiency 'Report Sections (Phase 4)' actually live in phase 5; and GROK_API_KEY is documented while the code's primary is XAI_API_KEY."},
+{id:40,sev:"medium",cat:"discrepancy",file:"CLAUDE.md",line:385,title:"Provider table documents SERPAPI_API_KEY but the code reads only SERPAPI_KEY",desc:"providers.py reads os.getenv('SERPAPI_KEY') with no SERPAPI_API_KEY fallback; the only occurrence of SERPAPI_API_KEY is this one table (CLAUDE.md's own .env example and README both say SERPAPI_KEY). A user following the table sets the wrong var and every grounding search silently returns empty, running the whole revision with zero web grounding instead of erroring."},
+{id:36,sev:"medium",cat:"bug",file:"generate_figures_PeerRank.py",line:335,title:"fig7 crashes with ValueError on empty points after an interrupted Phase 3",desc:"An interrupted checkpoint has complete:false and omits the 'evaluations' key, but find_latest_revision picks it by mtime and main() only checks that phase3 loaded. get_rankings returns [], figs 4/5 save blank, then generate_fig7_peer_score_vs_time does max() over an empty points list and aborts the whole script. Reproduced. It guards missing timing_stats but not empty points."},
+{id:38,sev:"medium",cat:"discrepancy",file:"generate_figures_TFQ.py",line:84,title:"TFQ and GSM8K figure color maps are stale — most models render identical gray",adj:"Verifier confirmed the impact but corrected the provenance: kimi-k2.6 did once exist and the 'fix color maps' commit did touch all three scripts (partially).",desc:"The identical MODEL_COLORS dicts in the TFQ and GSM8K figure scripts still key gpt-5.5, grok-4.3, sonar-pro, kimi-k2.6, etc. Against the actual data only 3/12 (TFQ) and 4/12 (GSM8K) models get a distinct color; the rest fall back to #666666 in the correlation and rank-agreement figures, defeating color-as-identity. Against the current roster it is equally stale."},
+{id:37,sev:"medium",cat:"discrepancy",file:"generate_figures_TFQ.py",line:505,title:"Hardcoded 'Key Finding' box contradicts the plotted data (r=0.90/0.54 vs 0.80/0.19)",desc:"The ablation figure plots the real values from TFQ_analysis (peer 0.800, self 0.191) but the interpretation box is a hardcoded string claiming r=0.90 and r=0.54 — so the published figure shows bars labeled 0.800/0.191 next to a box asserting 0.90/0.54. The stats report similarly hardcodes the 'dramatically outperforms' finding regardless of sign, and formats the delta as '+{x}' which renders '+-0.12' if self ever wins."},
+{id:13,sev:"medium",cat:"inefficiency",file:"peerrank_phase1.py",line:39,title:"Phase 1 wraps call_llm's own retry loop in a second loop — up to 30 calls per failing model",desc:"call_llm already retries retryable failures 5× with 4+8+16+32s backoff and deliberately raises non-retryable errors (401/403, content policy) immediately. Phase 1's generate() catches every exception and loops 6 more times, multiplying to ~30 API attempts and ~6 minutes of sleeping for a rate-limited model, and giving a hard 401 five extra full invocations. Phase 2's answer() correctly relies on call_llm's internal retries; this outer loop should only re-prompt on bad JSON, which doesn't raise."},
+{id:16,sev:"medium",cat:"bug",file:"peerrank_phase3.py",line:78,title:"Models missing a Phase-2 answer are silently scored on the literal string \"N/A\"",desc:"Response pairs are built from the current active MODELS list, not from who actually answered. Any active model absent from a question's answers dict (model set changed via --models — routine after the 'OpenAI-only active set' churn — or answers under a renamed name) gets the placeholder 'N/A' presented to every evaluator as its real response, earning genuine 1–3 scores that flow into rankings, Elo, and bias tables with no warning."},
+{id:14,sev:"medium",cat:"bug",file:"peerrank_phase3.py",line:84,title:"Seeded shuffle uses builtin hash() on question text, so --seed is not reproducible",desc:"The per-question RNG is seeded with hash(question['text']) + seed. Python salts str hashes per process and nothing pins PYTHONHASHSEED, so the same --seed 42 produces a different ordering every run — contradicting the README/CLAUDE.md 'reproducible shuffle ordering'. After a crash-resume (new process) the remaining modes get a different presentation order than the checkpointed ones even at the same seed. Fix: use a stable digest (hashlib)."},
+{id:17,sev:"medium",cat:"bug",file:"peerrank_phase3.py",line:115,title:"Fuzzy label remapping is ambiguous for prefix-sharing names and credits the wrong model",desc:"When an evaluator returns a non-exact label, the substring test 'label in full_label or full_label in label' takes the first match in iteration order (the shuffled order in shuffle modes). The active set has gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna: a returned 'gpt-5.6' matches all three and is credited effectively at random, polluting shuffle_only scores and the name-bias measurement. The assignment is also unconditional, so it can overwrite an exact match."},
+{id:12,sev:"medium",cat:"bug",file:"peerrank_phase3.py",line:173,title:"Provider semaphore is acquired per 5-request batch, so PROVIDER_CONCURRENCY is never enforced",desc:"One permit gates an asyncio.gather of up to 5 concurrent call_llm requests, so it counts models-in-flight, not requests. Actual concurrency is permits × 5, and since every provider has fewer active models than its limit the semaphore never blocks at all — e.g. 3 OpenAI models reach ~15 concurrent requests vs the configured cap of 8, producing the exact 429/MAX_TOKENS failures the knob exists to prevent. Same pattern in phase 2. The validators show the intended per-request acquisition."},
+{id:15,sev:"medium",cat:"bug",file:"peerrank_phase3.py",line:254,title:"Checkpoint resume never validates run configuration, silently mixing incompatible modes",desc:"Resume restores only evaluations/timing/durations; it never compares the checkpoint's seed, web-grounding flag, active model set, or question set against the current run. Resuming with a different --seed, --web-search-3, or --models — or after re-running Phase 2 — evaluates the remaining modes under different conditions, and the cross-mode bias formulas then compare mismatched modes. Worse, the final file records only the current run's settings as if they applied to all three modes."},
+{id:1010,sev:"medium",cat:"bug",file:"peerrank_phase4.py",line:22,title:"Bias analysis zero-fills a missing per-mode mean, fabricating extreme bias",desc:"_calculate_scores_for_mode substitutes 0 for a model with no parsed scores in a mode, and _calculate_bias_analysis defaults missing models to 0. A model whose label every judge omitted in shuffle_only but not shuffle_blind gets name_bias = 0 − 8.2 = −8.2 — a fabricated bias the size of its whole score — printed in the Position/Model Bias tables. Final Peer Rankings correctly drops score-less models; the bias layer has no such guard, so it can't tell 'scored 0' from 'no data'."},
+{id:1011,sev:"medium",cat:"discrepancy",file:"peerrank_phase4.py",line:141,title:"The Evaluations OK/Total table covers only shuffle_blind; the other two modes' failures are invisible",desc:"Phase 4 reads only the backward-compat 'timing_stats' key, which Phase 3 sets to shuffle_blind alone; the full timing_stats_by_mode is written but never consumed. So an evaluator that errored on every shuffle_only and blind_only call but succeeded in shuffle_blind shows a clean 48/48 — while its missing scores in those modes are exactly what corrupts the name- and position-bias tables built from the same data."},
+{id:18,sev:"medium",cat:"bug",file:"peerrank_phase4.py",line:212,title:"_welch_ttest discards its degrees-of-freedom and uses a normal approximation for tiny n",desc:"The Welch-Satterthwaite df is computed as a bare expression and thrown away (the line should assign it), and the p-value is always computed with a standard-normal approximation. Home Advantage admits n=3 samples, where the normal approx substantially understates p versus the t-distribution (t=2.1 gives p≈0.036* under z but p≈0.10 under t with df≈4) — so the significance stars are systematically anti-conservative for exactly the small-n rows they annotate."},
+{id:1003,sev:"medium",cat:"bug",file:"peerrank_phase4.py",line:357,title:"Phase 4 aborts with return \"\" on incomplete data; the failure never propagates",adj:"Verifier downgraded the headline: --all itself re-runs Phase 3 (which finishes), so the trigger is really --resume, manual --phase 4/5, or interactive runs after an interrupted Phase 3.",desc:"On complete:false, phase4 prints a message and returns \"\" without raising and without invalidating a pre-existing report. Every orchestration path in peerrank.py discards phase return values, and Phase 5 unconditionally loads whatever report file is on disk — so it either analyzes a stale report with a paid judge call or raises FileNotFoundError after all the Phase 1–3 spend, with Phase 4 having appeared to succeed."},
+{id:19,sev:"medium",cat:"bug",file:"peerrank_phase4.py",line:634,title:"Judge Agreement Matrix labels collide — 3 OpenAI and 2 Gemini models truncate identically",desc:"The matrix uses a blind 8-char truncation j[:8] instead of the imported get_short_name. With the current roster gpt-5.6-sol/terra/luna all render as 'gpt-5.6-' and gemini-3.1-pro-preview / gemini-3.7-flash both render as 'gemini-3', so several models produce duplicate, indistinguishable row/column labels and the cells can't be attributed."},
+{id:20,sev:"medium",cat:"discrepancy",file:"peerrank_phase5.py",line:31,title:"'Est. In' token estimate adds 2000-token web context to every question",desc:"_calc_avg_estimated_input adds search_context_tokens=2000 to all questions whenever web search was on, but Phase 2 only fetches grounding for current-events questions (~20%); every other question gets grounding_text=\"\". The category is available in the question dict but ignored, so the 'Est. In' column overestimates by ~2000 tokens for ~80% of the workload, defeating its purpose as a sanity check against 'Reported In'."},
+{id:1002,sev:"medium",cat:"bug",file:"peerrank_phase5.py",line:105,title:"Models with zero recorded cost get efficiency=0 and are ranked worst",desc:"A model whose Phase-2 calls all failed (calls incremented with $0), or that's missing from cost_stats (older roster), gets avg_cost_cents=0, so efficiency=0 and the reverse sort ranks it dead last with '$0.0000' / '0.00 Pts²/¢' — presenting a division-by-zero as the worst value (a genuinely free model would be most efficient). The same function is inconsistent: the Cost Analysis table skips absent models while Performance vs. Cost includes them last."},
+{id:1001,sev:"medium",cat:"bug",file:"peerrank_phase5.py",line:223,title:"Judge response is never validated — a blank analysis is silently written as success",desc:"The returned analysis string is used unconditionally: no empty/whitespace check, no truncation check. call_llm can return blank content without raising (HTTP 200, empty body) — the very refusal case Phase 2 detects — but Phase 5 has no equivalent, so a blank judge response yields a phase5 file with an empty body (just header, cost tables, separators), prints 'Phase 5 complete', and returns normally. Combined with the resume bug, the user has no signal the paid call produced nothing."},
+{id:26,sev:"medium",cat:"bug",file:"peerrank_ui.py",line:87,title:"Random-question button hardcodes the removed model id 'gpt-5.5'",desc:"generate_random_question() calls call_llm('openai','gpt-5.5',…). No 'gpt-5.5' exists in ALL_MODELS (renamed to gpt-5.6). Since model-not-found is a non-retryable error and the function has no try/except, the dice button surfaces an uncaught Streamlit exception; temperature overrides don't apply, and cost lookups return 0. It also bypasses the model registry every other call site uses."},
+{id:24,sev:"medium",cat:"discrepancy",file:"peerrank_ui.py",line:227,title:"The documented Peer Score results table is never rendered — that branch is dead",desc:"CLAUDE.md documents two UI result tables, the first being the Peer Score / Self / Self-Bias ranking. build_results_df is called exactly once, with mode='shuffle', so the mode=='peer' branch and its trailing else are unreachable — the UI never displays the final peer-score ranking that is the system's headline result, only Elo, Name Bias, and Judge Generosity."},
+{id:21,sev:"medium",cat:"discrepancy",file:"peerrank_ui.py",line:241,title:"UI Name/Position bias signs are inverted relative to Phase 4 and the documented convention",desc:"The unified convention is 'positive = factor helped': Name Bias = Shuffle − Peer, Position Bias = Blind − Peer. The UI computes the opposite in both places — name_bias = Peer − Shuffle and effect = Peer − Blind (its own caption even says 'Peer − Blind'). On the same data a model that its name or position helped shows a negative bias in the UI but positive in the report, so the same labeled metric contradicts itself across surfaces."},
+{id:25,sev:"medium",cat:"bug",file:"peerrank_ui.py",line:305,title:"Fetched answers, durations, and errors are never displayed; failures are swallowed",desc:"get_answer returns {model, answer, duration, error} and 'Get Answers' stores them, but nothing renders the answer text, response times, or error strings — after clicking, the user sees only a divider until evaluation runs. A model whose API call failed is silently dropped from the blind lineup with no indication, contradicting the file's stated purpose as a live comparison tool."},
+{id:22,sev:"medium",cat:"bug",file:"peerrank_ui.py",line:386,title:"Judge Generosity reimplements shared logic without sanitization and crashes on malformed scores",desc:"The Generosity column locally re-derives judge averages instead of using the judge_given bucket the shared calculate_scores_from_evaluations already returns (and which this file discards). The shared _record_score converts string scores and skips malformed ones with a WARN — proving they occur — but the local copy feeds raw values into mean(): a string '8', a None, or a dict lacking 'score' raises TypeError and kills the results page."},
+{id:23,sev:"medium",cat:"bug",file:"peerrank_ui.py",line:413,title:"Position Bias labels positions from the ALL_MODELS index, not the actual blind order",desc:"The blind order comes from format_responses_for_eval, which builds pairs only from answers that succeeded, in peerrank-model order. The display instead enumerates positions over the full ALL_MODELS list (including non-peerrank models that never answer), keeping their index. If any answer errored, every later model's real position shifts up one while the label stays — so the per-position bias numbers are attributed to the wrong positions, the entire point of the table."},
+{id:1006,sev:"medium",cat:"bug",file:"peerrank.py",line:231,title:"Menu 'none' empties the active set for the session while manual deselect-all is refused",desc:"Typing 'none' calls set_func(include=['__none__']), leaving MODELS/CATEGORIES empty for the rest of the session with only a 'Cleared selection' print — yet the number-toggle path in the same function explicitly refuses an empty selection, so the code knows it's invalid. Nothing blocks running a phase with 0 models, so 'none' + any phase crashes Phase 1's max() over an empty sequence and, with no menu exception handling, kills the session."},
+{id:1005,sev:"medium",cat:"bug",file:"peerrank.py",line:350,title:"Interactive menu has no exception handling — a missing prerequisite file kills the session",desc:"The loop calls run_phase(...) with no try/except, and phases 2–5 begin with load_json(), which raises FileNotFoundError when the prerequisite is absent. Selecting [3] before Phase 2, or [4]/[5] on a fresh revision, propagates out of main() and terminates the process — discarding all process-local menu state (revision, models, categories, seed, judge, grounding toggles) instead of printing an error and re-showing the menu."},
+{id:5,sev:"medium",cat:"discrepancy",file:"peerrank/config.py",line:171,title:"PROVIDER_MAP is stale — active models fall into a bogus 'Other' provider, corrupting clustering",desc:"PROVIDER_MAP is keyed by display name and read as PROVIDER_MAP.get(model,'Other') by the Phase-4 Kruskal-Wallis clustering and the figure script. It misses several active names — 'gpt-5.6-sol' (map has the id 'gpt-5.6'), 'claude-fable-5', 'gemini-3.7-flash', 'grok-4.6', 'sonar-reasoning-pro' — pooling flagships from different vendors into one fake 'Other' group. It also carries dead keys (sonar-pro, minimax-m2.5-highspeed)."},
+{id:3,sev:"medium",cat:"bug",file:"peerrank/config.py",line:229,title:"set_active_models matches only exact display names, then silently empties the roster",desc:"The include filter requires an exact case-insensitive display-name match (unlike the fuzzy matcher used elsewhere) and warns on nothing. Passing a model_id ('gpt-5.6'), a partial name, or the stale names in the CLI's own usage text ('gpt-5.5,claude-opus-4-7') matches nothing; MODELS is cleared with no guard, and Phase 1 then raises ValueError('max() arg is an empty sequence') — a confusing traceback instead of 'no models matched'."},
+{id:4,sev:"medium",cat:"bug",file:"peerrank/config.py",line:340,title:"get_last_completed_phase never detects phases 4–5; --resume reruns the paid judge",desc:"The function only checks phase 1–3 JSON files and caps at 3, but Phase 4 writes phase4_report.md and Phase 5 writes phase5_analysis.md. So the menu's 'Progress: N/5' can never show 4 or 5, and resume_from_last (range(last+1, 6)) always reruns phases 4 and 5 — including the paid Phase-5 judge call — overwriting the analysis even when everything is already complete. The validators pass phase-4/5 files to their detector; this one doesn't."},
+{id:6,sev:"medium",cat:"discrepancy",file:"peerrank/models.py",line:16,title:"Gemini flash renamed to an untested 'gemini-3.7-flash', orphaning cross-file keys",adj:"Verifier corrected the mechanism: the entry's id and name agree (no intra-entry mismatch); the real issue is an uncommitted rename away from the committed, tested 'gemini-3.6-flash'.",desc:"The uncommitted edit renamed the committed-and-tested 'gemini-3.6-flash' (per test_gemini_36_flash.py) to 'gemini-3.7-flash' in models.py only, leaving PROVIDER_MAP, MODEL_SHORTCUTS, the three figure color maps, and README still keyed on 'gemini-3.6-flash' — so provider/shortcut/color lookups miss for this active model, and the new id may be a typo for the verified one."},
+{id:9,sev:"medium",cat:"bug",file:"peerrank/providers.py",line:91,title:"Anthropic client cache ignores timeout — the first call's timeout sticks all session",desc:"_get_anthropic_client caches under the fixed key 'anthropic' and honors only the first call's timeout. In the shared-process interactive menu, health_check calls with timeout=60, so running [H] before a phase pins all subsequent Anthropic calls to 60s instead of 180 — causing spurious timeouts on long opus/fable responses. _get_openai_client correctly includes timeout in its cache key."},
+{id:11,sev:"medium",cat:"discrepancy",file:"peerrank/providers.py",line:219,title:"Google safety-blocked answers raise and get retried instead of surfacing as refusals",desc:"When Gemini returns no text (e.g. SAFETY), _call_google raises ValueError('empty response'). 'empty response' is in the retryable list and 'safety' in neither, so a deterministic refusal is retried 5× with 60s of backoff and 5 billed calls, then lands as an error — never as refused:true. Every other provider returns \"\" for a refusal so it's counted correctly; Google's is miscategorized after wasted retries. (A MAX_TOKENS empty response instead raises immediately — the two take opposite paths.)"},
+{id:8,sev:"medium",cat:"bug",file:"peerrank/providers.py",line:376,title:"_make_openai_caller crashes on null message content, defeating refusal detection",desc:"The factory used for deepseek, together, perplexity, kimi calls message.content.strip() with no None guard. OpenAI-compatible APIs return content:null for refusals (HTTP 200) — exactly what Phase 2's blank/refused detection targets — so instead of refused:true, Phase 2 records \"Error: 'NoneType' object has no attribute 'strip'\". _call_openai and _call_mistral both guard this case; the factory drifted from them."},
+{id:10,sev:"medium",cat:"bug",file:"peerrank/providers.py",line:385,title:"timeout ignored by grok, google, and mistral; grok also builds a new client per call",desc:"_call_grok constructs XaiAsyncClient without the timeout, _call_google never uses its timeout arg, and _call_mistral doesn't pass it either — so DEFAULT_TIMEOUT and the timeout-based retry classification are no-ops for 3 of 10 providers; a hung request stalls its batch until the SDK's own (much longer) deadline. _call_grok also builds a fresh, never-closed XaiAsyncClient on every call and retry, unlike every other cached provider."},
+{id:41,sev:"medium",cat:"discrepancy",file:"README.md",line:80,title:"README model list and command examples reference models that don't exist",desc:"The Supported Models table lists gpt-5.5, claude-opus-4-8, kimi-k2.6, gemini-3-pro-preview, grok-4.3 — none in models.py. The examples '--models gpt-5.5,claude-opus-4-8' and '--judge claude-opus-4-8' match nothing: set_active_models filters to an empty list (no error) so the pipeline runs with zero models, and --judge prints 'Judge model not found'."},
+{id:30,sev:"medium",cat:"bug",file:"validate_gsm8k.py",line:169,title:"GSM8K extraction pattern matches 'so'/'thus' inside words and drops negative signs",desc:"Pattern 3 has no word boundaries, so with IGNORECASE 'so' matches inside season, solution, also, person — firing on nearly any prose and capturing an intermediate number. Because it runs before the \\boxed pattern, a response ending in \\boxed{72} but containing 'per season … 12' extracts 12. The capture group also lacks the -? the other patterns have, so a negative final answer is extracted as positive."},
+{id:32,sev:"medium",cat:"bug",file:"validate_gsm8k.py",line:521,title:"GSM8K Phase-3 resume 'verify same dataset' only checks the index bound",desc:"Despite the comment, resume checks only saved_idx < len(questions) (phase 2 compares question text). A re-sampled dataset silently merges old and new questions, corrupting the correlation. Worse, 'evaluations' is replaced by the checkpoint's model-name keys, so if the active model set changed since the checkpoint, evaluations[name][idx] = scores raises an unhandled KeyError mid-run."},
+{id:27,sev:"medium",cat:"bug",file:"validate_gsm8k.py",line:786,title:"Phase 5 silently drops any model with 0% accuracy from the correlation",desc:"truth_means filters on stats['mean'] > 0, conflating 'no data' with 'got everything wrong'. A model with 0% math accuracy (plausible on --difficulty hard) is silently excluded from the correlation, comparison table, and report, biasing the reported r and model count. validate_mmlu.py has the correct stats['total'] > 0 filter — a fix applied in one script but not GSM8K or TruthfulQA."},
+{id:31,sev:"medium",cat:"bug",file:"validate_mmlu.py",line:677,title:"Phase 4 scores '?' == '?' as correct when the ground truth is unknown",desc:"correct_letter defaults to '?', and answer_letter is '?' on extraction/API failure. Since Phase 2 swallows any exception loading ground truth and stores correct_letter='?' for every question, every failed answer is then scored CORRECT ('?'=='?') while every real A–D answer is scored wrong — silently inverting the accuracy table the whole correlation rests on. Unknown-truth questions should be skipped."},
+{id:29,sev:"medium",cat:"bug",file:"validate_truthfulqa.py",line:217,title:"MC answer extraction takes the first valid letter anywhere — 'Answer: C' extracts 'A'",desc:"The extractor scans every character and returns the first valid choice letter. 'Answer: C' yields 'A' (always valid); 'The answer is C' yields 'E' when there are 5+ choices (TruthfulQA mc1 often has ~12). This mis-scores the ground-truth accuracy the validation correlates against. validate_mmlu.py already has a robust multi-pattern extractor (first-line, end-of-response, 'answer: X', scan as last resort) never ported here."},
+{id:33,sev:"medium",cat:"discrepancy",file:"validate_truthfulqa.py",line:257,title:"TruthfulQA Phase 2/3 have no incremental save or resume — an interruption loses all paid work",desc:"GSM8K and MMLU checkpoint incrementally (SAVE_INTERVAL + resume); GSM8K phase 3 also checkpoints. TruthfulQA phase 2 saves once after the whole loop and phase 3 saves only after all 3 modes finish — worse than the main pipeline, which checkpoints after each mode. A crash or Ctrl+C late in a run discards every completed LLM call. Robustness added to the other two scripts, never ported here."},
+{id:28,sev:"medium",cat:"bug",file:"validate_truthfulqa.py",line:446,title:"Phase 5 drops any 0%-accuracy model from correlation and ablation (same mean>0 bug)",desc:"Identical to the GSM8K defect: a model that answered every MC question wrong (realistic at the default 10 questions) has mean==0 and is silently excluded from the correlation, the ablation study, and all report tables. validate_mmlu.py uses the correct stats['total'] > 0 filter."},
+
+/* ---------------- LOW ---------------- */
+{id:75,sev:"low",cat:"discrepancy",file:"generate_figures_PeerRank.py",line:77,title:"MODEL_COLORS key 'gpt-5.6' ≠ display name 'gpt-5.6-sol' — the flagship is gray in every figure",desc:"Figure data is keyed by display names, but MODEL_COLORS keeps the pre-rename key 'gpt-5.6', so get_color('gpt-5.6-sol') returns the #666666 fallback in every figure from a current run. 'gemini-3.6-flash' and 'grok-4.5' are likewise stale and 'sonar-reasoning-pro' is missing entirely; the recent color-map fix missed the sol tier."},
+{id:76,sev:"low",cat:"discrepancy",file:"generate_figures_PeerRank.py",line:259,title:"Figure numbers disagree across docstrings, prints, filenames, the org block, and CLAUDE.md",desc:"Nearly every generator carries three different numbers: fig4 docstring/print say 'Figure 3', fig5 says 'Figure 4', fig16 says 14, fig17 says 15, fig20 says 17, fig19 says 18, fig18 says 16, fig15 says 13. The FIGURE ORGANIZATION block lists Figs 11–18 while outputs are fig13–fig20 with no fig11/fig12, and CLAUDE.md carries two mutually inconsistent ranges. For a publication-figure script, cross-referencing by number is unreliable."},
+{id:79,sev:"low",cat:"unused",file:"generate_figures_PeerRank.py",line:383,title:"Dead no-op statements: a discarded np.eye() 'mask' and discarded list comprehensions",desc:"Four statements compute values immediately discarded: an np.eye() under a comment claiming it's the self-ratings mask (nothing uses it; the diagonal is drawn with Rectangle patches), plus [r['model'] for r in rankings] here and identical comprehensions in the TFQ and GSM8K scripts. All are pure expressions with no side effects."},
+{id:77,sev:"low",cat:"discrepancy",file:"generate_figures_GSM8K.py",line:249,title:"GSM8K figure numbering (Figs 20–22) contradicts function names and filenames",desc:"The docstring and prints announce Figs 20–22 and the banner says 'FIGURES (20-22)', but the functions are fig11/fig100/fig101 saving fig11_gsm8k_correlation etc. — no fig20–22 is ever written, and 'fig11' collides conceptually with the TFQ script's Figure 11."},
+{id:80,sev:"low",cat:"discrepancy",file:"generate_figures_TFQ.py",line:155,title:"~250 lines duplicated verbatim between the TFQ and GSM8K figure scripts, already drifting",desc:"STYLE_CONFIG, MODEL_COLORS, get_color, get_text_color_for_background, save_figure, get_comparison_data, and get_correlation_stats are byte-identical across the two scripts (two of them triplicated in the PeerRank script). They've already drifted — the PeerRank color map was updated while these two were left stale — so shared fixes must be made three times. validation_utils.py is the designated shared home."},
+{id:78,sev:"low",cat:"discrepancy",file:"generate_figures_TFQ.py",line:759,title:"Error message tells the user to run a nonexistent 'truth_validation.py'",desc:"When no TFQ data is found, main() prints 'Run truth_validation.py first' — no such file exists; the actual script is validate_truthfulqa.py. The GSM8K sibling correctly names validate_gsm8k.py."},
+{id:59,sev:"low",cat:"inefficiency",file:"peerrank_phase2.py",line:65,title:"Web-grounding searches are fetched strictly sequentially",desc:"_fetch_web_grounding awaits each web_grounding_search in a plain for-loop, so N current-events questions cost N serialized ~1–3s round trips before any LLM work starts, while every other step batches with asyncio.gather. The searches are independent and the providers tolerate modest parallelism."},
+{id:1014,sev:"low",cat:"unused",file:"peerrank_phase3.py",line:47,title:"EVAL_PROMPT's mandatory 'flags' and 'reason' fields are never consumed",adj:"Verifier removed the sub-claim that these drive truncation (they add only ~500–800 tokens against a 32k budget).",desc:"The strict format requires every entry to carry a 'reason' (8–20 words) and a controlled-vocabulary 'flags' array, but no code reads either — every consumer uses only 'score'. 'reason' arguably helps as chain-of-thought, but 'flags' has no such justification and is never surfaced even in the Question Autopsy where hallucination flags would be directly relevant."},
+{id:61,sev:"low",cat:"unused",file:"peerrank_phase3.py",line:124,title:"mode_name parameter of _run_evaluation_pass is never used",desc:"Both call sites pass mode_name, but the body never references it — the progress prints can't even be attributed to a mode. Dead parameter; either drop it or use it in the logs."},
+{id:1012,sev:"low",cat:"bug",file:"peerrank_phase3.py",line:182,title:"Evaluations keyed by question text — exact-duplicate questions overwrite each other",desc:"All models get the same Phase-1 prompt, so exact-duplicate texts are possible. Phase 2 keeps and pays for duplicates separately, but Phase 3 stores results as evaluations[q['text']], so the later duplicate overwrites the earlier — discarding a full set of paid evaluations and shrinking sample counts. Phase 4's text-keyed category/source lookups collapse too, corrupting Home Advantage attribution while the header still counts the phase2 length. No dedup exists."},
+{id:60,sev:"low",cat:"bug",file:"peerrank_phase3.py",line:312,title:"After a resume, duration_seconds excludes checkpointed modes, contradicting mode_durations",desc:"phase_start is set at the top of the resumed process, so duration_seconds counts only the current process while mode_durations keeps the full checkpointed per-mode times. The saved Phase-3 total is therefore smaller than the sum of its own mode breakdown, and Phase 4 renders both adjacently — a visibly self-contradictory Phase Timing table after any crash-resume."},
+{id:1013,sev:"low",cat:"discrepancy",file:"peerrank_phase4.py",line:110,title:"Category rankings and Home Advantage use a third score-parsing rule, rejecting string scores",desc:"_calculate_category_rankings, _calculate_home_advantage, calculate_judge_agreement, and calculate_question_stats filter with bare isinstance(score, (int,float)), rejecting integer strings like '7' that both peer scoring and Elo accept. When a judge returns strings, the Rankings-by-Category 'Overall' is computed from a smaller sample than the Final Peer Rankings in the same report, and the two figures silently disagree."},
+{id:62,sev:"low",cat:"bug",file:"peerrank_phase4.py",line:711,title:"Home Advantage summary drops p==0.0 results via a falsy-zero check",desc:"The stars column tests 'p_value is not None', but the summary counts use truthiness ('if res[\"p_value\"] and …'). The erf-based p-value underflows to exactly 0.0 for |t| ≳ 8.3, so the most significant results are excluded from the sig counts and reported as 'not significant', contradicting the '***' shown above. Same falsy-zero pattern renders a legitimate cohens_d of 0.00 as '—'."},
+{id:63,sev:"low",cat:"discrepancy",file:"peerrank_ui.py",line:98,title:"get_answer passes use_web_search=True, but the parameter is a documented no-op",desc:"providers.py documents use_web_search as 'Deprecated — kept for API compatibility, not used'; grounding happens only via grounding_text, which the UI never fetches or passes. The flag falsely implies UI answers are web-grounded; in reality every UI answer is knowledge-only."},
+{id:64,sev:"low",cat:"unused",file:"peerrank_ui.py",line:205,title:"build_results_df's answers parameter is never used",desc:"st.session_state.answers is passed at the sole call site but never referenced inside build_results_df — all data comes from evaluations via calculate_rankings. Dead parameter that obscures the real inputs."},
+{id:58,sev:"low",cat:"discrepancy",file:"peerrank.py",line:15,title:"Module docstring says '4-phase' and its usage examples use nonexistent models",desc:"The docstring opens with '4-phase evaluation' while PHASES has 5 and --phase accepts 1–5. Its examples '--models gpt-5.5,claude-opus-4-7' and '--exclude gemini-3-pro-preview' reference names absent from ALL_MODELS; since selection is exact-match, copy-pasting the documented command filters MODELS to empty with no error. The argparse epilog has the correct names — the docstring contradicts it."},
+{id:57,sev:"low",cat:"discrepancy",file:"peerrank.py",line:360,title:"Model selection reports counts against len(ALL_MODELS) though only peerrank models are selectable",desc:"select_items receives all_count=len(ALL_MODELS)=19 (incl. cost-tracking-only models), so 'all' prints 'Selected all 19 models' when set_active_models actually resets to only the peerrank=True set, and the header 'Models: N/19' implies more selectable models than the selector offers. The categories call correctly passes len(ALL_CATEGORIES)."},
+{id:48,sev:"low",cat:"discrepancy",file:"peerrank/config.py",line:143,title:"PHASE5_JUDGE display name 'gpt-5.6' matches no registry name — --judge gpt-5.6 warns 'not found'",desc:"The default judge tuple uses display name 'gpt-5.6' but the model's name is 'gpt-5.6-sol'. So '--judge gpt-5.6' (the documented shape) prints 'not found', the [J] menu never marks the default, and Phase-5 labels are inconsistent with every other table. The API call still works because the model_id is valid — only name-based selection/display is broken."},
+{id:47,sev:"low",cat:"discrepancy",file:"peerrank/config.py",line:186,title:"MODEL_SHORTCUTS keys are stale; active models fall back to garbled truncations",desc:"Stale keys reference removed names ('gemini-3-pro-preview', 'minimax-m2.5-highspeed'); active models with no entry fall through get_short_name's [:12], so tables render 'gemini-3.1-p', 'sonar-reason', 'claude-fable'. And the shortcut 'gem-3.6-flash' is itself 13 chars, so it truncates to 'gem-3.6-flas' — it can never display as written."},
+{id:45,sev:"low",cat:"bug",file:"peerrank/config.py",line:310,title:"extract_json prefers a trivial '[…]' fragment over a complete '{…}' object later in the text",desc:"The bracket-scan fallback tries ('[',']') before ('{','}'). For a response like 'Scores below [1]: {\"gpt-5.6-sol\": {\"score\": 8}}' where the dict has no ']', the [1] span parses first and the function returns [1] instead of the score dict. Phase 3 then requires a dict, so the whole evaluation is silently recorded as {}."},
+{id:46,sev:"low",cat:"unused",file:"peerrank/config.py",line:407,title:"UI_DISPLAY_MODES is defined but never used; a UI comment falsely claims it's imported",desc:"No code references UI_DISPLAY_MODES — only its definition, a CLAUDE.md mention, and a comment at peerrank_ui.py:21 claiming it's imported, which contradicts the actual import list (which brings in BIAS_CONFIGS but neither BIAS_MODES nor UI_DISPLAY_MODES). Dead constant plus a misleading comment."},
+{id:49,sev:"low",cat:"discrepancy",file:"peerrank/config.py",line:423,title:"Docstring names a return key 'judge_scores' that doesn't exist",desc:"The docstring for calculate_scores_from_evaluations lists keys ending in 'judge_scores', but the function returns 'judge_given'. Every caller uses ['judge_given']; anyone coding against the documented key gets a KeyError."},
+{id:44,sev:"low",cat:"bug",file:"peerrank/config.py",line:486,title:"Judge Generosity counts scores given to unmatched/excluded models",desc:"When match_model_name returns None (target not in the active set — e.g. a report regenerated with --exclude, or old renamed data), the score is correctly dropped from raw/peer/self buckets, but 'matched != evaluator' is still True for matched=None, so it's appended to judge_given. The generosity average then includes ratings of models excluded from every other statistic."},
+{id:43,sev:"low",cat:"discrepancy",file:"peerrank/config.py",line:739,title:"Score-string parsing drifted between peer scoring and Elo",desc:"_record_score (peer rankings) accepts decimal string scores via strip().replace('.','').isdigit(), so '8.5' counts; _convert_to_pairwise_matches (Elo) uses only strip().isdigit(), which rejects '8.5' as malformed. The same record is included in the Peer ranking but excluded from Elo, silently skewing the Peer-vs-Elo comparison the report builds."},
+{id:53,sev:"low",cat:"unused",file:"peerrank/providers.py",line:42,title:"close_clients() has zero callers",desc:"Only the definition exists; nothing imports or calls it (the scripts use clear_clients instead). Its docstring says to 'call this before the event loop closes', so the httpx 'Event loop is closed' cleanup it describes is never actually mitigated. Dead code."},
+{id:56,sev:"low",cat:"discrepancy",file:"peerrank/providers.py",line:182,title:"_call_google is the only provider that skips MODEL_TEMPERATURE_OVERRIDES",desc:"Every other provider calls _get_temperature(model, temperature) to apply the overrides; _call_google passes the raw temperature into config. No Google model is currently overridden so there's no active misbehavior, but the first Gemini override added will silently not apply. ('actual_model = model' at line 177 is another pointless leftover.)"},
+{id:54,sev:"low",cat:"unused",file:"peerrank/providers.py",line:475,title:"MiniMax provider plumbing is unreachable — no model uses provider 'minimax'",desc:"_call_minimax_raw, _call_minimax, and the 'minimax' entry in _PROVIDER_CALLS are dead: ALL_MODELS has no 'minimax' provider, and call_llm is only ever called with providers from MODELS or hardcoded 'openai'. The only other references are orphaned config entries (PROVIDER_MAP/shortcuts, concurrency, get_api_key), and 'import re' exists solely for this dead wrapper."},
+{id:52,sev:"low",cat:"discrepancy",file:"peerrank/providers.py",line:514,title:"sanitize_prompt is applied to the prompt but not to grounding_text",desc:"call_llm sanitizes the prompt for API-incompatible characters, but grounding_text — raw Tavily/SerpAPI web content, exactly where smart quotes, em dashes, and non-breaking spaces come from — is injected into system messages / prompt prefixes unsanitized. Whatever incompatibility motivated sanitize_prompt still reaches the API through the grounding path."},
+{id:7,sev:"low",cat:"bug",file:"peerrank/providers.py",line:532,title:"The retry loop never retries SDK timeout errors ('timeout' ≠ 'timed out')",adj:"Downgraded: the SDKs' own default 2 internal retries still cover timeouts, so only the outer 4–64s backoff loop is skipped.",desc:"The retryable check tests substrings of str(e).lower(), but the OpenAI/Anthropic SDKs raise APITimeoutError whose message is 'Request timed out.' — 'timeout' is not a substring of 'timed out', and gRPC says 'deadline exceeded'. Neither matches either list, so the outer retry loop raises on the first attempt for the very transient failures it exists to handle."},
+{id:55,sev:"low",cat:"discrepancy",file:"peerrank/providers.py",line:569,title:"Health check reports thinking states that contradict the actual request config",desc:"_get_reasoning_mode prints 'extended thinking: OFF' for all Anthropic models, though config comments say the claude-5 family has thinking on by default and _call_anthropic never disables it. For Google it reports 'standard' for the current models even though _call_google sends a thinking budget of 8192 on every call. The health-check 'Mode:' line describes the opposite of what's sent."},
+{id:50,sev:"low",cat:"inefficiency",file:"peerrank/providers.py",line:587,title:"health_check runs blocking list_google_models() inside the async gather, once per Google model",desc:"list_google_models() uses the synchronous client.models.list() network call, invoked inside the async check() before the try block, so it blocks the event loop during the supposedly parallel health checks — and runs once per Google model (twice) for the same result."},
+{id:51,sev:"low",cat:"bug",file:"peerrank/providers.py",line:596,title:"health_check mislabels any HTML error body as '401 Auth error'",desc:"Any exception message containing '<html>' is rewritten to '401 Auth error'. Gateway/proxy failures (502/503/504), Cloudflare rate-limit pages, and maintenance pages are all HTML, so a transient outage is reported as an authentication failure — sending the user to debug their API key instead."},
+{id:81,sev:"low",cat:"unused",file:"pyproject.toml",line:18,title:"'tavily-python' and 'together' are declared dependencies but never imported",desc:"Neither package is imported anywhere: Together AI is called through the OpenAI-compatible endpoint and Tavily through a raw aiohttp POST to api.tavily.com/search. Both are installed for nothing on every install."},
+{id:39,sev:"low",cat:"bug",file:"pyproject.toml",line:24,title:"The ui extra omits pandas, which peerrank_ui.py imports",adj:"Downgraded: streamlit declares pandas as a hard dependency, so it arrives transitively and no crash actually occurs — only an undeclared direct dependency.",desc:"README documents 'pip install .[ui]', but that extra installs only streamlit while peerrank_ui.py imports pandas at the top. pandas is otherwise only in the figures/all extras."},
+{id:82,sev:"low",cat:"unused",file:"test_gemini_36_flash.py",line:1,title:"Orphan one-off scripts with zero inbound references",desc:"No file references test_gemini_36_flash.py (untracked) or investigate_mmlu_mislabels.py outside their own docstrings. The former duplicates the service-account auth in _get_google_client; the latter's conclusion is already baked into validate_mmlu.py's medical-subset comment. Neither appears in CLAUDE.md's architecture list (nor does generate_figures_GSM8K.py)."},
+{id:71,sev:"low",cat:"discrepancy",file:"validate_gsm8k.py",line:185,title:"Pattern 5 comment claims small-number filtering that isn't implemented",desc:"The comment says 'filter out very small numbers likely part of reasoning', but the code only drops None from normalize_number and returns the last candidate — no magnitude filter exists. The pattern also matches any number not adjacent to a digit, not just end-of-line numbers as its comment states."},
+{id:67,sev:"low",cat:"discrepancy",file:"validate_gsm8k.py",line:965,title:"Report hardcodes a claim about gpt-5-mini, a model no longer in the active set",desc:"Whenever any CoT model is detected, Key Findings unconditionally asserts 'Models like gpt-5-mini outperform larger models due to hidden reasoning tokens' — a hardcoded narrative presented as data. In the current models.py gpt-5-mini is peerrank:False, so a run asserts a finding about a model that didn't participate."},
+{id:69,sev:"low",cat:"discrepancy",file:"validate_mmlu.py",line:243,title:"Comment claims wilson_ci is imported; only correlation_ci is",desc:"The comment names correlation_ci and wilson_ci, but the import block brings in only correlation_ci and wilson_ci is never used. Unlike GSM8K's phase 5 (per-model Wilson accuracy CIs and t-based peer CIs), MMLU reports no per-model CIs and TruthfulQA imports none of the three — CI reporting was added in GSM8K and never propagated."},
+{id:65,sev:"low",cat:"discrepancy",file:"validate_mmlu.py",line:644,title:"MMLU Phase 3 has no incremental checkpoint (GSM8K checkpoints every 10 questions)",desc:"validate_mmlu.py phase 3 accumulates everything in memory and saves once after the loop, with no resume; validate_gsm8k.py checkpoints every 10 questions via _progress_idx and resumes. An interruption during 50 questions × N evaluators × 32k-token calls loses the entire pass."},
+{id:70,sev:"low",cat:"discrepancy",file:"validate_mmlu.py",line:766,title:"MMLU Phase 5 lacks the tie-averaged truth ranking that GSM8K and TFQ implement",desc:"validate_mmlu.py assigns sequential ranks straight from the sort, while GSM8K and TruthfulQA average ranks over tied truth scores. Models with identical accuracy (common at 50 questions) get arbitrary, order-dependent truth ranks in the saved comparison and report."},
+{id:72,sev:"low",cat:"discrepancy",file:"validate_mmlu.py",line:1064,title:"argparse epilog lists college_medicine, which the code deliberately excludes",desc:"SUBJECT_SUBSETS['medical'] excludes college_medicine (comment: ~30% mislabeled physics/chemistry MCAT questions), but the --help epilog still lists it among the medical subjects (9 shown vs the actual 8), misleading CLI users about what --subset medical runs."},
+{id:74,sev:"low",cat:"discrepancy",file:"validate_truthfulqa.py",line:5,title:"Docstring usage examples reference a stale filename 'truth_validation.py'",desc:"The usage block says 'python truth_validation.py' but the file is validate_truthfulqa.py; copy-pasting the documented commands fails."},
+{id:73,sev:"low",cat:"unused",file:"validate_truthfulqa.py",line:197,title:"answer_one's correct_letter parameter is never used",desc:"correct_letter is computed and passed for every task but never referenced in the body — the value is stored on the question dict separately. Dead parameter (harmless: it is correctly NOT leaked into the prompt)."},
+{id:35,sev:"low",cat:"discrepancy",file:"validate_truthfulqa.py",line:236,title:"Phase 2 hardcodes 'correct = choices[0]' while Phase 1 computes correct_index",adj:"Downgraded to latent: in the actual HF truthful_qa mc1 dataset the correct choice is always index 0 today, so no mis-grading occurs unless the dataset breaks that invariant.",desc:"Phase 1 computes labels.index(1) and persists correct_index (handling a nonzero correct answer), but Phase 2 ignores the ground-truth file and assumes original_choices[0] is correct. Phase 2 should look up correct_index like the phase-4 fallback does."},
+{id:68,sev:"low",cat:"discrepancy",file:"validate_truthfulqa.py",line:240,title:"Comment claims a deterministic per-question seed, but hash() is salted per process",desc:"random.Random(hash(question['question'])) is not reproducible across runs because Python salts str hashes per process. Scoring stays correct within a run (correct_letter is stored), but choice ordering — relevant to position-bias claims — is not reproducible. Same root cause as the phase3 seed bug; use hashlib or the stored index."},
+{id:66,sev:"low",cat:"discrepancy",file:"validate_truthfulqa.py",line:279,title:"The 'Uncorrected' ablation promised in the docstring and CLAUDE.md is never computed",desc:"The phase3 docstring and CLAUDE.md advertise an ablation comparing 'Uncorrected (Peer + Name + Position bias) vs Truth', but no code computes an uncorrected score or its correlation — phase 5's ablation is Peer-vs-Self only. shuffle_only/blind_only means are computed but used only for per-model bias columns, never combined."}
+];
+
+const catColor = {bug:"var(--dot-bug)",discrepancy:"var(--dot-discrepancy)",inefficiency:"var(--dot-inefficiency)",unused:"var(--dot-unused)"};
+const sevOrder = {high:0, medium:1, low:2};
+const sevLabel = {high:"High severity", medium:"Medium severity", low:"Low severity"};
+const state = {sev:new Set(), cat:new Set(), q:""};
+
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function counts(){
+  const c={high:0,medium:0,low:0,bug:0,discrepancy:0,inefficiency:0,unused:0};
+  F.forEach(f=>{c[f.sev]++; c[f.cat]++;});
+  return c;
+}
+function initCounts(){
+  const c=counts();
+  document.getElementById("ps-high").textContent=c.high;
+  document.getElementById("ps-med").textContent=c.medium;
+  document.getElementById("ps-low").textContent=c.low;
+  document.getElementById("ps-total").textContent=F.length;
+  document.querySelectorAll("[data-ct]").forEach(el=>{el.textContent=c[el.dataset.ct]||0;});
+}
+
+function matches(f){
+  if(state.sev.size && !state.sev.has(f.sev)) return false;
+  if(state.cat.size && !state.cat.has(f.cat)) return false;
+  if(state.q){
+    const hay=(f.file+" "+f.title+" "+f.desc+" "+f.cat+" #"+f.id).toLowerCase();
+    if(!hay.includes(state.q)) return false;
+  }
+  return true;
+}
+
+function render(){
+  const list=document.getElementById("list");
+  const shown=F.filter(matches).sort((a,b)=> (sevOrder[a.sev]-sevOrder[b.sev]) || a.file.localeCompare(b.file) || a.line-b.line);
+  document.getElementById("count").textContent = shown.length===F.length ? (F.length+" findings") : (shown.length+" of "+F.length+" findings");
+  document.getElementById("empty").style.display = shown.length? "none":"block";
+  const groupTotals={}; shown.forEach(f=>groupTotals[f.sev]=(groupTotals[f.sev]||0)+1);
+  let html="", curSev=null;
+  shown.forEach((f,i)=>{
+    if(f.sev!==curSev){
+      if(curSev!==null) html+=`</div>`;
+      curSev=f.sev;
+      html+=`<div class="grouplabel" data-sev="${f.sev}"><span class="bar"></span>${sevLabel[f.sev]}<span class="gc">${groupTotals[f.sev]}</span></div><div class="cards">`;
+    }
+    const note = f.adj ? `<div class="note"><b>Adjusted</b>${esc(f.adj)}</div>` : "";
+    html+=`<article class="card" data-sev="${f.sev}">
+      <div class="crow">
+        <span class="sevpill">${f.sev}</span>
+        <span class="cat"><span class="dot" style="background:${catColor[f.cat]}"></span>${f.cat}</span>
+        <span class="floc">${esc(f.file)}<span class="ln">:${f.line}</span></span>
+      </div>
+      <h4>${esc(f.title)}</h4>
+      <p>${esc(f.desc)}</p>
+      ${note}
+    </article>`;
+  });
+  if(curSev!==null) html+=`</div>`;
+  list.innerHTML=html;
+}
+
+function wireChips(groupId, key){
+  document.getElementById(groupId).addEventListener("click", e=>{
+    const btn=e.target.closest(".chip"); if(!btn) return;
+    const val=btn.dataset[key==="sev"?"sev":"cat"];
+    const set=state[key];
+    if(set.has(val)){set.delete(val); btn.setAttribute("aria-pressed","false");}
+    else{set.add(val); btn.setAttribute("aria-pressed","true");}
+    render();
+  });
+}
+wireChips("sevfilter","sev");
+wireChips("catfilter","cat");
+document.getElementById("search").addEventListener("input", e=>{state.q=e.target.value.trim().toLowerCase(); render();});
+
+// theme toggle
+const tgl=document.getElementById("tgl");
+tgl.addEventListener("click", ()=>{
+  const root=document.documentElement;
+  const cur=root.getAttribute("data-theme");
+  const sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const next = cur ? (cur==="dark"?"light":"dark") : (sysDark?"light":"dark");
+  root.setAttribute("data-theme", next);
+  try{localStorage.setItem("pr-theme", next);}catch(e){}
+});
+try{const saved=localStorage.getItem("pr-theme"); if(saved) document.documentElement.setAttribute("data-theme",saved);}catch(e){}
+
+initCounts();
+render();
+</script>
