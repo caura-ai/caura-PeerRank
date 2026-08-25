@@ -48,8 +48,8 @@ python peerrank.py              # Interactive menu
 python peerrank.py --phase 1    # Run specific phase (1-5)
 python peerrank.py --all        # Run all phases (1-5)
 python peerrank.py --resume     # Resume from last completed
-python peerrank.py --models gpt-5.5,claude-opus-4-7    # Include only these models
-python peerrank.py --exclude gemini-3-pro-preview      # Exclude these models
+python peerrank.py --models gpt-5.6-sol,claude-opus-5  # Include only these models
+python peerrank.py --exclude gemini-3.1-pro-preview    # Exclude these models
 python peerrank.py --categories factual,reasoning      # Include only these categories
 python peerrank.py --exclude-categories creative       # Exclude these categories
 python peerrank.py --seed 42    # Reproducible shuffle ordering for Phase 3
@@ -59,7 +59,7 @@ python peerrank.py --web-search-3 on # Enable Phase 3 web grounding (reuse Phase
 python peerrank.py --web-search-3 off # Disable Phase 3 web grounding (default)
 python peerrank.py --grounding-provider tavily  # Use Tavily for grounding (default)
 python peerrank.py --grounding-provider serpapi # Use SerpAPI for grounding
-python peerrank.py --judge gpt-5.2   # Select judge model for Phase 5
+python peerrank.py --judge gpt-5.6   # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
 streamlit run peerrank_ui.py    # Launch Streamlit UI
@@ -77,7 +77,7 @@ python validate_mmlu.py --subset law --num-questions 30                # MMLU la
 ```
   Revision: v1  |  Progress: 0/5
   Models: 3/12  |  Categories: 5/5  |  Questions: 2/model
-  P2: web=ON  |  P3: seed=rand, web-grounding=OFF  |  P5: gpt-5.2
+  P2: web=ON  |  P3: seed=rand, web-grounding=OFF  |  P5: gpt-5.6
   Grounding: TAVILY
 
   --- Run ---
@@ -153,8 +153,7 @@ Report header shows: `Models evaluated: 12 | Questions: 48 | P2 grounding: **ON 
 - **Phase Timing**: Duration of each phase with Phase 3 mode breakdown
 - **Question Analysis**: By category, by source model, category coverage matrix
 - **Answer/Evaluation Response Time**: Average response time per model
-- **Answering API Cost Analysis**: Total costs, token usage, and per-answer costs for Phase 2
-- **Performance vs. Cost**: Efficiency rankings combining quality scores with cost (Points²/¢)
+- **Cost / efficiency tables** (*Answering API Cost Analysis*, *Performance vs. Cost*, Points²/¢) are generated in **Phase 5**, not the Phase 4 report — see the Analysis Report section below.
 - **Final Peer Rankings**: Scores from shuffle+blind mode (excluding self-ratings)
 - **Elo Ratings**: Pairwise comparison rankings with W-L-T records and rank comparison
 - **Bias Analysis**: Three bias types with Position Bias table and Model Bias table
@@ -165,7 +164,7 @@ Report header shows: `Models evaluated: 12 | Questions: 48 | P2 grounding: **ON 
 
 ## Analysis Report (Phase 5)
 
-Judge LLM (configurable, default: gpt-5.2) analyzes the Phase 4 report and provides:
+Judge LLM (configurable, default: gpt-5.6) analyzes the Phase 4 report and provides:
 - **Overall Quality Assessment**: Holistic evaluation of the peer ranking results
 - **Top Performers & Outliers**: Identification of standout models and anomalies
 - **Bias Patterns**: Analysis of self-bias, name bias, and position bias trends
@@ -175,8 +174,8 @@ Judge LLM (configurable, default: gpt-5.2) analyzes the Phase 4 report and provi
 
 Configuration:
 - `get_phase5_judge()` / `set_phase5_judge(provider, model_id, display_name)`
-- Default: `("openai", "gpt-5.2", "gpt-5.2")`
-- CLI: `python peerrank.py --judge gpt-5.2`
+- Default: `("openai", "gpt-5.6", "gpt-5.6")`
+- CLI: `python peerrank.py --judge gpt-5.6`
 - Menu: `[J] Judge - Select Phase 5 analysis judge`
 
 ## Models
@@ -189,22 +188,29 @@ Defined in `peerrank/models.py`. Each model has:
 - `cost`: (input_cost_per_1M, output_cost_per_1M) in USD
 
 ```python
-# peerrank/models.py
+# peerrank/models.py  (roster verified 2026-08-25; see models.py for pricing/promo notes)
 ALL_MODELS = [
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5-mini", "name": "gpt-5-mini", "cost": (0.25, 2.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-4-7", "name": "claude-opus-4-7", "cost": (5.00, 25.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-4-6", "name": "claude-sonnet-4-6", "cost": (3.00, 15.00)},
-    {"peerrank": True, "provider": "google", "model_id": "gemini-3-pro-preview", "name": "gemini-3-pro-preview", "cost": (2.00, 12.00)},
-    {"peerrank": True, "provider": "google", "model_id": "gemini-3-flash-preview", "name": "gemini-3-flash-preview", "cost": (0.50, 3.00)},
-    {"peerrank": True, "provider": "grok", "model_id": "grok-4.3", "name": "grok-4.3", "cost": (1.25, 2.50)},
-    {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash", "cost": (0.14, 0.28)},
-    {"peerrank": True, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
-    {"peerrank": True, "provider": "perplexity", "model_id": "sonar-pro", "name": "sonar-pro", "cost": (3.00, 15.00)},
-    {"peerrank": True, "provider": "kimi", "model_id": "kimi-k2.5", "name": "kimi-k2.5", "cost": (0.60, 3.00)},
-    {"peerrank": True, "provider": "mistral", "model_id": "mistral-large-latest", "name": "mistral-large", "cost": (2.00, 6.00)},
-    # Non-PeerRank models (for cost tracking only)
-    {"peerrank": False, "provider": "openai", "model_id": "gpt-5.1", "name": "gpt-5.1", "cost": (1.25, 10.00)},
+    # Active (peerrank=True) — participate in evaluation
+    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6",         "name": "gpt-5.6-sol",           "cost": (4.00, 20.00)},
+    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-terra",   "name": "gpt-5.6-terra",         "cost": (2.00, 12.00)},
+    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-luna",    "name": "gpt-5.6-luna",          "cost": (0.20, 1.20)},
+    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-fable-5",  "name": "claude-fable-5",        "cost": (10.00, 50.00)},
+    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-opus-5",   "name": "claude-opus-5",         "cost": (5.00, 25.00)},
+    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-sonnet-5", "name": "claude-sonnet-5",       "cost": (2.00, 10.00)},
+    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
+    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.7-flash",       "name": "gemini-3.7-flash",       "cost": (0.75, 3.75)},
+    {"peerrank": True,  "provider": "grok",       "model_id": "grok-4.6",        "name": "grok-4.6",              "cost": (2.00, 6.00)},
+    {"peerrank": True,  "provider": "deepseek",   "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash",   "cost": (0.22, 0.66)},
+    {"peerrank": True,  "provider": "together",   "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
+    {"peerrank": True,  "provider": "perplexity", "model_id": "medium",          "name": "pplx-agent-medium",     "cost": (0.20, 1.20)},
+    # Cost-tracking only (peerrank=False) — not evaluated
+    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-mini",      "name": "gpt-5-mini",            "cost": (0.25, 2.00)},
+    {"peerrank": False, "provider": "kimi",       "model_id": "kimi-k3",         "name": "kimi-k3",               "cost": (3.00, 15.00)},
+    {"peerrank": False, "provider": "mistral",    "model_id": "mistral-large-latest", "name": "mistral-large",    "cost": (0.50, 1.50)},
+    {"peerrank": False, "provider": "deepseek",   "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro",       "cost": (0.66, 1.98)},
+    {"peerrank": False, "provider": "grok",       "model_id": "grok-code-fast-1", "name": "grok-code-fast-1",     "cost": (0.60, 3.00)},
+    {"peerrank": False, "provider": "anthropic",  "model_id": "claude-haiku-4-5", "name": "claude-haiku-4-5",     "cost": (1.00, 5.00)},
+    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-nano",      "name": "gpt-5-nano",            "cost": (0.05, 0.40)},
 ]
 
 # Derived in config.py:
@@ -212,7 +218,7 @@ TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
 PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
 ```
 
-Total: **12 active models** across 8 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral)
+Total: **12 active models** (peerrank=True) across 7 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI/Meta, Perplexity). Seven more models with `peerrank: False` are tracked for cost only and are NOT evaluated (gpt-5-mini, kimi-k3, mistral-large, deepseek-v4-pro, grok-code-fast-1, claude-haiku-4-5, gpt-5-nano).
 
 ## Categories
 
@@ -234,7 +240,7 @@ All calls route through `call_llm()` in `peerrank/providers.py`:
 - **Standardized Grounding**: All providers receive pre-fetched Tavily grounding via `grounding_text` parameter
 - **No Native Search**: Native web search removed from all providers for fair comparison
 - **Grounding Injection**: OpenAI/Anthropic/Mistral use system message; Google/Grok prepend to prompt
-- **Perplexity Note**: sonar-pro is inherently search-augmented (cannot be disabled), so it may have additional context
+- **Perplexity Note**: the active Perplexity model is `pplx-agent-medium` (Agent API `medium` preset; sonar-pro retired) — inherently search-augmented, so it may carry additional context
 
 ```python
 # All providers follow this pattern:
@@ -250,7 +256,7 @@ Create a `.env` file in the project root with your API keys:
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
-GROK_API_KEY=xai-...
+XAI_API_KEY=xai-...            # primary for Grok; GROK_API_KEY also accepted as a fallback
 DEEPSEEK_API_KEY=sk-...
 TOGETHER_API_KEY=...
 PERPLEXITY_API_KEY=pplx-...
@@ -306,7 +312,7 @@ Position Bias table (by position, not model):
 Model Bias table:
 | Model | Peer | Self | Self Bias | Shuffle | Name Bias |
 |-------|------|------|-----------|---------|-----------|
-| gpt-5.2 | 8.27 | 8.71 | +0.44 | 8.56 | +0.29 |
+| gpt-5.6-sol | 8.27 | 8.71 | +0.44 | 8.56 | +0.29 |
 
 **Data structure in phase3_rankings.json:**
 ```json
@@ -336,7 +342,7 @@ Phase 3 saves checkpoints after each mode completes. If interrupted:
 Costs are stored in each model's `cost` field as `(input_cost_per_1M, output_cost_per_1M)`:
 ```python
 # In models.py - cost is part of each model definition
-{"peerrank": True, "provider": "openai", "model_id": "gpt-5.2", "name": "gpt-5.2", "cost": (1.75, 14.00)},
+{"peerrank": True, "provider": "openai", "model_id": "gpt-5.6", "name": "gpt-5.6-sol", "cost": (4.00, 20.00)},
 
 # In config.py - derived lookup
 TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
@@ -356,7 +362,7 @@ SERPAPI_COST_PER_SEARCH = 0.01   # ~$0.01 per search
 get_grounding_cost()              # Returns cost for current provider
 ```
 
-**Phase 4 Report**:
+**Phase 5 Analysis** (these cost tables are generated in Phase 5 by `_generate_cost_analysis` and prepended to `phase5_analysis_{rev}.md` — the Phase 4 report has no cost section):
 - **Answering API Cost Analysis**: Total costs, tokens, avg cost per question
 - **Performance vs. Cost**: Efficiency metric `(Score ^ EXPONENT) / Cost_cents`
   - `EFFICIENCY_QUALITY_EXPONENT` in `peerrank/config.py` (default 2.0)
@@ -382,7 +388,7 @@ Phase 2 uses **standardized web grounding** - one search per question via config
 | Provider | Cost | API Key Env Var | Notes |
 |----------|------|-----------------|-------|
 | **Tavily** (default) | $0.008/search | `TAVILY_API_KEY` | Fast, includes AI-generated answer summary |
-| **SerpAPI** | ~$0.01/search | `SERPAPI_API_KEY` | Google search results, answer boxes, knowledge graph |
+| **SerpAPI** | ~$0.01/search | `SERPAPI_KEY` | Google search results, answer boxes, knowledge graph |
 
 **How It Works**:
 1. Before LLM calls, search provider is queried once per question (current events category only)
@@ -481,7 +487,7 @@ For each (evaluator, question), scores are converted to C(N,2) pairwise matches:
 **Report Output**:
 | # | Model | Elo | Win% | W-L-T | Peer | P# | Diff |
 |---|-------|-----|------|-------|------|----|------|
-| 1 | gpt-5.2 | 1687 | 68.2% | 9012-4188-786 | 8.27 | 1 | 0 |
+| 1 | gpt-5.6-sol | 1687 | 68.2% | 9012-4188-786 | 8.27 | 1 | 0 |
 
 - **Elo**: Final Elo rating
 - **Win%**: Win rate including ties (wins + 0.5*ties / total)
@@ -508,7 +514,7 @@ calculate_elo_ratings(evaluations, model_names=None, initial_rating=1500,
 - Async batch processing: `asyncio.gather()`, batch size 5
 - Models: 3-tuples `(provider, model_id, display_name)`
 - Iterate: `for provider, model_id, name in MODELS`
-- 180s timeout, 4 retries with exponential backoff
+- 180s timeout, up to 5 attempts per call (`MAX_RETRIES = 5`, exponential backoff)
 - Revision: `get_revision()` / `set_revision(rev)` in `peerrank/config.py`
 - Phase 3 seed: `set_bias_test_config(seed=N)` / `get_bias_test_config()` in `peerrank/config.py`
 - Phase 5 judge: `set_phase5_judge(provider, model_id, name)` / `get_phase5_judge()` in `peerrank/config.py`
@@ -538,22 +544,26 @@ UI_DISPLAY_MODES = [
     {"name": "shuffle_only", "display_name": "Shuffle (names visible)", "icon": "🔀", ...},
 ]
 
-# Model to provider mapping (for clustering analysis and figures)
+# Model display name -> provider label (for clustering analysis and figures).
+# DERIVED from ALL_MODELS in config.py so renaming a model can't silently drop it:
+#   PROVIDER_MAP = {m['name']: PROVIDER_LABELS[m['provider']] for m in ALL_MODELS}
 PROVIDER_MAP = {
-    'gpt-5.2': 'OpenAI', 'gpt-5-mini': 'OpenAI',
-    'claude-opus-4-7': 'Anthropic', 'claude-sonnet-4-6': 'Anthropic',
-    'gemini-3-pro-preview': 'Google', 'gemini-3-flash-preview': 'Google',
-    'grok-4.3': 'xAI', 'deepseek-v4-flash': 'DeepSeek',
-    'llama-3.3-70b': 'Meta', 'sonar-pro': 'Perplexity',
-    'kimi-k2.5': 'Moonshot', 'mistral-large': 'Mistral',
+    'gpt-5.6-sol': 'OpenAI', 'gpt-5.6-terra': 'OpenAI', 'gpt-5.6-luna': 'OpenAI',
+    'claude-fable-5': 'Anthropic', 'claude-opus-5': 'Anthropic', 'claude-sonnet-5': 'Anthropic',
+    'gemini-3.1-pro-preview': 'Google', 'gemini-3.7-flash': 'Google',
+    'grok-4.6': 'xAI', 'deepseek-v4-flash': 'DeepSeek',
+    'llama-3.3-70b': 'Meta', 'pplx-agent-medium': 'Perplexity',
+    # + peerrank=False models (gpt-5-mini, kimi-k3, mistral-large, deepseek-v4-pro, ...)
 }
 
 # Short display names for compact tables
 MODEL_SHORTCUTS = {
-    "gemini-3-pro-preview": "gem-3-pro", "gemini-3-flash-preview": "gem-3-flash",
-    "claude-opus-4-7": "opus-4.7", "claude-sonnet-4-6": "sonnet-4.6",
-    "llama-3.3-70b": "llama-3.3", "deepseek-v4-flash": "deepseek",
-    "kimi-k2.5": "kimi", "grok-4.3": "grok-4.3", "mistral-large": "mistral",
+    'gpt-5.6-sol': 'gpt-sol', 'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
+    'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
+    'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
+    'grok-4.6': 'grok-4.6', 'deepseek-v4-flash': 'deepseek',
+    'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',
+    'pplx-agent-medium': 'pplx-med',
 }
 
 get_short_name(model, max_len=12) -> str  # Returns shortened display name
@@ -778,15 +788,21 @@ TEMPERATURE_EVAL = 0            # Evaluation (Phase 3)
 
 # Model-specific overrides for models that don't support certain values
 MODEL_TEMPERATURE_OVERRIDES = {
-    "gpt-5-mini": 1.0,          # GPT-5-mini doesn't support 0.5
-    "kimi-k2.5": 1.0,           # Kimi only allows temperature=1
+    "gpt-5-mini": 1.0,       # GPT-5-mini doesn't support 0.5
+    "kimi-k3": 1.0,          # Kimi only allows temperature=1
+    "gpt-5.6": 1.0,          # GPT-5.6 family only allows temperature=1
+    "gpt-5.6-terra": 1.0,
+    "gpt-5.6-luna": 1.0,
+    "claude-opus-5": 1.0,    # Opus 5: thinking on by default
+    "claude-fable-5": 1.0,   # Fable 5: extended thinking
+    "claude-sonnet-5": 1.0,  # Sonnet 5: adaptive thinking
 }
 ```
 
 ### Retry & Timeout
 ```python
 DEFAULT_TIMEOUT = 180           # API call timeout (seconds)
-MAX_RETRIES = 5                 # Number of retry attempts
+MAX_RETRIES = 5                 # Total attempts per call (loop runs range(MAX_RETRIES) = 5 tries)
 RETRY_DELAY = 4                 # Base delay between retries (exponential backoff)
 ```
 
@@ -800,11 +816,11 @@ Maximum concurrent requests per provider for parallel processing:
 ```python
 PROVIDER_CONCURRENCY = {
     "openai": 8, "anthropic": 8, "google": 3, "grok": 8,
-    "deepseek": 8, "together": 8, "perplexity": 8, "kimi": 10,
-    "mistral": 8,
+    "deepseek": 8, "together": 8, "perplexity": 1, "kimi": 10,
+    "mistral": 2, "minimax": 8,
 }
 ```
-Note: Google concurrency reduced to 3 to avoid MAX_TOKENS errors with thinking models.
+Note: Google=3 avoids MAX_TOKENS errors with thinking models; Perplexity=1 (Agent API allows one in-flight request; measured 2026-08-24); Mistral=2 (strict per-minute rate limits).
 
 ### Utility Functions
 Core helper functions used across multiple files:
