@@ -4,6 +4,7 @@ config.py - Configuration constants and utilities for PeerRank.ai
 
 import json
 import os
+import re
 from pathlib import Path
 from statistics import mean, stdev
 
@@ -48,7 +49,7 @@ def get_bias_test_config() -> dict:
 MAX_TOKENS_SHORT = 4096  # Phase 1 question generation (increased for verbose models)
 MAX_TOKENS_ANSWER = 16384
 MAX_TOKENS_EVAL = 32000
-MAX_TOKENS_DEEPSEEK = 8192
+MAX_TOKENS_DEEPSEEK = 32000     # deepseek-v4-flash is a CoT model: a 12-response eval spends ~14.7k tokens on reasoning ALONE, so the old 8192 cap hit finish_reason=length with empty content. Verified 2026-08-25: at 32000 it finishes (stop) and emits full JSON. (Was 8192, suited to non-reasoning deepseek-chat.)
 MAX_ANSWER_WORDS = 200
 MAX_RETRIES = 5
 RETRY_DELAY =  4
@@ -138,6 +139,20 @@ def set_phase3_web_search(enabled: bool):
 
 # Phase 3 runs 3 bias modes automatically (shuffle_only, blind_only, shuffle_blind)
 BIAS_TEST_SEED = None  # Random seed for reproducible shuffling (None = random)
+
+# How many models a judge may omit from one evaluation before that evaluation is
+# discarded. 0 = strict (every response must be scored).
+#
+# Set to 1 on evidence from the z1 run: of 20 genuine single-omission evaluations,
+# HALF came from one judge (gemini-3.7-flash) while the omitted models were spread
+# evenly across 8 targets, and none coincided with a blank/refused answer. So the
+# omission is a property of the JUDGE, not of the model being skipped — discarding
+# the whole evaluation threw away 11 valid scores AND removed half of that judge's
+# ballots, quietly reweighting the judge panel (judges differ in generosity).
+# Keeping the 11 is the smaller distortion. Raise the bar back to 0 to reproduce
+# strict runs; anything above 1 is not recommended (a response missing several
+# entries usually signals a malformed reply, not a slip).
+PHASE3_MAX_MISSING_SCORES = 1
 
 # Phase 5 judge model (provider, model_id, display_name)
 PHASE5_JUDGE = ("openai", "gpt-5.6", "gpt-5.6")
@@ -287,35 +302,234 @@ def format_duration(seconds: float) -> str:
     return f"{int(seconds // 60)}m {seconds % 60:.1f}s"
 
 
+def _balanced_json_span(s: str, start: int) -> str | None:
+    """Substring from `start` to its matching bracket, tracking strings/escapes.
+
+    Returns the remainder if the structure is unterminated (so the caller can still
+    attempt a repair); returns None only if `start` is not a bracket.
+    """
+    open_ch = s[start]
+    if open_ch not in "{[":
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == '\\':
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth == 0:
+                return s[start:i + 1]
+    return s[start:]  # unterminated (e.g. truncated output)
+
+
+def _fix_stray_parens(s: str, repl: str) -> str:
+    """Replace ')' outside string literals with `repl` ('}' or ']').
+
+    A parenthesis is never valid JSON structure, so one appearing outside a string
+    is a mistyped closer. Observed from a judge: '"flags": ["incorrect"),' where a
+    '}' was meant. Content inside strings is left untouched.
+    """
+    out = []
+    in_str = esc = False
+    for ch in s:
+        if in_str:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == '\\':
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+            out.append(ch)
+        elif ch == ')':
+            out.append(repl)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _close_json(s: str) -> str | None:
+    """Best-effort repair of JSON whose closing bracket(s) the model omitted.
+
+    Strips a code-fence wrapper and any leading prose, drops a trailing comma, and
+    appends closers for still-open brackets. Returns None if the text is truncated
+    mid-string, or if nothing is open to close (the failure isn't a missing bracket
+    and must not be silently "repaired" here).
+    """
+    s = s.strip()
+    if s.startswith("```"):
+        s = max(s.split("```"), key=len).strip()
+        if s[:4].lower() == "json":
+            s = s[4:].strip()
+    starts = [i for i in (s.find("{"), s.find("[")) if i != -1]
+    if not starts:
+        return None
+    s = s[min(starts):]
+    stack = []
+    in_str = esc = False
+    for ch in s:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append(ch)
+        elif ch == "}" and stack and stack[-1] == "{":
+            stack.pop()
+        elif ch == "]" and stack and stack[-1] == "[":
+            stack.pop()
+    if in_str or not stack:
+        return None
+    body = s.rstrip()
+    if body.endswith(","):
+        body = body[:-1].rstrip()
+    return body + "".join("}" if c == "{" else "]" for c in reversed(stack))
+
+
 def extract_json(text: str) -> dict | list | None:
-    """Extract JSON from text that may contain markdown or extra content."""
+    """Extract JSON from text that may contain markdown or extra prose.
+
+    Tolerant of a leading/trailing prose wrapper and of trailing commas. When the
+    text is not directly parseable, the '{...}' and '[...]' spans are both tried
+    and the longest one that parses wins, so an incidental empty "[]" (e.g. a
+    ``"flags": []`` value) can never shadow the real top-level object, while a
+    genuine top-level array still beats any nested object.
+    """
     if not text:
         return None
     text = text.strip()
 
+    def _loads(s: str):
+        """Strict parse, then light repairs for the ways judges mistype JSON:
+        a trailing comma, and ')' used where '}' or ']' belongs."""
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            pass
+        no_comma = re.sub(r',(\s*[}\]])', r'\1', s)  # trailing commas before } or ]
+        for cand in (no_comma,
+                     _fix_stray_parens(s, '}'),
+                     _fix_stray_parens(s, ']'),
+                     _fix_stray_parens(no_comma, '}')):
+            if cand == s:
+                continue
+            try:
+                return json.loads(cand)
+            except json.JSONDecodeError:
+                continue
+        return None
+
     # Direct parse
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+    r = _loads(text)
+    if r is not None:
+        return r
 
     # From markdown code blocks
     if "```" in text:
         for part in text.split("```"):
             clean = part.strip().removeprefix("json").removeprefix("JSON").strip()
-            try:
-                return json.loads(clean)
-            except json.JSONDecodeError:
-                continue
+            r = _loads(clean)
+            if r is not None:
+                return r
 
-    # Find JSON by brackets
-    for start_char, end_char in [('[', ']'), ('{', '}')]:
-        start, end = text.find(start_char), text.rfind(end_char)
+    # Scan for one or more consecutive top-level JSON values, using string-aware
+    # balanced matching. This captures a full object even when it nests arrays
+    # (e.g. "flags": []) — a nested "[]" can never shadow the real object — and
+    # critically handles a judge that emits ONE OBJECT PER LINE instead of a single
+    # combined object (observed with thinking models): all such objects are merged.
+    # Only CONSECUTIVE top-level values are collected: between values we skip
+    # whitespace/commas only. Walking over arbitrary text would descend into the
+    # inner '{"score": ...}' objects of a malformed response and mask the real shape.
+    values = []
+    n = len(text)
+    # Start at the first bracket, so a leading prose preamble is skipped.
+    starts = [p for p in (text.find('{'), text.find('[')) if p != -1]
+    i = min(starts) if starts else n
+    while i < n and text[i] in "{[":
+        span = _balanced_json_span(text, i)
+        if not span:
+            break
+        v = _loads(span)
+        if v is None:
+            break  # a broken value stops the scan
+        values.append(v)
+        i += len(span)
+        while i < n and text[i] in " \t\r\n,":
+            i += 1
+
+    # Before accepting a parsed result, handle the "early outer close" shape: the
+    # model emitted '}}' where only '}' belongs, closing the outer object early and
+    # leaving the rest as bare '"key": {...}' pairs. Two variants are observed:
+    # once after the first entry ('{"a": {...}},\n"b": {...}, ...') and after EVERY
+    # entry ('{"a": {..}}, "b": {..}}, "c": {..}}, ...'), so every such boundary is
+    # spliced, not just the first. Parsing "succeeds" on the truncated prefix, so the
+    # repair is accepted only when it recovers strictly more keys — which also keeps
+    # a legitimately nested object (whose '}},"' is real) from being mangled.
+    if values and isinstance(values[0], dict):
+        start, end = text.find('{'), text.rfind('}')
         if start != -1 and end > start:
-            try:
-                return json.loads(text[start:end + 1])
-            except json.JSONDecodeError:
-                pass
+            span = text[start:end + 1]
+            spliced = re.sub(r'\}\}\s*,\s*(?=")', '},\n', span)
+            if spliced != span:
+                merged_len = sum(len(v) for v in values if isinstance(v, dict))
+                for cand in (spliced, spliced + '}', spliced.rstrip().rstrip(',') + '}'):
+                    alt = _loads(cand)
+                    if isinstance(alt, dict) and len(alt) > merged_len:
+                        return alt
+
+    if values:
+        if len(values) == 1:
+            return values[0]
+        # Multiple top-level values: merge if all objects (per-line output);
+        # otherwise fall back to the first parsed value.
+        if all(isinstance(v, dict) for v in values):
+            merged = {}
+            for v in values:
+                merged.update(v)
+            return merged
+        return values[0]
+
+    # Last resort A: the model omitted the closing bracket(s) — an unterminated
+    # object/array, sometimes inside a code fence. Append the missing closers.
+    repaired = _close_json(text)
+    if repaired is not None:
+        r = _loads(repaired)
+        if r is not None:
+            return r
+
+    # Last resort B: same "early outer close" shape as above, for text where nothing
+    # parsed at all. Splice every '}},"' boundary down to '},"'.
+    start, end = text.find('{'), text.rfind('}')
+    if start != -1 and end > start:
+        span = text[start:end + 1]
+        spliced = re.sub(r'\}\}\s*,\s*(?=")', '},\n', span)
+        if spliced != span:
+            for cand in (spliced, spliced + '}', spliced.rstrip().rstrip(',') + '}'):
+                r = _loads(cand)
+                if isinstance(r, dict):
+                    return r
     return None
 
 

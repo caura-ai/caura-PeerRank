@@ -3,14 +3,17 @@ phase3.py - Cross-Evaluation Rankings
 """
 
 import asyncio
+import difflib
+import json
 import random
+import re
 import time
 from datetime import datetime
 from statistics import mean
 
 from peerrank.config import (
     MODELS, MAX_TOKENS_EVAL, TEMPERATURE_EVAL, BIAS_MODES, PROVIDER_CONCURRENCY,
-    extract_json, save_json, load_json, format_duration,
+    DATA_DIR, PHASE3_MAX_MISSING_SCORES, extract_json, save_json, load_json, format_duration,
     get_revision, calculate_timing_stats, get_bias_test_config, get_phase3_web_search,
 )
 from peerrank.providers import call_llm
@@ -58,6 +61,32 @@ Example:
 
 # Labels for blind evaluation (A-Z)
 BLIND_LABELS = [chr(ord('A') + i) for i in range(26)]
+
+
+def _record_parse_failure(mode_name: str, evaluator: str, q_idx: int, kind: str,
+                          response: str, missing=None) -> None:
+    """Append a raw failed/incomplete evaluation response to a debug JSONL.
+
+    Purely diagnostic — lets us see WHAT a judge actually returned when
+    extract_json can't use it (parse failure or missing labels). Wrapped in
+    try/except so diagnostics can never break the run. File:
+    data/phase3_parsefail_{rev}.jsonl (one JSON object per line).
+    """
+    try:
+        rec = {
+            "mode": mode_name,
+            "evaluator": evaluator,
+            "q_index": q_idx,
+            "kind": kind,  # "parse_fail" | "incomplete"
+            "char_len": len(response or ""),
+            "missing": sorted(missing) if missing else None,
+            "raw_response": response,
+        }
+        path = DATA_DIR / f"phase3_parsefail_{get_revision()}.jsonl"
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def format_responses_for_eval(question: dict, shuffle: bool, blind: bool, seed: int | None) -> tuple[str, dict]:
@@ -112,19 +141,75 @@ def format_responses_for_eval(question: dict, shuffle: bool, blind: bool, seed: 
     return "\n".join(lines), label_to_model
 
 
+LABEL_MATCH_CUTOFF = 0.90  # min similarity to accept a near-miss label as a typo
+
+
 def remap_scores_to_models(scores: dict, label_to_model: dict) -> dict:
-    """Convert scores keyed by label back to scores keyed by actual model name."""
-    remapped = {}
+    """Convert scores keyed by label back to scores keyed by actual model name.
+
+    Three passes, each requiring an UNAMBIGUOUS match and never overwriting a model
+    already claimed by a better match:
+
+    1. exact label
+    2. unambiguous substring — handles a judge answering "A" for "Response A"
+    3. unambiguous near-miss — handles typos like "geminii-3.7-flash"
+
+    Ambiguity is rejected on purpose. A bare "gpt-5.6" is equally close to
+    gpt-5.6-sol / -terra / -luna, and silently crediting one of them assigns a
+    score to the wrong model, which is worse than dropping it. Hallucinated labels
+    (a judge inventing "claude-opus-4.6" for a model not in the lineup) stay
+    unmatched for the same reason.
+    """
+    remapped: dict = {}
+    claimed: set = set()
+    pending: list = []
+
+    # Pass 1: exact label match
     for label, score_data in scores.items():
-        model_name = label_to_model.get(label)
-        if model_name:
-            remapped[model_name] = score_data
+        model = label_to_model.get(label)
+        if model is not None:
+            if model not in claimed:
+                remapped[model] = score_data
+                claimed.add(model)
         else:
-            # Try fuzzy match for labels like "A" instead of "Response A"
-            for full_label, model in label_to_model.items():
-                if label in full_label or full_label in label:
-                    remapped[model] = score_data
-                    break
+            pending.append((label, score_data))
+
+    def _assign(candidates, score_data) -> bool:
+        """Assign only when exactly one unclaimed model matches."""
+        options = {m for m in candidates if m not in claimed}
+        if len(options) == 1:
+            model = options.pop()
+            remapped[model] = score_data
+            claimed.add(model)
+            return True
+        return False
+
+    # Pass 2: unambiguous substring (e.g. "A" -> "Response A")
+    still_pending = []
+    for label, score_data in pending:
+        cands = [m for lbl, m in label_to_model.items()
+                 if label in lbl or lbl in label]
+        if not _assign(cands, score_data):
+            still_pending.append((label, score_data))
+
+    # Pass 3: unambiguous near-miss (typo tolerance).
+    # The version digits must match EXACTLY: "geminii-3.7-flash" vs
+    # "gemini-3.7-flash" is a typo (same 3/7), but "claude-opus-4.5" vs
+    # "claude-opus-5" is a different model version, not a misspelling — accepting
+    # it would credit one model's score to another.
+    for label, score_data in still_pending:
+        label_digits = re.findall(r"\d+", label)
+        scored = []
+        for lbl, m in label_to_model.items():
+            if m in claimed or re.findall(r"\d+", lbl) != label_digits:
+                continue
+            ratio = difflib.SequenceMatcher(None, label.lower(), lbl.lower()).ratio()
+            if ratio >= LABEL_MATCH_CUTOFF:
+                scored.append((ratio, m))
+        if scored:
+            best = max(r for r, _ in scored)
+            _assign([m for r, m in scored if r == best], score_data)
+
     return remapped
 
 
@@ -169,17 +254,26 @@ async def _run_evaluation_pass(questions: list, shuffle: bool, blind: bool, seed
                 # while silently removing this judge's scores for the question.
                 print(f"      [PARSE-FAIL] {name} Q#{q_idx + 1}: judge returned no valid JSON "
                       f"({len(response or '')} chars) — evaluation dropped", flush=True)
+                _record_parse_failure(mode_name, name, q_idx, "parse_fail", response)
                 return (name, q["text"], {}, 0)
             remapped_scores = remap_scores_to_models(scores, label_to_model)
             missing = expected_models - set(remapped_scores.keys())
-            if missing:
-                # Incomplete: the judge omitted some responses. Drop the whole evaluation rather
-                # than keeping a partial set — an asymmetric per-mode sample manufactures the very
-                # name/position bias the report is meant to measure.
+            if len(missing) > PHASE3_MAX_MISSING_SCORES:
+                # Badly incomplete: usually a malformed reply rather than a slip. Drop the whole
+                # evaluation — keeping a heavily partial set skews the per-mode sample, and the
+                # bias tables are differences between those per-mode means.
                 print(f"      [INCOMPLETE] {name} Q#{q_idx + 1}: scored "
                       f"{len(remapped_scores)}/{len(expected_models)}, missing {sorted(missing)} "
                       "— evaluation dropped", flush=True)
+                _record_parse_failure(mode_name, name, q_idx, "incomplete", response, missing)
                 return (name, q["text"], {}, 0)
+            if missing:
+                # Within tolerance: keep the scores we have. Losing 11 valid scores to punish one
+                # omission is the larger distortion (see PHASE3_MAX_MISSING_SCORES in config).
+                print(f"      [PARTIAL] {name} Q#{q_idx + 1}: scored "
+                      f"{len(remapped_scores)}/{len(expected_models)}, missing {sorted(missing)} "
+                      "— kept", flush=True)
+                _record_parse_failure(mode_name, name, q_idx, "partial_kept", response, missing)
             return (name, q["text"], remapped_scores, duration)
         except Exception as e:
             q_idx_display = q_idx + 1
