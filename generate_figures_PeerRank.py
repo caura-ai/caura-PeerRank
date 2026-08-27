@@ -83,6 +83,10 @@ MODEL_COLORS = {
     'claude-fable-5': '#9467BD',       # Purple
     'gemini-3.1-pro-preview': '#D55E00', # Orange
     'gemini-3.6-flash': '#F0E442', # Yellow
+    'gemini-3.7-flash': '#F0E442',      # Yellow
+    'gemini-3.5-flash': '#DDCC77',      # Sand
+    'gemini-3.5-flash-lite': '#B8A03C', # Dark Sand
+    'gemini-3.1-flash-lite': '#E7A93A', # Amber
     'grok-4.5': '#CC79A7',             # Pink
     'deepseek-v4-flash': '#E69F00',    # Orange-Brown
     'llama-3.3-70b': '#999999',        # Gray

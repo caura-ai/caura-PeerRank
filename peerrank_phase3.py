@@ -63,6 +63,15 @@ Example:
 BLIND_LABELS = [chr(ord('A') + i) for i in range(26)]
 
 
+# Per-mode tally of dropped/degraded evaluations, keyed by mode name. Populated by
+# _record_parse_failure alongside the JSONL write so the end-of-mode summary can show
+# WHICH judge the omissions came from. The JSONL is per-record and easy to miss; what
+# matters for the bias tables is whether omissions CONCENTRATE in one judge (see
+# PHASE3_MAX_MISSING_SCORES in config) - a judge that loses ballots is silently
+# down-weighted in the per-mode mean, and the bias tables are differences of those means.
+_MODE_FAILURES: dict[str, list[dict]] = {}
+
+
 def _record_parse_failure(mode_name: str, evaluator: str, q_idx: int, kind: str,
                           response: str, missing=None) -> None:
     """Append a raw failed/incomplete evaluation response to a debug JSONL.
@@ -72,6 +81,12 @@ def _record_parse_failure(mode_name: str, evaluator: str, q_idx: int, kind: str,
     try/except so diagnostics can never break the run. File:
     data/phase3_parsefail_{rev}.jsonl (one JSON object per line).
     """
+    try:
+        _MODE_FAILURES.setdefault(mode_name, []).append(
+            {"evaluator": evaluator, "kind": kind, "missing": sorted(missing) if missing else None}
+        )
+    except Exception:
+        pass
     try:
         rec = {
             "mode": mode_name,
@@ -85,6 +100,62 @@ def _record_parse_failure(mode_name: str, evaluator: str, q_idx: int, kind: str,
         path = DATA_DIR / f"phase3_parsefail_{get_revision()}.jsonl"
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _print_mode_failure_summary(mode_name: str, total_questions: int) -> None:
+    """Print a per-judge tally of dropped/degraded evaluations for a completed mode.
+
+    Sorted worst-first because concentration is the signal: omissions spread evenly
+    across judges are noise, but one judge losing many ballots reweights the judge
+    panel (judges differ in generosity) and distorts every per-mode mean built on it.
+    Diagnostic only - wrapped so it can never break a run that has already succeeded.
+    """
+    try:
+        records = _MODE_FAILURES.get(mode_name, [])
+        if not records:
+            print(f"  Evaluation integrity: clean - {len(MODELS)} judges x {total_questions} "
+                  "questions, no drops", flush=True)
+            return
+
+        by_judge = {}
+        for r in records:
+            counts = by_judge.setdefault(
+                r["evaluator"], {"partial_kept": 0, "incomplete": 0, "parse_fail": 0}
+            )
+            if r["kind"] in counts:
+                counts[r["kind"]] += 1
+
+        dropped_total = sum(c["incomplete"] + c["parse_fail"] for c in by_judge.values())
+        kept_total = sum(c["partial_kept"] for c in by_judge.values())
+        print(f"  Evaluation integrity: {dropped_total} ballot(s) dropped, {kept_total} kept "
+              f"with {PHASE3_MAX_MISSING_SCORES} score missing "
+              f"({len(MODELS)} judges x {total_questions} questions)", flush=True)
+        print(f"    {'judge':24s} {'dropped':>7s} {'partial':>7s}", flush=True)
+
+        for judge, c in sorted(
+            by_judge.items(),
+            key=lambda kv: (-(kv[1]["incomplete"] + kv[1]["parse_fail"]), -kv[1]["partial_kept"]),
+        ):
+            dropped = c["incomplete"] + c["parse_fail"]
+            detail = []
+            if c["incomplete"]:
+                detail.append(f"{c['incomplete']} incomplete")
+            if c["parse_fail"]:
+                detail.append(f"{c['parse_fail']} unparseable")
+            suffix = f"  [{', '.join(detail)}]" if detail else ""
+            print(f"    {judge:24s} {dropped:7d} {c['partial_kept']:7d}{suffix}", flush=True)
+
+        # Which models got skipped. Spread evenly => the omission is a property of the
+        # JUDGE, not of the answer being skipped (the z1 run's finding, config.py:147).
+        omitted = {}
+        for r in records:
+            for m in (r.get("missing") or []):
+                omitted[m] = omitted.get(m, 0) + 1
+        if omitted:
+            top = sorted(omitted.items(), key=lambda kv: -kv[1])[:5]
+            print("    most-omitted targets: " + ", ".join(f"{m} ({n})" for m, n in top), flush=True)
     except Exception:
         pass
 
@@ -428,6 +499,7 @@ async def phase3_evaluate_answers() -> dict:
         mode_durations[mode_name] = round(time.time() - mode_start, 2)
 
         print(f"  Pass complete: {format_duration(mode_durations[mode_name])}")
+        _print_mode_failure_summary(mode_name, len(questions))
 
         # Incremental save after each mode for crash recovery
         revision = get_revision()
