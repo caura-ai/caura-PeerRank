@@ -66,7 +66,7 @@ TEMPERATURE_EVAL = 0
 MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5-mini": 1.0,  # GPT-5-mini doesn't support 0.7
     "kimi-k3": 1.0,  # Kimi only allows temperature=1
-    "gpt-5.6": 1.0,  # GPT-5.6 only allows temperature=1
+    "gpt-5.6-sol": 1.0,  # GPT-5.6 family only allows temperature=1 (API id is gpt-5.6-sol, NOT gpt-5.6)
     "gpt-5.6-terra": 1.0,  # GPT-5.6 family only allows temperature=1
     "gpt-5.6-luna": 1.0,  # GPT-5.6 family only allows temperature=1
     "claude-opus-5": 1.0,  # Opus 5 requires temperature=1 (thinking on by default)
@@ -155,7 +155,7 @@ BIAS_TEST_SEED = None  # Random seed for reproducible shuffling (None = random)
 PHASE3_MAX_MISSING_SCORES = 1
 
 # Phase 5 judge model (provider, model_id, display_name)
-PHASE5_JUDGE = ("openai", "gpt-5.6", "gpt-5.6")
+PHASE5_JUDGE = ("openai", "gpt-5.6-sol", "gpt-5.6-sol")
 
 
 def get_phase5_judge() -> tuple:
@@ -203,6 +203,8 @@ MODEL_SHORTCUTS = {
     'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
     'claude-haiku-4-5': 'haiku-4.5',
     'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
+    'gemini-3.5-flash': 'gem-3.5-fl', 'gemini-3.5-flash-lite': 'gem-3.5-lt',
+    'gemini-3.1-flash-lite': 'gem-3.1-lt',
     'grok-4.6': 'grok-4.6', 'grok-code-fast-1': 'grok-code',
     'deepseek-v4-flash': 'deepseek', 'deepseek-v4-pro': 'deepseek-pro',
     'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',

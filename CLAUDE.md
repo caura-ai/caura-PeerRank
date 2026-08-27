@@ -5,7 +5,7 @@
 ## Features
 
 - **5-Phase Pipeline**: Question generation → Answering → Cross-evaluation → Report → Analysis
-- **12 Models**: OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
+- **10 Active Models** (22 tracked): OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
 - **Bias Detection**: Measures self-bias, name bias, and position bias through controlled evaluation modes
 - **Elo Ratings**: Alternative ranking via pairwise comparisons (K=32, excludes self-evaluations)
 - **Standardized Web Grounding**: Single search per question via Tavily or SerpAPI, identical context for all models (fair comparison)
@@ -59,7 +59,7 @@ python peerrank.py --web-search-3 on # Enable Phase 3 web grounding (reuse Phase
 python peerrank.py --web-search-3 off # Disable Phase 3 web grounding (default)
 python peerrank.py --grounding-provider tavily  # Use Tavily for grounding (default)
 python peerrank.py --grounding-provider serpapi # Use SerpAPI for grounding
-python peerrank.py --judge gpt-5.6   # Select judge model for Phase 5
+python peerrank.py --judge gpt-5.6-sol # Select judge model for Phase 5
 python peerrank.py --rev v2     # Set revision tag for output files
 python peerrank.py --health     # API health check
 streamlit run peerrank_ui.py    # Launch Streamlit UI
@@ -76,8 +76,8 @@ python validate_mmlu.py --subset law --num-questions 30                # MMLU la
 
 ```
   Revision: v1  |  Progress: 0/5
-  Models: 3/12  |  Categories: 5/5  |  Questions: 2/model
-  P2: web=ON  |  P3: seed=rand, web-grounding=OFF  |  P5: gpt-5.6
+  Models: 3/10  |  Categories: 5/5  |  Questions: 2/model
+  P2: web=ON  |  P3: seed=rand, web-grounding=OFF  |  P5: gpt-5.6-sol
   Grounding: TAVILY
 
   --- Run ---
@@ -147,7 +147,7 @@ Files are tagged with user-set revision (default: `v1`). Change via `[V]` menu o
 
 ## Report Sections (Phase 4)
 
-Report header shows: `Models evaluated: 12 | Questions: 48 | P2 grounding: **ON (TAVILY)** | P3 grounding: **OFF**`
+Report header shows: `Models evaluated: 10 | Questions: 48 | P2 grounding: **ON (TAVILY)** | P3 grounding: **OFF**`
 
 - **Model Order**: Fixed position order for active peerrank models (used in blind evaluation)
 - **Phase Timing**: Duration of each phase with Phase 3 mode breakdown
@@ -164,7 +164,7 @@ Report header shows: `Models evaluated: 12 | Questions: 48 | P2 grounding: **ON 
 
 ## Analysis Report (Phase 5)
 
-Judge LLM (configurable, default: gpt-5.6) analyzes the Phase 4 report and provides:
+Judge LLM (configurable, default: gpt-5.6-sol) analyzes the Phase 4 report and provides:
 - **Overall Quality Assessment**: Holistic evaluation of the peer ranking results
 - **Top Performers & Outliers**: Identification of standout models and anomalies
 - **Bias Patterns**: Analysis of self-bias, name bias, and position bias trends
@@ -174,8 +174,8 @@ Judge LLM (configurable, default: gpt-5.6) analyzes the Phase 4 report and provi
 
 Configuration:
 - `get_phase5_judge()` / `set_phase5_judge(provider, model_id, display_name)`
-- Default: `("openai", "gpt-5.6", "gpt-5.6")`
-- CLI: `python peerrank.py --judge gpt-5.6`
+- Default: `("openai", "gpt-5.6-sol", "gpt-5.6-sol")`
+- CLI: `python peerrank.py --judge gpt-5.6-sol`
 - Menu: `[J] Judge - Select Phase 5 analysis judge`
 
 ## Models
@@ -188,29 +188,32 @@ Defined in `peerrank/models.py`. Each model has:
 - `cost`: (input_cost_per_1M, output_cost_per_1M) in USD
 
 ```python
-# peerrank/models.py  (roster verified 2026-08-25; see models.py for pricing/promo notes)
+# peerrank/models.py  (roster + pricing verified 2026-08-27; see models.py for promo notes)
 ALL_MODELS = [
     # Active (peerrank=True) — participate in evaluation
-    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6",         "name": "gpt-5.6-sol",           "cost": (4.00, 20.00)},
+    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-sol",     "name": "gpt-5.6-sol",           "cost": (4.00, 20.00)},
     {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-terra",   "name": "gpt-5.6-terra",         "cost": (2.00, 12.00)},
     {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-luna",    "name": "gpt-5.6-luna",          "cost": (0.20, 1.20)},
     {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-fable-5",  "name": "claude-fable-5",        "cost": (10.00, 50.00)},
     {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-opus-5",   "name": "claude-opus-5",         "cost": (5.00, 25.00)},
     {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-sonnet-5", "name": "claude-sonnet-5",       "cost": (2.00, 10.00)},
-    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
     {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.7-flash",       "name": "gemini-3.7-flash",       "cost": (0.75, 3.75)},
+    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.5-flash-lite",  "name": "gemini-3.5-flash-lite",  "cost": (0.30, 2.50)},
     {"peerrank": True,  "provider": "grok",       "model_id": "grok-4.6",        "name": "grok-4.6",              "cost": (2.00, 6.00)},
-    {"peerrank": True,  "provider": "deepseek",   "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash",   "cost": (0.22, 0.66)},
-    {"peerrank": True,  "provider": "together",   "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (0.88, 0.88)},
-    {"peerrank": True,  "provider": "perplexity", "model_id": "medium",          "name": "pplx-agent-medium",     "cost": (0.20, 1.20)},
+    {"peerrank": True,  "provider": "deepseek",   "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro",       "cost": (0.66, 1.98)},
     # Cost-tracking only (peerrank=False) — not evaluated
-    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-mini",      "name": "gpt-5-mini",            "cost": (0.25, 2.00)},
+    {"peerrank": False, "provider": "deepseek",   "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash",   "cost": (0.22, 0.66)},
+    {"peerrank": False, "provider": "together",   "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (1.04, 1.04)},
     {"peerrank": False, "provider": "kimi",       "model_id": "kimi-k3",         "name": "kimi-k3",               "cost": (3.00, 15.00)},
     {"peerrank": False, "provider": "mistral",    "model_id": "mistral-large-latest", "name": "mistral-large",    "cost": (0.50, 1.50)},
-    {"peerrank": False, "provider": "deepseek",   "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro",       "cost": (0.66, 1.98)},
-    {"peerrank": False, "provider": "grok",       "model_id": "grok-code-fast-1", "name": "grok-code-fast-1",     "cost": (0.60, 3.00)},
+    {"peerrank": False, "provider": "perplexity", "model_id": "medium",          "name": "pplx-agent-medium",     "cost": (0.20, 1.20)},
+    {"peerrank": False, "provider": "grok",       "model_id": "grok-code-fast-1", "name": "grok-code-fast-1",     "cost": (1.00, 2.00)},
     {"peerrank": False, "provider": "anthropic",  "model_id": "claude-haiku-4-5", "name": "claude-haiku-4-5",     "cost": (1.00, 5.00)},
+    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
+    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.5-flash",       "name": "gemini-3.5-flash",       "cost": (1.50, 9.00)},
+    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.1-flash-lite",  "name": "gemini-3.1-flash-lite",  "cost": (0.25, 1.50)},
     {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-nano",      "name": "gpt-5-nano",            "cost": (0.05, 0.40)},
+    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-mini",      "name": "gpt-5-mini",            "cost": (0.25, 2.00)},
 ]
 
 # Derived in config.py:
@@ -218,7 +221,7 @@ TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
 PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
 ```
 
-Total: **12 active models** (peerrank=True) across 7 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI/Meta, Perplexity). Seven more models with `peerrank: False` are tracked for cost only and are NOT evaluated (gpt-5-mini, kimi-k3, mistral-large, deepseek-v4-pro, grok-code-fast-1, claude-haiku-4-5, gpt-5-nano).
+Total: **10 active models** (peerrank=True) across 5 providers (OpenAI, Anthropic, Google, xAI, DeepSeek). Twelve more models with `peerrank: False` are tracked for cost only and are NOT evaluated (deepseek-v4-flash, llama-3.3-70b, kimi-k3, mistral-large, pplx-agent-medium, grok-code-fast-1, claude-haiku-4-5, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite, gpt-5-nano, gpt-5-mini).
 
 ## Categories
 
@@ -342,7 +345,7 @@ Phase 3 saves checkpoints after each mode completes. If interrupted:
 Costs are stored in each model's `cost` field as `(input_cost_per_1M, output_cost_per_1M)`:
 ```python
 # In models.py - cost is part of each model definition
-{"peerrank": True, "provider": "openai", "model_id": "gpt-5.6", "name": "gpt-5.6-sol", "cost": (4.00, 20.00)},
+{"peerrank": True, "provider": "openai", "model_id": "gpt-5.6-sol", "name": "gpt-5.6-sol", "cost": (4.00, 20.00)},
 
 # In config.py - derived lookup
 TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
@@ -550,10 +553,10 @@ UI_DISPLAY_MODES = [
 PROVIDER_MAP = {
     'gpt-5.6-sol': 'OpenAI', 'gpt-5.6-terra': 'OpenAI', 'gpt-5.6-luna': 'OpenAI',
     'claude-fable-5': 'Anthropic', 'claude-opus-5': 'Anthropic', 'claude-sonnet-5': 'Anthropic',
-    'gemini-3.1-pro-preview': 'Google', 'gemini-3.7-flash': 'Google',
-    'grok-4.6': 'xAI', 'deepseek-v4-flash': 'DeepSeek',
-    'llama-3.3-70b': 'Meta', 'pplx-agent-medium': 'Perplexity',
-    # + peerrank=False models (gpt-5-mini, kimi-k3, mistral-large, deepseek-v4-pro, ...)
+    'gemini-3.7-flash': 'Google', 'gemini-3.5-flash-lite': 'Google',
+    'grok-4.6': 'xAI', 'deepseek-v4-pro': 'DeepSeek',
+    # + peerrank=False models (deepseek-v4-flash, llama-3.3-70b, pplx-agent-medium,
+    #   gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite, kimi-k3, ...)
 }
 
 # Short display names for compact tables
@@ -561,6 +564,7 @@ MODEL_SHORTCUTS = {
     'gpt-5.6-sol': 'gpt-sol', 'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
     'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
     'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
+    'gemini-3.5-flash': 'gem-3.5-fl', 'gemini-3.5-flash-lite': 'gem-3.5-lt', 'gemini-3.1-flash-lite': 'gem-3.1-lt',
     'grok-4.6': 'grok-4.6', 'deepseek-v4-flash': 'deepseek',
     'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',
     'pplx-agent-medium': 'pplx-med',
@@ -790,7 +794,7 @@ TEMPERATURE_EVAL = 0            # Evaluation (Phase 3)
 MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5-mini": 1.0,       # GPT-5-mini doesn't support 0.5
     "kimi-k3": 1.0,          # Kimi only allows temperature=1
-    "gpt-5.6": 1.0,          # GPT-5.6 family only allows temperature=1
+    "gpt-5.6-sol": 1.0,      # GPT-5.6 family only allows temperature=1 (API id is gpt-5.6-sol, NOT gpt-5.6)
     "gpt-5.6-terra": 1.0,
     "gpt-5.6-luna": 1.0,
     "claude-opus-5": 1.0,    # Opus 5: thinking on by default
