@@ -843,7 +843,11 @@ Core helper functions used across multiple files:
 - `_record_score(score, model_name, evaluator, ...)` - Categorizes scores as peer/self/raw
 
 **Model Matching**:
-- `match_model_name(name)` - Fuzzy matching for shortened model names
+- `match_model_name(name, candidates=None)` - Fuzzy matching for shortened model names
+  - `candidates` defaults to the active `MODELS`; when scoring a **saved** run, pass that
+    run's own model list. Matching historical data against the live roster silently
+    misattributes renamed/deactivated models (a substring hit sends `gemini-3.5-flash`
+    scores to `gemini-3.5-flash-lite`, blending two models into one).
 - `list_available_models()` - Returns list of all model display names
 - `set_active_models(include=None, exclude=None)` - Filter active models
 

@@ -593,9 +593,17 @@ def format_table(headers: list[str], rows: list[list[str]], alignments: list[str
     return '\n'.join(lines)
 
 
-def match_model_name(name: str) -> str | None:
-    """Match a possibly shortened model name to the display name in MODELS."""
-    display_names = [n for _, _, n in MODELS]
+def match_model_name(name: str, candidates: list[str] = None) -> str | None:
+    """Match a possibly shortened model name to a display name.
+
+    candidates defaults to the currently-active MODELS, which is right for CLI
+    shorthand (--models gpt-sol). Callers scoring a SAVED run must pass that
+    run's own model list instead: matching historical data against the live
+    roster silently misattributes any model that has since been renamed or
+    deactivated (e.g. "gemini-3.5-flash" substring-matching the still-active
+    "gemini-3.5-flash-lite", blending two models into one bar).
+    """
+    display_names = candidates if candidates is not None else [n for _, _, n in MODELS]
     name = name.strip().strip('[]')
 
     if name in display_names:
@@ -650,7 +658,7 @@ def calculate_scores_from_evaluations(evaluations: dict, model_names: list[str] 
     judge_given = {n: [] for n in model_names}
 
     for evaluator_name, eval_data in evaluations.items():
-        matched_evaluator = match_model_name(evaluator_name)
+        matched_evaluator = match_model_name(evaluator_name, model_names)
 
         # Handle both formats: phase3 nested dict or UI flat dict
         if isinstance(eval_data, dict) and "scores" in eval_data:
@@ -659,7 +667,8 @@ def calculate_scores_from_evaluations(evaluations: dict, model_names: list[str] 
             for model_name, score_data in scores_dict.items():
                 if isinstance(score_data, dict) and "score" in score_data:
                     _record_score(score_data["score"], model_name, matched_evaluator,
-                                 peer_scores, self_scores, raw_scores, judge_given)
+                                 peer_scores, self_scores, raw_scores, judge_given,
+                                 candidates=model_names)
         else:
             # Phase3 format: {question: {model: {score, reason}}}
             for question_scores in eval_data.values():
@@ -667,7 +676,8 @@ def calculate_scores_from_evaluations(evaluations: dict, model_names: list[str] 
                     for model_name, score_data in question_scores.items():
                         if isinstance(score_data, dict) and "score" in score_data:
                             _record_score(score_data["score"], model_name, matched_evaluator,
-                                         peer_scores, self_scores, raw_scores, judge_given)
+                                         peer_scores, self_scores, raw_scores, judge_given,
+                                         candidates=model_names)
 
     return {
         "peer_scores": peer_scores,
@@ -678,7 +688,8 @@ def calculate_scores_from_evaluations(evaluations: dict, model_names: list[str] 
 
 
 def _record_score(score, model_name: str, evaluator: str,
-                  peer_scores: dict, self_scores: dict, raw_scores: dict, judge_given: dict):
+                  peer_scores: dict, self_scores: dict, raw_scores: dict, judge_given: dict,
+                  candidates: list[str] = None):
     """Helper to record a score in the appropriate buckets."""
     # Convert score to float in case it's a string or int
     try:
@@ -693,7 +704,7 @@ def _record_score(score, model_name: str, evaluator: str,
         print(f"  [WARN] Invalid score for {model_name} by {evaluator}: {str(score)[:50]}", flush=True)
         return
 
-    matched = match_model_name(model_name)
+    matched = match_model_name(model_name, candidates)
     if matched:
         raw_scores[matched].append(score)
         if matched == evaluator:
@@ -937,14 +948,14 @@ def _convert_to_pairwise_matches(evaluations: dict, model_names: list[str], excl
     matches = []
 
     for evaluator_name, questions in evaluations.items():
-        matched_evaluator = match_model_name(evaluator_name) if exclude_self else None
+        matched_evaluator = match_model_name(evaluator_name, model_names) if exclude_self else None
 
         for question_id, model_scores in questions.items():
             # Extract scores for this question
             scores = {}
             for model_name, score_data in model_scores.items():
                 if isinstance(score_data, dict) and "score" in score_data:
-                    matched = match_model_name(model_name)
+                    matched = match_model_name(model_name, model_names)
                     if matched and matched in model_names:
                         # Skip self-evaluations if requested
                         if exclude_self and matched == matched_evaluator:
