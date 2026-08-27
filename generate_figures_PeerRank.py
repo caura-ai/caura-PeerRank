@@ -25,101 +25,18 @@ from peerrank.config import (
     PROVIDER_MAP, get_short_name,
 )
 from peerrank.models import ALL_MODELS
+from peerrank.figure_utils import (
+    STYLE_CONFIG, MODEL_COLORS, DEFAULT_COLOR, get_color,
+    get_text_color_for_background, save_figure,
+)
 
 # Map the short names emitted in the Phase 4 report back to full model names,
 # derived from config so it stays in sync with model renames.
 SHORT_TO_FULL = {get_short_name(m["name"]): m["name"] for m in ALL_MODELS}
 
-# =============================================================================
-# Publication-Quality Style Settings
-# =============================================================================
-
-STYLE_CONFIG = {
-    # Fonts
-    'font.family': 'serif',
-    'font.serif': ['Times New Roman', 'DejaVu Serif', 'Computer Modern Roman'],
-    'font.size': 10,
-    'axes.labelsize': 11,
-    'axes.titlesize': 12,
-    'xtick.labelsize': 9,
-    'ytick.labelsize': 9,
-    'legend.fontsize': 9,
-
-    # Figure size (inches) - single column ~3.5", double column ~7"
-    'figure.figsize': (7, 4.5),
-    'figure.dpi': 150,
-
-    # Export settings
-    'savefig.dpi': 600,
-    'savefig.format': 'pdf',
-    'savefig.bbox': 'tight',
-    'savefig.pad_inches': 0.05,
-
-    # PDF font embedding (Type 42 = TrueType, preferred by journals)
-    'pdf.fonttype': 42,
-    'ps.fonttype': 42,
-
-    # Clean style
-    'axes.spines.top': False,
-    'axes.spines.right': False,
-    'axes.grid': True,
-    'grid.alpha': 0.3,
-    'grid.linestyle': '--',
-
-    # Legend
-    'legend.frameon': True,
-    'legend.framealpha': 0.9,
-    'legend.edgecolor': '0.8',
-}
-
-# Colorblind-safe palette for 12 models (expanded Paul Tol palette)
-MODEL_COLORS = {
-    'gpt-5.6': '#0047AB',              # Cobalt Blue (darker)
-    'gpt-5.6-terra': '#1F77B4',        # Medium Blue
-    'gpt-5.6-luna': '#A6CEE3',         # Pale Blue
-    'gpt-5-mini': '#56B4E9',           # Light Blue
-    'claude-opus-5': '#029E73',      # Green
-    'claude-sonnet-5': '#78C679',    # Light Green
-    'claude-fable-5': '#9467BD',       # Purple
-    'gemini-3.1-pro-preview': '#D55E00', # Orange
-    'gemini-3.6-flash': '#F0E442', # Yellow
-    'gemini-3.7-flash': '#F0E442',      # Yellow
-    'gemini-3.5-flash': '#DDCC77',      # Sand
-    'gemini-3.5-flash-lite': '#B8A03C', # Dark Sand
-    'gemini-3.1-flash-lite': '#E7A93A', # Amber
-    'grok-4.5': '#CC79A7',             # Pink
-    'deepseek-v4-flash': '#E69F00',    # Orange-Brown
-    'llama-3.3-70b': '#999999',        # Gray
-    'kimi-k3': '#8C564B',         # Brown
-    'mistral-large': '#17BECF',        # Cyan
-}
-
-def get_color(model):
-    """Get color for a model, with fallback."""
-    return MODEL_COLORS.get(model, '#666666')
-
-
-def get_text_color_for_background(hex_color):
-    """Determine if white or black text is more readable on a given background color.
-
-    Uses relative luminance calculation (WCAG standard).
-    """
-    # Remove '#' if present
-    hex_color = hex_color.lstrip('#')
-
-    # Convert to RGB
-    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
-
-    # Calculate relative luminance
-    r, g, b = r / 255.0, g / 255.0, b / 255.0
-    r = r / 12.92 if r <= 0.03928 else ((r + 0.055) / 1.055) ** 2.4
-    g = g / 12.92 if g <= 0.03928 else ((g + 0.055) / 1.055) ** 2.4
-    b = b / 12.92 if b <= 0.03928 else ((b + 0.055) / 1.055) ** 2.4
-
-    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-    # Use white text for dark backgrounds, black for light backgrounds
-    return 'white' if luminance < 0.5 else 'black'
+# STYLE_CONFIG, MODEL_COLORS, DEFAULT_COLOR, get_color, get_text_color_for_background
+# and save_figure are imported from peerrank.figure_utils (see import at top of file).
+# Values there are identical to the copies this file used to carry.
 
 
 # =============================================================================
@@ -240,24 +157,6 @@ def get_cross_eval_matrix(data: dict):
 # =============================================================================
 # Figure Generation
 # =============================================================================
-
-def save_figure(fig, output_dir: Path, name: str):
-    """Save figure in both PDF and PNG formats."""
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # PDF (vector, primary)
-    pdf_path = output_dir / f"{name}.pdf"
-    fig.savefig(pdf_path, format='pdf', bbox_inches='tight', dpi=300)
-    print(f"  Saved: {pdf_path}")
-
-    # PNG (raster, fallback)
-    png_path = output_dir / f"{name}.png"
-    fig.savefig(png_path, format='png', bbox_inches='tight', dpi=600)
-    print(f"  Saved: {png_path}")
-
-    plt.close(fig)
-
 
 def generate_fig4_peer_rankings(data: dict, output_dir: Path):
     """Figure 3: Horizontal bar chart of peer rankings with error bars (RESULTS)."""

@@ -11,12 +11,16 @@ is imported by the validate_*.py scripts, which must run without matplotlib
 installed (matplotlib is an optional [figures] extra). Importing this module pulls
 in matplotlib, so only the figure generators should import it.
 
-NOTE: the MODEL_COLORS map below is the shared copy moved verbatim from the two
-validation figure scripts. Its keys are still keyed to the older (arXiv-run) model
-names, so several current-roster models fall back to DEFAULT_COLOR — that content
-staleness is a separate fix, but it now only needs to be made in one place.
+MODEL_COLORS is the single palette for every figure generator (PeerRank, TFQ,
+GSM8K). Keys are model DISPLAY names (ALL_MODELS[*]['name']), not model_ids, and
+it covers the whole roster - active and cost-tracking-only alike. Colors are
+assigned explicitly rather than derived from ALL_MODELS order so a model keeps
+its color across paper revisions when the roster changes; the cost of that is
+that a rename needs a key here too, which _warn_missing_model_colors flags at
+import time.
 """
 
+import warnings
 from pathlib import Path
 from statistics import mean
 
@@ -29,6 +33,7 @@ except ImportError:
     HAS_SCIPY = False
 
 from peerrank.config import calculate_scores_from_evaluations, MODELS
+from peerrank.models import ALL_MODELS
 
 
 # Publication-Quality Style Settings
@@ -70,20 +75,55 @@ STYLE_CONFIG = {
     'legend.edgecolor': '0.8',
 }
 
-# Colorblind-safe palette for models
+# Model palette, keyed by display name (see module docstring).
+#
+# Each provider gets one hue and a dark->light ramp inside it, so families read
+# as a group in a legend and same-provider models separate by lightness, which
+# is the one channel dichromacy leaves intact.
+#
+# Verified with CIE76 dE on the palette and on Vienot-1999 protanope/deuteranope
+# simulations of it. Worst pair, minimum over {normal, deutan, protan}:
+#   active roster (10 models):  dE 11.0  - nothing below 10 in any vision
+#   the rev-z2 roster (9):      dE  8.4  (claude-sonnet-5 / gemini-3.1-flash-lite, protan)
+#   all 22 entries at once:     dE  2.9  (deepseek-v4-flash / gemini-3.1-pro-preview, protan)
+# So this is dichromat-safe at the ~10 series a real run plots, NOT at 22 - 22
+# mutually distinguishable categorical colors do not exist under dichromacy.
+# Any figure that activates most of the roster must carry direct labels rather
+# than lean on the legend. Re-measure before reshuffling these values.
 MODEL_COLORS = {
-    'gpt-5.5': '#0047AB',              # Cobalt Blue (darker)
-    'gpt-5-mini': '#56B4E9',
-    'claude-opus-5': '#029E73',
-    'claude-sonnet-5': '#78C679',
-    'gemini-3-pro-preview': '#D55E00',
-    'gemini-3.6-flash': '#F0E442',
-    'grok-4.3': '#CC79A7',
-    'deepseek-v4-flash': '#E69F00',
-    'llama-3.3-70b': '#999999',
-    'sonar-pro': '#9467BD',
-    'kimi-k2.6': '#8C564B',
-    'mistral-large': '#17BECF',
+    # OpenAI - blues
+    'gpt-5.6-sol': '#08306B',            # Navy
+    'gpt-5.6-terra': '#2171B5',          # Medium Blue
+    'gpt-5.6-luna': '#6BAED6',           # Light Blue
+    'gpt-5-mini': '#9ECAE1',             # Pale Blue
+    'gpt-5-nano': '#DEEBF7',             # Ice Blue
+
+    # Anthropic - greens
+    'claude-fable-5': '#00441B',         # Dark Forest
+    'claude-opus-5': '#238B45',          # Green
+    'claude-sonnet-5': '#41AB5D',        # Medium Green
+    'claude-haiku-4-5': '#A1D99B',       # Light Green
+
+    # Google - orange ramp topped with yellow
+    'gemini-3.1-pro-preview': '#7F2704', # Dark Rust
+    'gemini-3.5-flash': '#D94801',       # Burnt Orange
+    'gemini-3.5-flash-lite': '#F16913',  # Orange
+    'gemini-3.1-flash-lite': '#FDAE6B',  # Peach
+    'gemini-3.7-flash': '#F0E442',       # Yellow
+
+    # xAI - pinks
+    'grok-4.6': '#CC79A7',               # Pink
+    'grok-code-fast-1': '#88356A',       # Dark Magenta
+
+    # DeepSeek - golds
+    'deepseek-v4-pro': '#E69F00',        # Gold
+    'deepseek-v4-flash': '#663300',      # Dark Brown
+
+    # Single-model providers
+    'llama-3.3-70b': '#4D4D4D',          # Dark Gray  (Meta / Together)
+    'kimi-k3': '#8C564B',                # Brown      (Moonshot)
+    'mistral-large': '#17BECF',          # Cyan       (Mistral)
+    'pplx-agent-medium': '#4B0082',      # Indigo     (Perplexity)
 }
 
 # Default color for unknown models
@@ -93,6 +133,30 @@ DEFAULT_COLOR = '#666666'
 def get_color(model: str) -> str:
     """Get color for a model with fallback."""
     return MODEL_COLORS.get(model, DEFAULT_COLOR)
+
+
+def missing_model_colors() -> list[str]:
+    """Display names in ALL_MODELS that have no MODEL_COLORS entry."""
+    return [m["name"] for m in ALL_MODELS if m["name"] not in MODEL_COLORS]
+
+
+def _warn_missing_model_colors() -> None:
+    """Warn once at import if the roster has outgrown the palette.
+
+    Without this a rename is silent: get_color falls back to DEFAULT_COLOR and
+    the figures just render grey. That is how this map drifted a whole model
+    generation behind the roster.
+    """
+    missing = missing_model_colors()
+    if missing:
+        warnings.warn(
+            "MODEL_COLORS has no entry for: " + ", ".join(missing)
+            + " - these will render as DEFAULT_COLOR. Add them in peerrank/figure_utils.py.",
+            stacklevel=2,
+        )
+
+
+_warn_missing_model_colors()
 
 
 def get_text_color_for_background(hex_color: str) -> str:
