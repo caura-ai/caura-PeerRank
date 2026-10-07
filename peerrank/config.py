@@ -69,9 +69,13 @@ MODEL_TEMPERATURE_OVERRIDES = {
     "gpt-5.6-sol": 1.0,  # GPT-5.6 family only allows temperature=1 (API id is gpt-5.6-sol, NOT gpt-5.6)
     "gpt-5.6-terra": 1.0,  # GPT-5.6 family only allows temperature=1
     "gpt-5.6-luna": 1.0,  # GPT-5.6 family only allows temperature=1
+    "gpt-6-astra": 1.0,  # Rejects temperature=0.5; only the default (1) is accepted
     "claude-opus-5": 1.0,  # Opus 5 requires temperature=1 (thinking on by default)
     "claude-fable-5": 1.0,  # Fable 5 requires temperature=1 (extended thinking)
     "claude-sonnet-5": 1.0,  # Sonnet 5 requires temperature=1 (adaptive thinking)
+    "claude-fable-5-1": 1.0,  # Fable 5.1 rejects any temperature other than the default 1 (adaptive thinking always on)
+    "claude-opus-5-5": 1.0,  # Opus 5.5 rejects any temperature other than the default 1 (adaptive thinking always on)
+    "claude-sonnet-5-5": 1.0,  # Sonnet 5.5 rejects any temperature other than the default 1
 }
 
 # Efficiency calculation exponent - rewards higher peer scores
@@ -200,7 +204,9 @@ PROVIDER_MAP = {m['name']: PROVIDER_LABELS.get(m['provider'], m['provider'].titl
 # Short names for compact display
 MODEL_SHORTCUTS = {
     'gpt-5.6-sol': 'gpt-sol', 'gpt-5.6-terra': 'gpt-terra', 'gpt-5.6-luna': 'gpt-luna',
+    'gpt-6-astra': 'gpt-astra',
     'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
+    'claude-fable-5.1': 'fable-5.1', 'claude-opus-5.5': 'opus-5.5', 'claude-sonnet-5.5': 'sonnet-5.5',
     'claude-haiku-4-5': 'haiku-4.5',
     'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
     'gemini-3.5-flash': 'gem-3.5-fl', 'gemini-3.5-flash-lite': 'gem-3.5-lt',

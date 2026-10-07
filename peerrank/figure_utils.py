@@ -92,6 +92,7 @@ STYLE_CONFIG = {
 # than lean on the legend. Re-measure before reshuffling these values.
 MODEL_COLORS = {
     # OpenAI - blues
+    'gpt-6-astra': '#08306B',            # Navy
     'gpt-5.6-sol': '#08306B',            # Navy
     'gpt-5.6-terra': '#2171B5',          # Medium Blue
     'gpt-5.6-luna': '#6BAED6',           # Light Blue
@@ -100,7 +101,9 @@ MODEL_COLORS = {
 
     # Anthropic - greens
     'claude-fable-5': '#00441B',         # Dark Forest
+    'claude-fable-5.1': '#00441B',       # Dark Forest
     'claude-opus-5': '#238B45',          # Green
+    'claude-opus-5.5': '#238B45',        # Green
     'claude-sonnet-5': '#41AB5D',        # Medium Green
     'claude-haiku-4-5': '#A1D99B',       # Light Green
 

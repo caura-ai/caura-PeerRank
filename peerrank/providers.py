@@ -3,6 +3,7 @@ providers.py - LLM provider implementations for PeerRank.ai
 """
 
 import asyncio
+import json
 import os
 import re
 import time
@@ -96,6 +97,57 @@ def _get_anthropic_client(api_key: str, timeout: int) -> AsyncAnthropic:
     return _clients["anthropic"]
 
 
+def _google_vertex_target() -> tuple[str, str]:
+    """Project and location for Vertex. Blank env values fall back to the key file and global."""
+    project = (GOOGLE_PROJECT_ID or "").strip()
+    location = (GOOGLE_LOCATION or "").strip() or "global"
+    if not project and GOOGLE_SERVICE_ACCOUNT_FILE and GOOGLE_SERVICE_ACCOUNT_FILE.exists():
+        data = json.loads(GOOGLE_SERVICE_ACCOUNT_FILE.read_text(encoding="utf-8-sig"))
+        project = (data.get("project_id") or "").strip()
+    if not project:
+        raise ValueError("GOOGLE_PROJECT_ID is not set and the service account file has no project_id")
+    return project, location
+
+
+def _verify_service_account_key(path) -> None:
+    """Fail fast when the local private key is no longer one Google publishes.
+
+    invalid_grant / Invalid JWT Signature means Google could not verify the
+    signature against the key id in the JWT. That happens when the JSON key
+    was rotated or deleted and the file on disk is stale.
+    """
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    private_key = data.get("private_key") or ""
+    cert_url = data.get("client_x509_cert_url") or ""
+    if not private_key or not cert_url:
+        return
+    try:
+        from cryptography import x509
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_private_key
+        key = load_pem_private_key(private_key.encode(), password=None)
+        local_pub = key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        response = httpx.get(cert_url, timeout=20)
+        response.raise_for_status()
+        certs = response.json()
+    except Exception:
+        return
+    if not isinstance(certs, dict) or not certs:
+        return
+    for pem in certs.values():
+        try:
+            published = x509.load_pem_x509_certificate(pem.encode()).public_key().public_bytes(
+                Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+        except Exception:
+            continue
+        if published == local_pub:
+            return
+    raise ValueError(
+        "Google service account key was rejected: its private key does not match any "
+        "certificate Google currently publishes for this account, so the key was rotated "
+        "or deleted. Download a new JSON key, or set GOOGLE_AUTH_METHOD=api_key."
+    )
+
+
 def _get_google_client() -> genai.Client:
     if "google" not in _clients:
         auth_method = os.getenv("GOOGLE_AUTH_METHOD", "api_key").lower()
@@ -104,7 +156,9 @@ def _get_google_client() -> genai.Client:
             if not GOOGLE_SERVICE_ACCOUNT_FILE or not GOOGLE_SERVICE_ACCOUNT_FILE.exists():
                 raise ValueError(f"GOOGLE_SERVICE_ACCOUNT_FILE not set or file not found: {GOOGLE_SERVICE_ACCOUNT_FILE}")
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(GOOGLE_SERVICE_ACCOUNT_FILE)
-            _clients["google"] = genai.Client(vertexai=True, project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
+            project, location = _google_vertex_target()
+            _verify_service_account_key(GOOGLE_SERVICE_ACCOUNT_FILE)
+            _clients["google"] = genai.Client(vertexai=True, project=project, location=location)
         else:  # api_key (default)
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
@@ -674,6 +728,14 @@ def _get_reasoning_mode(provider: str, model_id: str) -> str:
             return "reasoning: default (may use internal CoT)"
         return "standard"
     elif provider == "anthropic":
+        # Fable 5/5.1, Opus 5/5.5, and Sonnet 5/5.5 run adaptive thinking on every
+        # request; the API rejects thinking: {type: "disabled"} on these ids.
+        if model_id in {
+            "claude-fable-5", "claude-fable-5-1",
+            "claude-opus-5", "claude-opus-5-5",
+            "claude-sonnet-5", "claude-sonnet-5-5",
+        }:
+            return "adaptive thinking: ON (always)"
         return "extended thinking: OFF"
     elif provider == "deepseek":
         return "reasoning: default (may use internal CoT)"

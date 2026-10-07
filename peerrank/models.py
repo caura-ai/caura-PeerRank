@@ -6,15 +6,15 @@ models.py - Model definitions and pricing for PeerRank.ai
 # Sources: provider pricing pages; grok prices read from the xAI /v1/language-models API
 # peerrank: whether model participates in PeerRank evaluation
 ALL_MODELS = [
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.6-sol", "name": "gpt-5.6-sol", "cost": (4.00, 20.00)},  # promo cut from (5.00, 30.00) on 2026-08-21, runs thru at least 2026-11-21. Long context (>272K prompt) tiers up to (8.00, 30.00) - not modelled here
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.6-terra", "name": "gpt-5.6-terra", "cost": (2.00, 12.00)},  # cut from (2.50, 15.00) on 2026-07-30. Long context: (4.00, 18.00)
-    {"peerrank": True, "provider": "openai", "model_id": "gpt-5.6-luna", "name": "gpt-5.6-luna", "cost": (0.20, 1.20)},  # cut from (1.00, 6.00) on 2026-07-30. Long context: (0.40, 1.80)
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-fable-5", "name": "claude-fable-5", "cost": (10.00, 50.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-5", "name": "claude-opus-5", "cost": (5.00, 25.00)},
-    {"peerrank": True, "provider": "anthropic", "model_id": "claude-sonnet-5", "name": "claude-sonnet-5", "cost": (2.00, 10.00)},  # (2.00, 10.00) is now the STANDARD price - the 2026-09-01 rise to (3.00, 15.00) was cancelled (docs note claude-sonnet-5-introductory-pricing)
-    {"peerrank": True, "provider": "google", "model_id": "gemini-3.7-flash", "name": "gemini-3.7-flash", "cost": (0.75, 3.75)},  # intro pricing thru 2026-12-31; standard is (1.50, 7.50) from 2027-01-01
-    {"peerrank": True, "provider": "google", "model_id": "gemini-3.5-flash-lite", "name": "gemini-3.5-flash-lite", "cost": (0.30, 2.50)},  # was (0.15, 0.90) - wrong; verified at ai.google.dev/pricing 2026-08-27
-    {"peerrank": True, "provider": "grok", "model_id": "grok-4.6", "name": "grok-4.6", "cost": (2.00, 6.00)},  # xAI API reports 20000/60000 (units of $1e-4 per 1M) = (2.00, 6.00)
+    {"peerrank": True, "provider": "openai", "model_id": "gpt-6-astra", "name": "gpt-6-astra", "cost": (4.00, 20.00)},  # promo cut from (5.00, 30.00) on 2026-08-21, runs thru at least 2026-11-21. Long context (>272K prompt) tiers up to (8.00, 30.00) - not modelled here
+    {"peerrank": False, "provider": "openai", "model_id": "gpt-5.6-terra", "name": "gpt-5.6-terra", "cost": (2.00, 12.00)},  # cut from (2.50, 15.00) on 2026-07-30. Long context: (4.00, 18.00)
+    {"peerrank": False, "provider": "openai", "model_id": "gpt-5.6-luna", "name": "gpt-5.6-luna", "cost": (0.20, 1.20)},  # cut from (1.00, 6.00) on 2026-07-30. Long context: (0.40, 1.80)
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-fable-5-1", "name": "claude-fable-5.1", "cost": (10.00, 50.00)},  # API id uses hyphens; display name keeps the 5.1 label. Adaptive thinking always on, so temperature must stay at 1
+    {"peerrank": True, "provider": "anthropic", "model_id": "claude-opus-5-5", "name": "claude-opus-5.5", "cost": (4.00, 20.00)},  # was (5.00, 25.00), that is Opus 5; Opus 5.5 is $4/$20 (platform.claude.com models overview, 2026-10-07). Adaptive thinking always on
+    {"peerrank": False, "provider": "anthropic", "model_id": "claude-sonnet-5", "name": "claude-sonnet-5", "cost": (2.00, 10.00)},  # (2.00, 10.00) is now the STANDARD price - the 2026-09-01 rise to (3.00, 15.00) was cancelled (docs note claude-sonnet-5-introductory-pricing)
+    {"peerrank": True, "provider": "google", "model_id": "gemini-3.8-flash", "name": "gemini-3.8-flash", "cost": (0.75, 3.75)},  # intro pricing thru 2026-12-31; standard is (1.50, 7.50) from 2027-01-01
+    {"peerrank": False, "provider": "google", "model_id": "gemini-3.5-flash-lite", "name": "gemini-3.5-flash-lite", "cost": (0.30, 2.50)},  # was (0.15, 0.90) - wrong; verified at ai.google.dev/pricing 2026-08-27
+    {"peerrank": True, "provider": "grok", "model_id": "grok-4.7", "name": "grok-4.7", "cost": (2.00, 6.00)},  # xAI API reports 20000/60000 (units of $1e-4 per 1M) = (2.00, 6.00)
     {"peerrank": True, "provider": "deepseek", "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro", "cost": (0.66, 1.98)},  # off-peak cache-miss rate; peak is (1.32, 3.96). Peak = 01:00-04:00 and 06:00-10:00 UTC Mon-Fri
     {"peerrank": False, "provider": "deepseek", "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash", "cost": (0.22, 0.66)},  # off-peak cache-miss rate; peak is (0.44, 1.32). Was the active deepseek thru rev z2
     {"peerrank": False, "provider": "together", "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (1.04, 1.04)},  # was (0.88, 0.88) - stale; together.ai/models/llama-3-3-70b lists $1.04 in/out (2026-08-27). Llama 4 not available serverless on Together
