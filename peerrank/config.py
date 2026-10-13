@@ -109,6 +109,11 @@ def set_web_grounding_provider(provider: str):
 # Google thinking budget
 GOOGLE_THINKING_BUDGET = 8192  # -1=dynamic, N=fixed budget (0 invalid for thinking models)
 
+# grok-4.5+ cannot turn reasoning off and default to high. Medium matches the
+# effort Astra and Opus use. providers.py sends the proto enum because the
+# installed xAI SDK only accepts the strings "low" and "high".
+GROK_REASONING_EFFORT = "medium"
+
 # Evaluation settings
 NUM_QUESTIONS = 2
 ELO_INITIAL_RATING = 1500
@@ -212,7 +217,7 @@ MODEL_SHORTCUTS = {
     'gemini-3.5-flash': 'gem-3.5-fl', 'gemini-3.5-flash-lite': 'gem-3.5-lt',
     'gemini-3.1-flash-lite': 'gem-3.1-lt',
     'grok-4.6': 'grok-4.6', 'grok-code-fast-1': 'grok-code',
-    'deepseek-v4-flash': 'deepseek', 'deepseek-v4-pro': 'deepseek-pro',
+    'deepseek-v4-flash': 'deepseek', 'deepseek-v4.1-flash': 'ds-v4.1', 'deepseek-v4-pro': 'deepseek-pro',
     'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',
     'pplx-agent-medium': 'pplx-med',
 }

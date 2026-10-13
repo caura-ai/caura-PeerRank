@@ -121,6 +121,7 @@ MODEL_COLORS = {
     # DeepSeek - golds
     'deepseek-v4-pro': '#E69F00',        # Gold
     'deepseek-v4-flash': '#663300',      # Dark Brown
+    'deepseek-v4.1-flash': '#663300',    # Dark Brown
 
     # Single-model providers
     'llama-3.3-70b': '#4D4D4D',          # Dark Gray  (Meta / Together)

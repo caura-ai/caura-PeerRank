@@ -24,7 +24,7 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     MODEL_TIMEOUT_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    GOOGLE_THINKING_BUDGET,
+    GOOGLE_THINKING_BUDGET, GROK_REASONING_EFFORT,
     get_api_key
 )
 
@@ -460,6 +460,9 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
         "temperature": effective_temp,
         "max_tokens": max_tokens,
     }
+    reasoning_effort = _grok_reasoning_effort(model)
+    if reasoning_effort is not None:
+        kwargs["reasoning_effort"] = reasoning_effort
 
     chat = client.chat.create(**kwargs)
     chat.append(xai_user(effective_prompt))
@@ -493,6 +496,25 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
         output_tokens = getattr(response.usage, 'completion_tokens', 0) or getattr(response.usage, 'output_tokens', 0) or 0
 
     return (content.strip(), duration, input_tokens, output_tokens, 0.0)
+
+
+def _grok_reasoning_effort(model: str):
+    """Proto effort for grok-4.5+. None leaves the API default (high) on other Grok ids.
+
+    The SDK string helper rejects "medium", so this returns the proto enum value.
+    """
+    if not model.startswith(("grok-4.5", "grok-4.6", "grok-4.7")):
+        return None
+    from xai_sdk.proto import chat_pb2
+    levels = {
+        "low": chat_pb2.ReasoningEffort.EFFORT_LOW,
+        "medium": chat_pb2.ReasoningEffort.EFFORT_MEDIUM,
+        "high": chat_pb2.ReasoningEffort.EFFORT_HIGH,
+    }
+    effort = GROK_REASONING_EFFORT
+    if effort not in levels:
+        raise ValueError(f"GROK_REASONING_EFFORT must be one of {', '.join(levels)}, got {effort!r}")
+    return levels[effort]
 
 
 # Mistral implementation (native web search removed for standardized grounding)
@@ -739,6 +761,8 @@ def _get_reasoning_mode(provider: str, model_id: str) -> str:
         return "extended thinking: OFF"
     elif provider == "deepseek":
         return "reasoning: default (may use internal CoT)"
+    elif provider == "grok" and model_id.startswith(("grok-4.5", "grok-4.6", "grok-4.7")):
+        return f"reasoning: {GROK_REASONING_EFFORT}"
     else:
         return "standard"
 
