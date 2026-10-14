@@ -125,6 +125,8 @@ MODEL_COLORS = {
 
     # Single-model providers
     'llama-3.3-70b': '#4D4D4D',          # Dark Gray  (Meta / Together)
+    'muse-wonder-1.0': '#542788',        # Deep Purple (Meta)
+    'muse-spark-1.3': '#B2ABD2',         # Light Purple (Meta)
     'kimi-k3': '#8C564B',                # Brown      (Moonshot)
     'mistral-large': '#17BECF',          # Cyan       (Mistral)
     'pplx-agent-medium': '#4B0082',      # Indigo     (Perplexity)

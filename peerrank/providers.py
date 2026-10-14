@@ -24,7 +24,7 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     MODEL_TIMEOUT_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    GOOGLE_THINKING_BUDGET, GROK_REASONING_EFFORT,
+    GOOGLE_THINKING_BUDGET, GROK_REASONING_EFFORT, META_REASONING_EFFORT,
     get_api_key
 )
 
@@ -407,7 +407,8 @@ async def web_grounding_search(query: str, max_results: int = 5) -> tuple[str, f
 
 
 def _make_openai_caller(base_url: str, max_tokens_limit: int | None = None,
-                        supports_response_format: bool = True):
+                        supports_response_format: bool = True,
+                        request_extras: dict | None = None):
     """Factory for OpenAI-compatible API callers."""
     async def _call(model: str, prompt: str, api_key: str, max_tokens: int, timeout: int,
                     use_web_search: bool, response_format: dict | None, temperature: float,
@@ -424,6 +425,8 @@ def _make_openai_caller(base_url: str, max_tokens_limit: int | None = None,
         messages.append({"role": "user", "content": prompt})
 
         kwargs = {"model": model, "messages": messages, "temperature": effective_temp, "max_tokens": effective_max}
+        if request_extras:
+            kwargs.update(request_extras)
         if response_format and supports_response_format:
             kwargs["response_format"] = response_format
 
@@ -554,6 +557,10 @@ async def _call_mistral(model: str, prompt: str, api_key: str, max_tokens: int, 
 
 # Provider instances (native web search removed - using standardized Tavily grounding)
 _call_deepseek = _make_openai_caller("https://api.deepseek.com", max_tokens_limit=MAX_TOKENS_DEEPSEEK)
+_call_meta = _make_openai_caller(
+    "https://api.meta.ai/v1",
+    request_extras={"reasoning_effort": META_REASONING_EFFORT},
+)
 _call_together = _make_openai_caller("https://api.together.xyz/v1")
 _call_kimi = _make_openai_caller("https://api.moonshot.ai/v1")
 _call_minimax_raw = _make_openai_caller("https://api.minimax.io/v1")
@@ -669,6 +676,7 @@ async def _call_perplexity(model: str, prompt: str, api_key: str, max_tokens: in
 _PROVIDER_CALLS = {
     "openai": _call_openai, "anthropic": _call_anthropic, "google": _call_google,
     "grok": _call_grok, "deepseek": _call_deepseek, "together": _call_together, "perplexity": _call_perplexity,
+    "meta": _call_meta,
     "kimi": _call_kimi, "mistral": _call_mistral, "minimax": _call_minimax,
 }
 
@@ -763,6 +771,8 @@ def _get_reasoning_mode(provider: str, model_id: str) -> str:
         return "reasoning: default (may use internal CoT)"
     elif provider == "grok" and model_id.startswith(("grok-4.5", "grok-4.6", "grok-4.7")):
         return f"reasoning: {GROK_REASONING_EFFORT}"
+    elif provider == "meta":
+        return f"reasoning: {META_REASONING_EFFORT} (always on)"
     else:
         return "standard"
 

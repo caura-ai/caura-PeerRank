@@ -76,6 +76,8 @@ MODEL_TEMPERATURE_OVERRIDES = {
     "claude-fable-5-1": 1.0,  # Fable 5.1 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-opus-5-5": 1.0,  # Opus 5.5 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-sonnet-5-5": 1.0,  # Sonnet 5.5 rejects any temperature other than the default 1
+    "muse-wonder-1.0": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
+    "muse-spark-1.3": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
 }
 
 # Efficiency calculation exponent - rewards higher peer scores
@@ -113,6 +115,10 @@ GOOGLE_THINKING_BUDGET = 8192  # -1=dynamic, N=fixed budget (0 invalid for think
 # effort Astra and Opus use. providers.py sends the proto enum because the
 # installed xAI SDK only accepts the strings "low" and "high".
 GROK_REASONING_EFFORT = "medium"
+
+# Muse Wonder and Muse Spark always reason. Their default effort is unset by
+# Meta ("model-set"), so pin medium to match Astra, Opus, and Grok.
+META_REASONING_EFFORT = "medium"
 
 # Evaluation settings
 NUM_QUESTIONS = 2
@@ -195,7 +201,7 @@ MODELS = PEERRANK_MODELS.copy()
 # 'together' maps to Meta because the label names the model family, not the host.
 PROVIDER_LABELS = {
     'openai': 'OpenAI', 'anthropic': 'Anthropic', 'google': 'Google',
-    'grok': 'xAI', 'deepseek': 'DeepSeek', 'together': 'Meta',
+    'grok': 'xAI', 'deepseek': 'DeepSeek', 'together': 'Meta', 'meta': 'Meta',
     'kimi': 'Moonshot', 'mistral': 'Mistral', 'perplexity': 'Perplexity',
     'minimax': 'MiniMax',
 }
@@ -219,6 +225,7 @@ MODEL_SHORTCUTS = {
     'grok-4.6': 'grok-4.6', 'grok-code-fast-1': 'grok-code',
     'deepseek-v4-flash': 'deepseek', 'deepseek-v4.1-flash': 'ds-v4.1', 'deepseek-v4-pro': 'deepseek-pro',
     'llama-3.3-70b': 'llama-3.3', 'kimi-k3': 'kimi', 'mistral-large': 'mistral',
+    'muse-wonder-1.0': 'muse-wonder', 'muse-spark-1.3': 'muse-spark',
     'pplx-agent-medium': 'pplx-med',
 }
 
@@ -244,6 +251,7 @@ PROVIDER_CONCURRENCY = {
     "grok": 8,
     "deepseek": 8,
     "together": 8,
+    "meta": 8,
     "perplexity": 1,  # Agent API allows only 1 in-flight request: measured 2026-08-24, 2 concurrent -> 1x429, 8 concurrent -> 7x429 (request_rate_limit_exceeded, no Retry-After header). Sequential back-to-back is fine.
     "kimi": 10,
     "mistral": 2,  # Mistral tier has strict per-minute rate limits
@@ -294,6 +302,7 @@ def get_api_key(provider: str) -> str:
         "deepseek": "DEEPSEEK_API_KEY", "together": "TOGETHER_API_KEY",
         "perplexity": "PERPLEXITY_API_KEY", "kimi": "KIMI_API_KEY",
         "mistral": "MISTRAL_API_KEY", "minimax": "MINIMAX_API_KEY",
+        "meta": "META_API_KEY",
     }
     env_var = key_map.get(provider)
     if not env_var:
@@ -302,6 +311,9 @@ def get_api_key(provider: str) -> str:
     # Fallback for grok: try GROK_API_KEY if XAI_API_KEY not set
     if not key and provider == "grok":
         key = os.getenv("GROK_API_KEY")
+    # Meta's docs call the key MODEL_API_KEY; this project stores it as META_API_KEY.
+    if not key and provider == "meta":
+        key = os.getenv("MODEL_API_KEY")
     if not key and provider == "google" and GOOGLE_SERVICE_ACCOUNT_FILE and GOOGLE_SERVICE_ACCOUNT_FILE.exists():
         return ""
     if not key:
