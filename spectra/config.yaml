@@ -1,0 +1,38 @@
+# Spectra run configuration. Run from the repo root: python -m spectra.run --revision <tag>
+#
+# Models are PeerRank names from peerrank/models.py, not provider IDs. spectra/providers.py
+# looks each one up and calls it through peerrank.providers.call_llm with Phase 2's settings
+# (MAX_TOKENS_ANSWER, the default temperature with its per-model overrides, Argon's thinking
+# level, Grok's reasoning effort), so a profile matches the deployment PeerRank ranks.
+# An entry may override max_tokens or temperature: {name: gpt-6-astra, max_tokens: 8192}.
+# A model PeerRank does not carry goes through LiteLLM: {name: x, litellm_model: openai/x, params: {...}}.
+
+# Same naming as PeerRank revisions, so data/spectra/<revision>/ pairs with data/phase*_<revision>.*
+revision: oct-14-26
+prompts: prompts/prompts_v1.json  # relative to spectra/
+
+samples: 1                        # answers per prompt per model; use 3 once the pipeline works
+concurrency_per_model: 4          # also capped by PeerRank's PROVIDER_CONCURRENCY
+timeout_seconds: 180
+retries: 3
+
+# null = no system prompt, i.e. out-of-the-box API behavior. Only litellm_model entries take one:
+# call_llm's only system slot is grounding text, which carries PeerRank's grounding preface.
+system_prompt: null
+
+# The active PeerRank roster (peerrank: True in peerrank/models.py).
+# Thinking/reasoning settings change style, so a different configuration is a different entry.
+models:
+  - gpt-6-astra
+  - claude-fable-5.1
+  - claude-opus-5.5
+  - gemini-4-argon
+  - gemini-3.8-flash
+  - muse-wonder-1.0
+
+# Optional behavior coding (python -m spectra.code_behaviors). Coders sit outside the profiled
+# panel and come from two different families, so the report can show agreement (Cohen's kappa).
+# temperature 0 matches PeerRank's Phase 3 judges; models that only accept 1 are overridden by PeerRank.
+coders:
+  - {name: grok-4.7, temperature: 0}
+  - {name: deepseek-v4-pro, temperature: 0}

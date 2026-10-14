@@ -23,6 +23,7 @@ dist/
 # Credentials/Secrets
 *.json
 !package.json
+!spectra/prompts/*.json
 *.pem
 *.key
 
