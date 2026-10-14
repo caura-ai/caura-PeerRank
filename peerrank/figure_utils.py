@@ -108,6 +108,7 @@ MODEL_COLORS = {
     'claude-haiku-4-5': '#A1D99B',       # Light Green
 
     # Google - orange ramp topped with yellow
+    'gemini-4-argon': '#4A1504',         # Deep Rust
     'gemini-3.1-pro-preview': '#7F2704', # Dark Rust
     'gemini-3.5-flash': '#D94801',       # Burnt Orange
     'gemini-3.5-flash-lite': '#F16913',  # Orange

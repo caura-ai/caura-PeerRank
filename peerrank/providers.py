@@ -24,7 +24,8 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     MODEL_TIMEOUT_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    GOOGLE_THINKING_BUDGET, GROK_REASONING_EFFORT, META_REASONING_EFFORT,
+    GOOGLE_THINKING_BUDGET, GOOGLE_ARGON_THINKING_LEVEL, GOOGLE_ARGON_MIN_OUTPUT_TOKENS,
+    GROK_REASONING_EFFORT, META_REASONING_EFFORT,
     get_api_key
 )
 
@@ -241,22 +242,29 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
 
     actual_model = model
 
-    # Limit thinking budget to save tokens (default can be very high)
-    effective_max_tokens = max_tokens
-    config = {
-        "temperature": temperature,
+    # Gemini 4 Argon bills thinking against max_output_tokens, rejects the older
+    # thinking_budget field, and ignores temperature/top_p/top_k (Google docs
+    # recommend omitting sampling parameters and controlling depth via thinking_level).
+    is_argon = model.startswith("gemini-4-argon")
+    effective_max_tokens = max(max_tokens, GOOGLE_ARGON_MIN_OUTPUT_TOKENS) if is_argon else max_tokens
+    config: dict = {
         "max_output_tokens": effective_max_tokens,
     }
-    if GOOGLE_THINKING_BUDGET is not None:
-        config["thinking_config"] = {"thinking_budget": GOOGLE_THINKING_BUDGET}
+    if is_argon:
+        config["thinking_config"] = {"thinking_level": GOOGLE_ARGON_THINKING_LEVEL}
+    else:
+        config["temperature"] = _get_temperature(model, temperature)
+        if GOOGLE_THINKING_BUDGET is not None:
+            config["thinking_config"] = {"thinking_budget": GOOGLE_THINKING_BUDGET}
 
-    # Inject grounding text into prompt (Google doesn't support system messages in same way)
-    effective_prompt = prompt
+    # Inject grounding text as system instruction (matches OpenAI/Anthropic system role)
     if grounding_text:
-        effective_prompt = f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}\n\n---\n\n{prompt}"
+        config["system_instruction"] = (
+            f"Use this current information to answer accurately. Do not mention searching or sources.\n\n{grounding_text}"
+        )
 
     start = time.time()
-    response = await client.aio.models.generate_content(model=actual_model, contents=effective_prompt, config=config)
+    response = await client.aio.models.generate_content(model=actual_model, contents=prompt, config=config)
     duration = time.time() - start
 
     content = ""
@@ -497,6 +505,10 @@ async def _call_grok(model: str, prompt: str, api_key: str, max_tokens: int, tim
     if hasattr(response, 'usage') and response.usage:
         input_tokens = getattr(response.usage, 'prompt_tokens', 0) or getattr(response.usage, 'input_tokens', 0) or 0
         output_tokens = getattr(response.usage, 'completion_tokens', 0) or getattr(response.usage, 'output_tokens', 0) or 0
+        # xAI's SamplingUsage reports reasoning_tokens separately from completion_tokens
+        # (total_tokens = prompt_tokens + completion_tokens + reasoning_tokens) and bills
+        # them at the output token rate.
+        output_tokens += getattr(response.usage, 'reasoning_tokens', 0) or 0
 
     return (content.strip(), duration, input_tokens, output_tokens, 0.0)
 
@@ -750,6 +762,8 @@ def get_google_auth_method() -> str:
 def _get_reasoning_mode(provider: str, model_id: str) -> str:
     """Get the reasoning/thinking mode description for a model."""
     if provider == "google":
+        if model_id.startswith("gemini-4-argon"):
+            return f"thinking: {GOOGLE_ARGON_THINKING_LEVEL}"
         if "thinking" in model_id:
             return "thinking: OFF (disabled)"
         return "standard"
