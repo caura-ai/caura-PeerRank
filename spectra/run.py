@@ -31,18 +31,39 @@ def completed_keys(path):
     return keys
 
 
+def select_prompts(prompts: list[dict], limit: int | None) -> list[dict]:
+    """Select up to `limit` prompts, stratified evenly across categories in round-robin order."""
+    if not limit or limit >= len(prompts):
+        return prompts
+    by_cat: dict[str, list[dict]] = {}
+    for p in prompts:
+        by_cat.setdefault(p["category"], []).append(p)
+    picked: list[dict] = []
+    idx = 0
+    while len(picked) < limit:
+        added = False
+        for cat_prompts in by_cat.values():
+            if idx < len(cat_prompts):
+                picked.append(cat_prompts[idx])
+                added = True
+                if len(picked) >= limit:
+                    break
+        if not added:
+            break
+        idx += 1
+    return picked
+
+
 async def main():
     ap = argparse.ArgumentParser()
     add_run_args(ap)
-    ap.add_argument("--limit", type=int, default=None, help="only the first N prompts (smoke test)")
+    ap.add_argument("--limit", type=int, default=None, help="only N prompts, stratified across categories (smoke test)")
     ap.add_argument("--models", nargs="*", default=None, help="subset of model names")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     run_dir = revision_dir(cfg, args.revision)
-    prompts = json.loads(Path(cfg["prompts"]).read_text(encoding="utf-8"))["prompts"]
-    if args.limit:
-        prompts = prompts[: args.limit]
+    prompts = select_prompts(json.loads(Path(cfg["prompts"]).read_text(encoding="utf-8"))["prompts"], args.limit)
     models = [m for m in cfg["models"] if not args.models or m["name"] in args.models]
     resolved = {m["name"]: providers.describe(m) for m in models}  # an unknown name fails here, before any call
 

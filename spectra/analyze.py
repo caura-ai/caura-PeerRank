@@ -179,6 +179,35 @@ def features(text, category):
 
 
 # ----------------------------------------------------------------------------- constraints
+WORD_CONSTRAINT_RE = re.compile(r"[A-Za-z0-9]+(?:['\u2019/][A-Za-z0-9]+)*")
+META_WORDCOUNT_RE = re.compile(r"(?im)^\s*[*_(\[]*\d+\s+words?\b[^\n]*$|[*_(\[]+\d+\s+words?\b[^)\]\n]*[)\]*_]+")
+OPTION_SPLIT_RE = re.compile(r"(?im)^\s*(?:#{1,6}\s*|\*\*)?option\s+\d+\b[^\n]*$")
+
+
+def _count_constraint_words(s: str) -> int:
+    cleaned = META_WORDCOUNT_RE.sub("", s.replace("**", "").replace("__", ""))
+    return len(WORD_CONSTRAINT_RE.findall(cleaned))
+
+
+def _check_max_words(text: str, limit: int) -> float:
+    if _count_constraint_words(text) <= limit:
+        return 1.0
+    if limit >= 20:
+        # Check if the model fenced the draft between horizontal rules (---)
+        hr_parts = [p.strip() for p in re.split(r"(?m)^\s*-{3,}\s*$", text) if p.strip()]
+        if len(hr_parts) >= 2:
+            mid_parts = hr_parts[1:-1] if len(hr_parts) >= 3 else [hr_parts[1]]
+            if any(0 < _count_constraint_words(p) <= limit for p in mid_parts):
+                return 1.0
+        # Check if the model provided multiple labeled options ("Option 1...", "Option 2..."), each within the limit
+        opt_parts = [p.strip() for p in OPTION_SPLIT_RE.split(text) if p.strip()]
+        if len(OPTION_SPLIT_RE.findall(text)) >= 2 and len(opt_parts) >= 2:
+            option_bodies = opt_parts[1:] if not OPTION_SPLIT_RE.match(text.lstrip()) else opt_parts
+            if option_bodies and all(0 < _count_constraint_words(b) <= limit for b in option_bodies):
+                return 1.0
+    return 0.0
+
+
 def check_constraint(text, con):
     if not con:
         return float("nan")
@@ -187,7 +216,7 @@ def check_constraint(text, con):
     nonempty = [l.strip() for l in lines if l.strip()]
     t = con["type"]
     if t == "max_words":
-        return float(len(WORD_RE.findall(text.replace("**", ""))) <= con["value"])
+        return _check_max_words(text, con["value"])
     if t == "max_sentences":
         return float(len(plain_units(prose)) <= con["value"])
     if t == "no_lists":

@@ -12,7 +12,7 @@ revision: oct-14-26
 prompts: prompts/prompts_v1.json  # relative to spectra/
 
 samples: 1                        # answers per prompt per model; use 3 once the pipeline works
-concurrency_per_model: 4          # also capped by PeerRank's PROVIDER_CONCURRENCY
+concurrency_per_model: 10         # also capped by PeerRank's PROVIDER_CONCURRENCY
 timeout_seconds: 180
 retries: 3
 

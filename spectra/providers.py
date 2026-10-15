@@ -75,8 +75,11 @@ def describe(entry: dict) -> dict:
         return {"name": e["name"], "backend": "litellm", "litellm_model": e["model_id"], "params": e.get("params") or {}}
     config, _, providers = _peerrank()
     temp = e.get("temperature", config.TEMPERATURE_DEFAULT)
+    max_tok = e.get("max_tokens", config.MAX_TOKENS_ANSWER)
+    if e["model_id"].startswith("gemini-4-argon"):
+        max_tok = max(max_tok, getattr(config, "GOOGLE_ARGON_MIN_OUTPUT_TOKENS", max_tok))
     out = {"name": e["name"], "backend": "peerrank", "provider": e["provider"], "model_id": e["model_id"],
-           "max_tokens": e.get("max_tokens", config.MAX_TOKENS_ANSWER),
+           "max_tokens": max_tok,
            "temperature": config.MODEL_TEMPERATURE_OVERRIDES.get(e["model_id"], temp)}  # Argon drops it in favor of thinking_level
     try:
         out["reasoning"] = providers._get_reasoning_mode(e["provider"], e["model_id"])

@@ -76,6 +76,8 @@ MODEL_TEMPERATURE_OVERRIDES = {
     "claude-fable-5-1": 1.0,  # Fable 5.1 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-opus-5-5": 1.0,  # Opus 5.5 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-sonnet-5-5": 1.0,  # Sonnet 5.5 rejects any temperature other than the default 1
+    "gemini-4-argon": 1.0,  # Argon uses Google's default temperature (1.0); omitted on the wire in _call_google
+    "gemini-3.8-flash": 1.0,  # Align Gemini 3.8 Flash thinking model to temperature 1.0 with the rest of the panel
     "muse-wonder-1.0": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
     "muse-spark-1.3": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
 }
@@ -256,9 +258,9 @@ GOOGLE_LOCATION = os.getenv("GOOGLE_LOCATION", "global")
 PROVIDER_CONCURRENCY = {
     "openai": 8,
     "anthropic": 8,
-    "google": 3,  # Reduced to avoid MAX_TOKENS errors with thinking models
-    "grok": 8,
-    "deepseek": 8,
+    "google": 10,  # Vertex AI supports higher parallel concurrency
+    "grok": 20,
+    "deepseek": 20,
     "together": 8,
     "meta": 8,
     "perplexity": 1,  # Agent API allows only 1 in-flight request: measured 2026-08-24, 2 concurrent -> 1x429, 8 concurrent -> 7x429 (request_rate_limit_exceeded, no Retry-After header). Sequential back-to-back is fine.

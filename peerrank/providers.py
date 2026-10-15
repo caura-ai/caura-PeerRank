@@ -766,6 +766,8 @@ def _get_reasoning_mode(provider: str, model_id: str) -> str:
             return f"thinking: {GOOGLE_ARGON_THINKING_LEVEL}"
         if "thinking" in model_id:
             return "thinking: OFF (disabled)"
+        if GOOGLE_THINKING_BUDGET is not None:
+            return f"thinking: budget {GOOGLE_THINKING_BUDGET}"
         return "standard"
     elif provider == "openai":
         if "nano" in model_id or "mini" in model_id:
