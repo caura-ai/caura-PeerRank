@@ -402,6 +402,32 @@ def test_tiebreak_takes_the_majority_of_three_on_disputed_labels_only():
     assert s["rates"]["majority"] == {"m1": 1.0, "m2": 0.25} and s["rates"]["x"]["m2"] == 0.5 and s["rates"]["y"]["m2"] == 0.0
 
 
+def test_descriptions_parse_and_score_against_measured_traits():
+    from spectra.describe import parse_reply, score
+
+    raw = '```json\n{"profile": "Short and direct.", "estimates": {"words": "120 words", "pct_answers_first": 90}}\n```'
+    assert parse_reply(raw) == {"profile": "Short and direct.", "estimates": {"words": 120.0, "pct_answers_first": 90.0}}
+    assert parse_reply("no json here") is None
+    models = ["m1", "m2", "m3"]
+    truth = {"length": {"m1": 100.0, "m2": 200.0, "m3": 400.0}, "answer_first": {"m1": 0.9, "m2": 0.7, "m3": 0.5}}
+    analysis = {"traits": [{"key": k, "per_model": {m: {"value": v} for m, v in vals.items()}} for k, vals in truth.items()]}
+    records = [{"describer": d, "target": t, "estimates": {"words": truth["length"][t],
+                                                          "pct_answers_first": 100 * truth["answer_first"][t]}}
+               for d in models for t in models]
+    vendors = {"m1": "a", "m2": "a", "m3": "b"}
+    full = score(records, analysis, models, vendors)
+    s = full["overall"]
+    assert s["rank_mean"] == pytest.approx(1.0) and s["self_rank_error"] == 0.0
+    assert s["self_side"] == s["others_side"] == 1.0
+    sib = full["siblings"]["same vendor"]  # perfect describers see the m1-m2 gap exactly as measured
+    assert sib["seen_gap"] == pytest.approx(sib["measured_gap"]) and sib["sign_right"] == 1.0
+    for r in records:  # m1 now thinks it writes the longest answers; the others still describe it correctly
+        if r["describer"] == r["target"] == "m1":
+            r["estimates"]["words"] = 800.0
+    per = score(records, analysis, models, vendors)["per_model"]["m1"]
+    assert per["self_rank_error"] > per["others_rank_error"] == 0.0 and per["self_side"] < per["others_side"]
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])
