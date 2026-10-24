@@ -178,11 +178,12 @@ validate_mmlu.py         # MMLU benchmark validation
 spectra/                 # Behavioral profiles (style, habits, guessing game)
   config.yaml            # Roster, revision, coders
   run.py                 # Collect answers
-  code_behaviors.py      # Optional yes/no behavior labels
-  guess.py               # Author-matching game (blind, or briefed with the profile)
+  code_behaviors.py      # Optional behavior labels from two coder models
+  guess.py               # Author-matching game (blind, briefed, or held-out notes)
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # Prompt set
+  docs/                  # brochure.html and flow.html: overview and process flow
 pyproject.toml           # Package configuration
 ```
 

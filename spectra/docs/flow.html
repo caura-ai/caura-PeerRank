@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spectra — process flow</title>
+<style>
+  :root {
+    --paper: #f3eee6;
+    --card: #fffdf8;
+    --ink: #1c1915;
+    --muted: #6e655c;
+    --line: #d4cbbd;
+    --green: #1d4a38;
+    --green-soft: #e5f0ea;
+    --file: #f7f1e4;
+    --blue: #243652;
+    --blue-soft: #e7edf4;
+    --amber: #8a5a12;
+    --amber-soft: #f8efdc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.45 "Segoe UI", system-ui, sans-serif;
+  }
+  main { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; }
+  h1 { font-family: Georgia, "Palatino Linotype", serif; font-weight: 500; font-size: 42px; letter-spacing: -0.03em; margin: 0 0 8px; }
+  .lede { color: var(--muted); max-width: 46rem; margin: 0 0 28px; }
+  h2 { font-family: Georgia, "Palatino Linotype", serif; font-weight: 500; font-size: 26px; margin: 48px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
+  .legend .p { background: var(--green); border-color: var(--green); }
+  .legend .f { background: var(--file); }
+  .legend .g { background: var(--blue); border-color: var(--blue); }
+  .legend .o { background: var(--card); border-style: dashed; }
+
+  .sources { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .box h3 { margin: 0 0 6px; font-size: 15px; }
+  .box p, .box li { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .box ul { margin: 6px 0 0; padding-left: 16px; }
+  .kicker { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); margin-bottom: 4px; }
+
+  .down { display: flex; flex-direction: column; align-items: center; color: var(--muted); font-size: 12px; margin: 8px 0; }
+  .down::before { content: ""; width: 1px; height: 16px; background: var(--line); }
+  .down::after { content: ""; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--muted); }
+
+  .step { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: stretch; }
+  .proc { background: var(--green); color: #f6f3ec; border-radius: 12px; padding: 16px; }
+  .proc.optional { background: var(--card); color: var(--ink); border: 1.5px dashed var(--green); }
+  .proc.guess { background: var(--blue); }
+  .proc .cmd { font-family: Consolas, "Cascadia Mono", ui-monospace, monospace; font-size: 12px; opacity: 0.85; margin-top: 8px; }
+  .proc h3 { margin: 0 0 6px; font-size: 18px; font-family: Georgia, serif; font-weight: 500; }
+  .proc p { margin: 0; font-size: 13.5px; }
+  .proc.optional p { color: var(--muted); }
+  .out { background: var(--file); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .out strong { font-family: Consolas, "Cascadia Mono", ui-monospace, monospace; font-size: 13px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chips span { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 12px; color: var(--muted); }
+
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .mode { border-radius: 12px; padding: 14px 16px; background: var(--blue-soft); border: 1px solid #c5d0de; }
+  .mode h3 { margin: 0 0 6px; font-size: 16px; }
+  .mode p { margin: 0; font-size: 13.5px; color: #334155; }
+  .mode code { font-family: Consolas, "Cascadia Mono", ui-monospace, monospace; font-size: 12px; }
+  .note { margin-top: 12px; background: var(--amber-soft); border: 1px solid #ead7b0; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #5c4316; }
+
+  .join { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-top: 8px; }
+  .join .line { height: 1px; background: var(--line); }
+  .join span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .report-grid div { background: var(--green-soft); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+  .report-grid b { display: block; margin-bottom: 2px; }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 800px) {
+    .sources, .modes, .report-grid, .step { grid-template-columns: 1fr; }
+    h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Spectra</h1>
+  <p class="lede">How a revision is built. Spectra profiles how the PeerRank roster writes. It does not score answer quality. Every model gets the same prompts with no system prompt, through PeerRank’s providers.</p>
+  <div class="legend">
+    <span><i class="p"></i>Process</span>
+    <span><i class="f"></i>File</span>
+    <span><i class="g"></i>Guessing game</span>
+    <span><i class="o"></i>Optional</span>
+  </div>
+
+  <div class="sources">
+    <article class="box">
+      <span class="kicker">Config</span>
+      <h3>spectra/config.yaml</h3>
+      <p>Revision tag, roster, coders, concurrency, and the empty system prompt.</p>
+    </article>
+    <article class="box">
+      <span class="kicker">Prompts</span>
+      <h3>prompts_v1.json</h3>
+      <p>200 English prompts, 10 categories. Some hide a trap or state a length or format limit.</p>
+    </article>
+    <article class="box">
+      <span class="kicker">Models</span>
+      <h3>Six profiled models</h3>
+      <p>Astra, Fable, Opus, Argon, Flash, Muse. Calls go through <code>spectra/providers.py</code>.</p>
+    </article>
+  </div>
+
+  <div class="down">same prompts, no system prompt</div>
+
+  <section class="step">
+    <div class="proc">
+      <h3>1. Collect answers</h3>
+      <p>Every model answers every prompt. Resumable. A failed call is retried on the next run.</p>
+      <div class="cmd">python -m spectra.run</div>
+    </div>
+    <div class="out">
+      <strong>responses.jsonl</strong>
+      <p>One row per model, prompt, and sample: the text, tokens, latency, and cost. <strong>run_config.json</strong> records the roster and settings.</p>
+    </div>
+  </section>
+
+  <div class="down">optional</div>
+
+  <section class="step">
+    <div class="proc optional">
+      <h3>2. Code behavior</h3>
+      <p>Two models outside the panel apply fixed yes/no labels. Agreement is Cohen’s kappa. Hand-check a sample before trusting these traits.</p>
+      <div class="cmd">python -m spectra.code_behaviors</div>
+    </div>
+    <div class="out">
+      <strong>codes.jsonl</strong>
+      <div class="chips">
+        <span>answers first</span><span>false premise</span><span>pasted error</span><span>vague request</span><span>user’s opinion</span><span>warmth</span><span>does extra</span>
+      </div>
+      <p style="margin-top:8px">Coders: grok-4.7 and deepseek-v4-pro. Style traits do not need this step.</p>
+    </div>
+  </section>
+
+  <div class="down"></div>
+
+  <section class="step">
+    <div class="proc">
+      <h3>3. Measure</h3>
+      <p>Style is computed from the text. Behavior comes from the codes when they exist. Nothing here is a quality score.</p>
+      <div class="cmd">python -m spectra.analyze</div>
+    </div>
+    <div class="out">
+      <strong>analysis.json</strong> and <strong>features.csv</strong>
+      <div class="chips">
+        <span>trait profiles</span><span>signature words</span><span>limits met</span><span>style map</span><span>author classifier</span><span>run cost and latency</span>
+      </div>
+    </div>
+  </section>
+
+  <h2>The guessing game</h2>
+  <p class="sub">A second operation on the same answers. Each model sees every reply with the author names removed and matches them to the roster. It is not told which model it is. Letters are shuffled separately for each guesser. Its own answer is left out of the headline scores.</p>
+
+  <div class="modes">
+    <article class="mode">
+      <h3>Blind</h3>
+      <p>The prompt, the answers, and the roster names. No measured profile.</p>
+      <p style="margin-top:8px"><code>--mode blind</code></p>
+    </article>
+    <article class="mode">
+      <h3>Briefed</h3>
+      <p>The same, plus habits from an <code>analysis.json</code>: length, formatting, hedging, signature words, limits. Cost and latency stay out.</p>
+      <p style="margin-top:8px"><code>--mode briefed --research &lt;revision&gt;</code></p>
+    </article>
+    <article class="mode">
+      <h3>Held out</h3>
+      <p>Prompts split in half by category. Each half is guessed with notes measured only on the other half, so the answer in front of the model did not write its own brief.</p>
+      <p style="margin-top:8px"><code>--mode heldout</code></p>
+    </article>
+  </div>
+  <p class="note"><b>Assignment.</b> The default asks for each model once, so naming one answer narrows the rest. <code>--independent</code> asks for a name per answer, with repeats allowed. <code>--dry-run</code> builds the messages and estimates cost without calling a model. Held-out notes are written under <code>holdout/half-A</code> and <code>holdout/half-B</code>.</p>
+
+  <div class="down">one call per guesser per prompt</div>
+
+  <section class="step">
+    <div class="proc guess">
+      <h3>4. Guess</h3>
+      <p>Resumable. Blind, briefed, and held-out records share one file and are scored apart.</p>
+      <div class="cmd">python -m spectra.guess</div>
+    </div>
+    <div class="out">
+      <strong>guesses.jsonl</strong>
+      <div class="chips">
+        <span>best guessers</span><span>most recognizable</span><span>found own answer</span><span>confusion heatmap</span>
+      </div>
+      <p style="margin-top:8px">Chance is 1/6. Ambiguous short names such as “claude” or “gemini” count as a miss.</p>
+    </div>
+  </section>
+
+  <div class="join"><div class="line"></div><span>analysis and guesses both feed the report</span><div class="line"></div></div>
+
+  <div class="down"></div>
+
+  <section class="step">
+    <div class="proc">
+      <h3>5. Report</h3>
+      <p>Reads the analysis, ranks usage from the measured traits, and attaches whichever guessing games have been run. Regenerating the report does not rerun analysis.</p>
+      <div class="cmd">python -m spectra.report</div>
+    </div>
+    <div class="out">
+      <strong>report.html</strong>
+      <p>One file per revision, under <code>data/spectra/&lt;revision&gt;/</code>.</p>
+    </div>
+  </section>
+
+  <h2>What the report shows</h2>
+  <p class="sub">Usage picks are ranked from the traits. There is no judge model.</p>
+  <div class="report-grid">
+    <div><b>Profiles</b>Strongest departures, signature words, nearest neighbor.</div>
+    <div><b>Trait explorer</b>Averages and intervals against the panel.</div>
+    <div><b>Traps</b>False premise, pasted error, vague request, stated opinion, emotion.</div>
+    <div><b>Explicit limits</b>Whether a stated length or format constraint was met.</div>
+    <div><b>Style map</b>Two principal components of the measured style.</div>
+    <div><b>Can you tell them apart?</b>A classifier naming the author of unseen prompts.</div>
+    <div><b>Guessing game</b>Blind, briefed, and held-out scores, each on its own.</div>
+    <div><b>Same prompt</b>The six answers side by side.</div>
+    <div><b>Usage</b>Which model fits a need, and how to drive each one.</div>
+  </div>
+
+  <footer>Files for a revision live in data/spectra/&lt;revision&gt;/. The revision name matches a PeerRank revision, so the profile describes the same deployment.</footer>
+</main>
+</body>
+</html>
