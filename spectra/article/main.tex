@@ -182,6 +182,7 @@ Self-recognition is reported separately.
 Confidence intervals resample prompts (1{,}000 resamples).
 The \emph{majority vote} gives each answer to the model most of the other five guessers named, never counting the author's own vote; a tie splits the credit evenly, the expected score of a random tie-break.
 The vote measures how identifiable a model is, not what any single guesser knows.
+The \emph{weighted vote} counts each guesser's vote by its accuracy $p$ on the other half of the prompts, with weight $\log\big((k-1)p/(1-p)\big)$, which is zero at chance, so no answer helps set the weight of a vote cast on it; it then names each model once per prompt, choosing the assignment with the largest total weight.
 
 \paragraph{Prompts, guessers and authors.}
 Some prompts leave more room for habits than others, and some guessers are better than others.
@@ -296,7 +297,7 @@ Table~\ref{tab:ident} and Figure~\ref{fig:ident} give the results.
 
 \begin{table}[t]
 \centering\small
-\caption{Identification of other models' answers, run \texttt{oct-23-26}. Own answers are excluded. Chance is \chance. Intervals resample prompts.}
+\caption{Identification of other models' answers, run \texttt{oct-23-26}. Own answers are excluded. Chance is \chance. Intervals resample prompts. The weighted vote counts each guesser by its accuracy on the other half of the prompts and names each model once per prompt.}
 \label{tab:ident}
 \resizebox{\linewidth}{!}{\input{generated/tab_identification.tex}}
 \end{table}
@@ -327,6 +328,7 @@ With notes, guessers barely need elimination.
 
 \paragraph{The vote.}
 A majority of the other five models names \voteBlind{} blind, \voteSame{} with same-answer notes and \voteHeldPerm{} with held-out notes (\voteHeldInd{} when names may repeat), clearly above the classifier.
+Weighting each vote by the guesser's skill on the other half of the prompts, and naming each model once per prompt, raises the held-out vote to \wvoteHeldPerm{} (\wvoteCIHeldPerm{}) and the blind vote to \wvoteBlind{}, at no extra cost.
 Ties occurred on \tiesBlind{} answers blind but only \tiesHeldPerm{} with held-out notes: notes make the guessers agree as well as improve them.
 
 \begin{table}[t]
@@ -383,7 +385,10 @@ Neither weakens a conclusion.
 On answering first the coders disagree on \disagreeAF{} of answers, yet the order of the models under either coder agrees with Spearman $\rho=\rankAgreeAF$ (tied rates take their average rank).
 On moral commentary they disagree on only \disagreeMoral{} of answers; its $\kappa$ is low because the behavior is rare, \moralLow{} to \moralHigh{} of answers per model and coder, which is the known paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}.
 At rates that low the models cannot be ranked (the coders' orders correlate at $\rho=\rankAgreeMoral$), and we draw no model-level conclusion from this label.
-A third coder from another model family would break the ties on the \nDisputed{} disputed labels \todo{run the third-coder tie-break}.
+A third coder from another model family, \tbCoder{}, labeled the \tbAnswers{} answers with a disputed label (\tbLabeled{} usable replies, \tbCost{}), seeing exactly what the first two coders saw.
+On answering first it sided with \tbSideAF{}, so neither coder is systematically off, and the order of the models under the majority of three matches the order under each coder (Spearman $\rho$ of \tbRankAF{}).
+On moral commentary it split \tbSideMoral{}, and the rates stay too low to rank.
+The tie-break leaves the traits as two-coder averages; it confirms that no conclusion depends on the choice of coder.
 
 % =====================================================================
 \section{Practical implications}
@@ -402,7 +407,7 @@ A third coder from another model family would break the ties on the \nDisputed{}
 \paragraph{One answer per prompt.} Each model answered each prompt once per run, so within-model variation is visible only across runs. Three samples per prompt would separate a model's own variation from differences between models.
 \paragraph{No system prompt.} Habits may change under a product's system prompt.
 \paragraph{Relative effect sizes.} $d$ is measured against this panel of \nModels{}; adding or removing a model moves every value.
-\paragraph{Model coders.} Behavior labels come from models, not people. We report agreement per label and test sensitivity to the choice of coder, but have not validated the labels against human judgment.
+\paragraph{Model coders.} Behavior labels come from models, not people. We report agreement per label, test sensitivity to the choice of coder and settle disputed labels with a third coder, but have not validated the labels against human judgment.
 \paragraph{Time.} Two runs \daysApart{} days apart show short-term stability, not stability across model versions; providers update models behind fixed names.
 \paragraph{One run of the game.} The guessing games were played once, on one run; each condition rests on about \callsHeldPerm{} calls, and the notes were measured on one split of the prompts.
 \paragraph{Ethics.} Identifying the model behind an unsigned answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones, such as de-anonymizing systems. Our notes describe public models' public behavior and add little to what a careful reader of their answers already sees; prior work identifies models with higher accuracy by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. We release the answers and labels so that the findings can be checked.

@@ -48,9 +48,10 @@ Search `main.tex` for `\todo` and `references.bib` for `TODO`:
 
 - author list and order; repository link and license
 - coder costs (not recorded by the pipeline)
-- third-coder tie-break on the disputed labels (plan gap 1, next step)
 - bibliography entries cited from memory or with incomplete titles and author lists
 
 Done since the first draft: the classifier is also scored jointly per prompt and on the game's
-halves (`analyze.distinctiveness`), the held-out game was played with each model used once, and a
-fixed-effects analysis separates prompts, guessers and authors (`guess.prompt_effects`).
+halves (`analyze.distinctiveness`), the held-out game was played with each model used once, a
+fixed-effects analysis separates prompts, guessers and authors (`guess.prompt_effects`), votes are
+also weighted by each guesser's skill on the other half, and a third coder settled the disputed
+labels (`spectra.tiebreak`; the summary is read from `data/spectra/oct-23-26/tiebreak.json`).

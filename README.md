@@ -179,7 +179,9 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   config.yaml            # Roster, revision, coders
   run.py                 # Collect answers
   code_behaviors.py      # Optional behavior labels from two coder models
+  tiebreak.py            # A third coder on the labels the two disagree on
   guess.py               # Author-matching game (blind, briefed, or held-out notes)
+  profile.py             # The guessers' profile and its optional parts (--profile)
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash
@@ -257,7 +259,7 @@ python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/
 
 For each prompt that every model answered, each model sees all of the answers with the author names removed and matches each answer to the roster. The prompt does not say which model is guessing. Letter order is shuffled separately for each guesser.
 
-Three modes share `guesses.jsonl`. Each combination of mode, research source and `--independent` is scored as its own game:
+Three modes share `guesses.jsonl`. Each combination of mode, research source, `--independent` and `--profile` is scored as its own game:
 
 | Mode | What the guesser sees |
 |------|------------------------|
@@ -303,6 +305,9 @@ data/spectra/<revision>/
 ├── features.csv        # Style features per answer
 ├── analysis.json       # Traits, style map, classifier
 ├── guesses.jsonl       # Present after the guessing game
+├── guess_preview.txt   # First message of the last --dry-run (profile_preview-<profile>.txt: its profile)
+├── holdout/half-A|B/   # Each half's answers, codes and analysis, written by --mode heldout
+├── tiebreak.jsonl      # Third-coder labels on disputed answers (spectra.tiebreak); tiebreak.json: summary
 ├── report.html         # The report
 └── run_config.json     # Roster and settings for the run
 ```

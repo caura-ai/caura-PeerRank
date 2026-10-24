@@ -709,7 +709,20 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     models.map(m => { const r = RS[m]; return "<tr><td>" + esc(m) + "</td><td>" + r.responses + "</td><td>" + r.errors + "</td><td>" + Math.round(r.median_words) + "</td><td>" + (r.median_latency_s === null ? "n/a" : r.median_latency_s.toFixed(1) + " s") + "</td><td>" + n(r.median_output_tokens) + "</td><td>" + n(r.median_reasoning_tokens) + "</td><td>" + (r.total_cost_usd === null ? "n/a" : "$" + r.total_cost_usd.toFixed(2)) + "</td>" + (A.meta.samples > 1 ? "<td>" + (r.length_cv_across_samples === null ? "n/a" : Math.round(r.length_cv_across_samples * 100) + "%") + "</td>" : "") + "</tr>"; }).join("") + "</tbody>";
   if (A.agreement) {
     const ks = Object.entries(A.agreement).filter(([, v]) => v !== null).map(([k, v]) => k.replace(/_/g, " ") + " " + v.toFixed(2));
-    document.getElementById("agreenote").textContent = "Agreement between the two coder models (Cohen's kappa; above 0.6 is usually considered good): " + ks.join("; ") + ".";
+    let note = "Agreement between the two coder models (Cohen's kappa; above 0.6 is usually considered good): " + ks.join("; ") + ".";
+    const TB = A.tiebreak;
+    if (TB) {
+      note += " A third coder from another family, " + TB.third + ", labeled the answers the two disagree on. " +
+        Object.entries(TB.labels).map(([lab, r]) => {
+          const name = lab.replace(/_/g, " ");
+          return name[0].toUpperCase() + name.slice(1) + ": " + r.disputed + " disputed, it sided with " +
+            TB.coders.map(c => c + " " + (r.sided_with[c] || 0)).join(" and ") +
+            (TB.coders.every(c => r.rank_vs_majority[c] !== null) ? "; rank agreement of each coder with the majority of three, Spearman " +
+              TB.coders.map(c => r.rank_vs_majority[c].toFixed(2)).join(" and ") : "");
+        }).join(". ") +
+        ". The traits stay two-coder averages.";
+    }
+    document.getElementById("agreenote").textContent = note;
   }
   document.getElementById("footer").textContent = A.meta.n_responses + " answers analyzed. Coder models: " + (A.meta.coders.length ? A.meta.coders.join(", ") : "none") + ". System prompt: " + (A.meta.system_prompt ? "custom" : "none") + ".";
 
@@ -1431,6 +1444,8 @@ def main():
         games = summarize_all(guesses, data["meta"]["models"], data["meta"].get("revision"))
         if games:
             data["guessing"] = {"games": games}
+    if (run_dir / "tiebreak.json").exists():  # python -m spectra.tiebreak
+        data["tiebreak"] = json.loads((run_dir / "tiebreak.json").read_text(encoding="utf-8"))
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     html = TEMPLATE.replace("__TITLE__", args.title).replace("__DATA__", payload)
     out = Path(args.out) if args.out else run_dir / "report.html"

@@ -288,6 +288,8 @@ for name, g in GAMES:
     mac("voteCI" + name, ci(g["vote"]["ci"]))
     mac("calls" + name, f"{g['n_calls']:,}".replace(",", "{,}"))
     mac("ties" + name, g["vote"]["ties"])
+    mac("wvote" + name, pct(g["vote_weighted"]["accuracy"]))
+    mac("wvoteCI" + name, ci(g["vote_weighted"]["ci"]))
 mac("callsTotal", f"{sum(g['n_calls'] for _, g in GAMES):,}".replace(",", "{,}"))
 gain = same["accuracy"] - blind["accuracy"]
 mac("retention", pct((held["accuracy"] - blind["accuracy"]) / gain, 0))  # same naming rule as the same-answer game
@@ -349,9 +351,10 @@ for name, g in GAMES:
 rows = []
 for name, g in GAMES:
     rows.append(f"{labels[name]} & {g['assign']} & {pct(g['accuracy'])} ({ci(g['ci'])}) & {pct(g['vote']['accuracy'])} "
-                f"({ci(g['vote']['ci'])}) & {g['n_calls']:,} \\\\".replace(",", "{,}"))
+                f"({ci(g['vote']['ci'])}) & {pct(g['vote_weighted']['accuracy'])} & {g['n_calls']:,} \\\\".replace(",", "{,}"))
 (OUT / "tab_identification.tex").write_text(
-    "\\begin{tabular}{llrrr}\n\\toprule\nCondition & Naming rule & One guesser (95\\% CI) & Majority of the other five (95\\% CI) & Calls \\\\\n"
+    "\\begin{tabular}{llrrrr}\n\\toprule\nCondition & Naming rule & One guesser (95\\% CI) & Majority of the other five (95\\% CI) "
+    "& Weighted vote & Calls \\\\\n"
     "\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 rec = {name: {r["model"]: r for r in g["recognizable"]} for name, g in GAMES}
@@ -415,6 +418,19 @@ mac("rankAgreeMoral", f"{spearmanr(mo[coder_a], mo[coder_b]).statistic:.2f}")
 moral = mo[coder_a] + mo[coder_b]
 mac("moralLow", pct(min(moral), 0))
 mac("moralHigh", pct(max(moral), 0))
+
+# third-coder tie-break (python -m spectra.tiebreak): only the answers the two coders disagree on
+tb = json.loads((DATA / MAIN / "tiebreak.json").read_text(encoding="utf-8"))
+tb_rows = [r for r in load_jsonl(DATA / MAIN / "tiebreak.jsonl") if r.get("coder") == tb["third"]]
+tb_af, tb_mo = tb["labels"]["answer_first"], tb["labels"]["moralizing"]
+mac("tbCoder", tt(tb["third"]))
+mac("tbLabeled", sum(1 for r in tb_rows if r.get("codes")))
+mac("tbAnswers", len({(r["model"], r["prompt_id"], r.get("sample", 0)) for r in tb_rows}))
+mac("tbCost", f"\\${sum(r.get('cost_usd') or 0 for r in tb_rows):.2f}")
+mac("tbSideAF", " and ".join(f"{tt(c)} {tb_af['sided_with'].get(c, 0)} times" for c in tb["coders"]))
+mac("tbRankAF", " and ".join(f"{tb_af['rank_vs_majority'][c]:.2f}" for c in tb["coders"]))
+mac("tbSideMoral", " to ".join(str(tb_mo["sided_with"].get(c, 0)) for c in tb["coders"]))
+assert set(tb["coders"]) == set(A["meta"]["coders"])
 
 # ---------------------------------------------------------------- codebook table (appendix)
 when = {"premise": "FP prompts", "error_handling": "ERR prompts", "user_opinion": "OP prompts",
