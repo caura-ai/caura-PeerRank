@@ -504,6 +504,37 @@ def test_character_attribution_learns_punctuation_habits():
     assert across(df, df, ["a", "b"], sets=("characters",))["characters"]["accuracy"] == 1.0
 
 
+def test_text_ablations_remove_one_layer_each():
+    from spectra.attribute import ABLATIONS, bare_words, strip_markdown, strip_punctuation
+
+    text = ("### Example\n**Compound interest** is *interest* on interest — see [the guide](http://x.y).\n\n"
+            "| Year | Balance |\n|---|---:|\n| 1 | $1,050 |\n- one item\n2. two items\n> quoted")
+    md = strip_markdown(text)
+    assert md.splitlines()[:2] == ["Example", "Compound interest is interest on interest — see the guide."]
+    assert "|" not in md and "**" not in md and "---" not in md and "one item" in md and "two items" in md
+    assert strip_punctuation("Well — it's fine!") == "Well it s fine"
+    assert bare_words("Hi!\n\nThere, *you*.") == "hi there you"
+    assert ABLATIONS["bare words, shuffled"]("b a c") == ABLATIONS["bare words, shuffled"]("b a c")  # deterministic
+    assert sorted(ABLATIONS["bare words, shuffled"]("b a c").split()) == ["a", "b", "c"]
+
+
+def test_learning_curve_trains_on_n_prompts_per_model():
+    from spectra.analyze import features
+    from spectra.attribute import learning_curve
+
+    rows = []
+    for i in range(40):
+        for m, text in (("a", f"Sure! Here is item {i} — quick and done."),
+                        ("b", f"Certainly. Item {i}; as requested, finished.")):
+            f, prose = features(text, "explain")
+            f.update(model=m, prompt_id=f"q{i}", sample=0, category="explain", prose=prose)
+            rows.append(f)
+    curve = learning_curve(pd.DataFrame(rows), ["a", "b"], sizes=(4, 32), repeats=2)
+    assert curve["4"]["draws"] == 2 and curve["4"]["answers_per_model"] == 4
+    assert curve["32"]["draws"] == 1 and curve["32"]["answers_per_model"] == 32
+    assert curve["32"]["matched_accuracy"] == 1.0
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

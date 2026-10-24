@@ -888,7 +888,7 @@ python -m spectra.guess --revision <rev> --mode heldout --profile all --dry-run 
 python -m spectra.guess --revision <rev> --mode heldout --compare-profiles --guessers <model>   # profile variants vs plain, free
 python -m spectra.tiebreak --revision <rev> --coder <model>   # third coder on disputed labels -> tiebreak.jsonl/json (paid)
 python -m spectra.describe --revision <rev> [--sample N] [--measured <rev>]   # self-knowledge probe (paid; rescoring free)
-python -m spectra.attribute --revision <rev> [--train-revision <rev>]   # text classifiers incl. character n-grams (local)
+python -m spectra.attribute --revision <rev> [--train-revision <rev>] [--what sets ablations curve]   # text classifiers (local)
 python -m spectra.report --revision <rev>            # report.html (local, no API calls)
 pytest tests/                                        # constraint checks, guess parsing, report builder
 ```
