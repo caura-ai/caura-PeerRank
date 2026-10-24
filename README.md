@@ -182,9 +182,11 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   tiebreak.py            # A third coder on the labels the two disagree on
   guess.py               # Author-matching game (blind, briefed, or held-out notes)
   profile.py             # The guessers' profile and its optional parts (--profile)
+  describe.py            # Self-knowledge probe: models describe their own and each other's habits
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash
+  prereg/                # Pre-registrations, committed before the data they cover
   docs/                  # brochure.html, flow.html and paper-plan.html
   article/               # arXiv draft: main.tex, references.bib, make_assets.py -> generated/
 pyproject.toml           # Package configuration
@@ -279,8 +281,12 @@ python -m spectra.guess --revision oct-23-26 --mode briefed --research oct-14-26
 python -m spectra.guess --revision oct-23-26 --mode heldout --dry-run   # messages + cost estimate, no calls
 python -m spectra.guess --revision oct-23-26 --mode heldout             # the clean test
 python -m spectra.guess --revision oct-14-26 --mode heldout --limit 100 --profile examples,pairs --dry-run
+python -m spectra.guess --revision oct-23-26 --mode heldout --profile pairs --guessers gemini-4-argon
+python -m spectra.guess --revision oct-23-26 --mode heldout --compare-profiles --guessers gemini-4-argon
 python -m spectra.report --revision oct-23-26                       # one section per game
 ```
+
+`--guessers` lets only some models guess; every model's answers are still shown, and the game's summary covers the guessers that played it. That makes profile development cheap: one strong guesser plays each variant, and `--compare-profiles` (no calls) prints its accuracy with every profile against the plain one, paired on the prompts both games share.
 
 `--research` chooses which profile `briefed` pastes in. It defaults to the same revision as the answers, so each answer is part of the averages it is guessed with. An earlier revision avoids that, but revisions that use the same prompt file share every prompt. `heldout` is the clean test: it writes each half's answers and codes to `data/spectra/<revision>/holdout/` and runs `spectra.analyze` there. `--dry-run` builds every message and estimates the cost from earlier calls without calling a model.
 
@@ -308,6 +314,7 @@ data/spectra/<revision>/
 ├── guess_preview.txt   # First message of the last --dry-run (profile_preview-<profile>.txt: its profile)
 ├── holdout/half-A|B/   # Each half's answers, codes and analysis, written by --mode heldout
 ├── tiebreak.jsonl      # Third-coder labels on disputed answers (spectra.tiebreak); tiebreak.json: summary
+├── descriptions.jsonl  # Self-knowledge probe (spectra.describe); descriptions[-sN][-vs-<rev>].json: scores and tests
 ├── report.html         # The report
 └── run_config.json     # Roster and settings for the run
 ```

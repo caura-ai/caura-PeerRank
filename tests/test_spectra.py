@@ -428,6 +428,65 @@ def test_descriptions_parse_and_score_against_measured_traits():
     assert per["self_rank_error"] > per["others_rank_error"] == 0.0 and per["self_side"] < per["others_side"]
 
 
+def test_a_later_description_sample_only_reorders_the_request():
+    from spectra.describe import build_message as describe_message
+
+    models = [f"m{i}" for i in range(6)]
+    first = describe_message("m0", "m3", models)
+    assert describe_message("m0", "m3", models, 0) == first  # sample 0 is the original message, byte for byte
+    later = describe_message("m0", "m3", models, 1)
+    assert later == describe_message("m0", "m3", models, 1) and later != first
+    fields = lambda text: sorted(line for line in text.splitlines() if line.startswith('  "'))  # noqa: E731
+    assert fields(later) == fields(first)  # the same estimates asked for, in another order
+    panel = lambda text: re.findall(r"m\d", next(l for l in text.splitlines() if l.startswith("The models")))  # noqa: E731,E741
+    assert panel(later) != panel(first) and sorted(panel(later)) == sorted(panel(first)) == models
+
+
+def test_preregistered_tests_on_perfect_describers():
+    from spectra.describe import confirm, score
+
+    models = [f"m{i}" for i in range(6)]
+    truth = {"length": dict(zip(models, (100.0, 150.0, 200.0, 300.0, 400.0, 600.0))),
+             "answer_first": dict(zip(models, (0.9, 0.4, 0.7, 0.5, 0.8, 0.3)))}
+    analysis = {"traits": [{"key": k, "per_model": {m: {"value": v} for m, v in vals.items()}} for k, vals in truth.items()]}
+    records = [{"describer": d, "target": t, "estimates": {"words": truth["length"][t],
+                                                          "pct_answers_first": 100 * truth["answer_first"][t]}}
+               for d in models for t in models]
+    tests = confirm(records, analysis, models, reps=2000)
+    assert tests["H1"]["rank_mean"] == pytest.approx(score(records, analysis, models)["overall"]["rank_mean"])
+    assert tests["H1"]["p"] < 0.05 and tests["H1"]["confirmed"]
+    assert tests["H2"]["self_minus_others"] == 0.0 and tests["H2"]["confirmed"]
+    for r in records:  # every model now ranks itself last on both traits; the others still describe it correctly
+        if r["describer"] == r["target"]:
+            r["estimates"] = {"words": 1.0, "pct_answers_first": 0.0}
+    h2 = confirm(records, analysis, models, reps=2000)["H2"]
+    assert h2["self_minus_others"] > 0 and not h2["confirmed"] and not h2["self_advantage"]
+
+
+def test_profile_contrasts_pair_each_variant_with_the_plain_profile():
+    from spectra.guess import parse_guessers, profile_contrasts
+
+    models = ["a", "b", "c"]
+    assert parse_guessers(None, models) == models and parse_guessers("c, a", models) == ["a", "c"]
+    with pytest.raises(ValueError):
+        parse_guessers("a,zed", models)
+
+    def rec(pid, profile, right):
+        r = {"guesser": "a", "prompt_id": pid, "mode": "heldout", "research": "rev", "assign": "permutation",
+             "labels": {"A": "a", "B": "b", "C": "c"},
+             "guesses": {"A": "a", "B": "b" if right else "c", "C": "c" if right else "b"}}
+        if profile != "base":
+            r["profile"] = profile
+        return r
+
+    records = [rec(f"q{i}", "base", i % 2 == 0) for i in range(10)] + [rec(f"q{i}", "pairs", True) for i in range(6)]
+    rows = profile_contrasts(records, models, "a", "heldout", "rev", "permutation")
+    assert [r["profile"] for r in rows] == ["pairs"]
+    row = rows[0]
+    assert row["prompts"] == 6 and row["accuracy"] == 1.0 and row["base_accuracy"] == 0.5
+    assert row["gain"] == 0.5 and row["ci"][0] > 0
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

@@ -793,6 +793,78 @@ def print_summary(summary: dict):
         print(f"  {i}. {row['model']:22} {pct(row['recall']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})")
 
 
+def parse_guessers(spec: str | None, models: list[str]) -> list[str]:
+    """'a,b' -> those panel models in panel order; None or '' -> every model."""
+    if not spec:
+        return list(models)
+    names = {s.strip() for s in spec.split(",") if s.strip()}
+    unknown = sorted(names - set(models))
+    if unknown:
+        raise ValueError(f"unknown guesser(s) {', '.join(unknown)}; the panel is {', '.join(models)}")
+    return [m for m in models if m in names]
+
+
+def profile_contrasts(records: list[dict], models: list[str], guesser: str, mode: str, research: str | None,
+                      assign: str, reps: int = 1000, seed: int = 7) -> list[dict]:
+    """One guesser's accuracy with each profile against the plain profile, on the prompts both games share.
+
+    Own answers are excluded, as in the headline. The interval resamples those shared prompts, so it is paired:
+    the same answers judged with and without the extra parts.
+    """
+    per = {}  # profile -> {prompt: [correct, judged]}
+    latest = {}
+    for r in records:
+        if r.get("guesser") == guesser and isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict):
+            k = game_key(r)
+            if k[:3] == (mode, research, assign):
+                latest[(k[3], r["prompt_id"], r.get("sample", 0))] = r
+    for (profile, pid, sample), r in latest.items():
+        cell = per.setdefault(profile, {}).setdefault((pid, sample), [0, 0])
+        for letter, author in r["labels"].items():
+            if author in models and author != guesser:
+                cell[0] += int(r["guesses"].get(letter) == author)
+                cell[1] += 1
+    base = per.get("base")
+    if not base:
+        return []
+    rng = random.Random(seed)
+    out = []
+    for profile in sorted(p for p in per if p != "base"):
+        shared = sorted(set(per[profile]) & set(base))
+        if not shared:
+            continue
+
+        def acc(prompts, table):
+            n = sum(table[p][1] for p in prompts)
+            return sum(table[p][0] for p in prompts) / n if n else 0.0
+
+        diffs = []
+        for _ in range(reps):
+            pick = [shared[rng.randrange(len(shared))] for _ in shared]
+            diffs.append(acc(pick, per[profile]) - acc(pick, base))
+        diffs.sort()
+        out.append({"profile": profile, "prompts": len(shared), "accuracy": acc(shared, per[profile]),
+                    "base_accuracy": acc(shared, base), "gain": acc(shared, per[profile]) - acc(shared, base),
+                    "ci": [diffs[int(0.025 * reps)], diffs[int(0.975 * reps) - 1]]})
+    return out
+
+
+def print_contrasts(guesser: str, rows: list[dict]):
+    if not rows:
+        print(f"{guesser}: no profile variant shares prompts with a plain-profile game yet.")
+        return
+    print(f"\n{guesser}: each profile against the plain profile on the prompts both games share")
+    for r in sorted(rows, key=lambda r: -r["gain"]):
+        print(f"  {r['profile']:34} {100 * r['accuracy']:5.1f}% vs {100 * r['base_accuracy']:5.1f}%  gain "
+              f"{100 * r['gain']:+5.1f} points (95% {100 * r['ci'][0]:+.1f} to {100 * r['ci'][1]:+.1f}), "
+              f"{r['prompts']} prompts")
+    best = max(rows, key=lambda r: r["gain"])
+    if best["ci"][0] > 0:
+        print(f"  Selection rule: '{best['profile']}' beats the plain profile with an interval above zero.")
+    else:
+        print("  Selection rule: no variant beats the plain profile with an interval above zero; the plain profile stays.")
+
+
 def estimate_cost(jobs: list[tuple], mode: str, extra_chars: dict) -> str:
     """Cost of these calls from earlier calls of the same kind in any revision, plus the input cost of extra profile.
 
@@ -836,6 +908,12 @@ async def main():
     ap.add_argument("--profile", default="base",
                     help=f"briefed/heldout: parts added to the plain brief, comma-separated from {', '.join(PARTS)}, "
                          "or all. Each profile is scored as its own game")
+    ap.add_argument("--guessers", default=None,
+                    help="comma-separated panel models that guess (default: all). Every model's answers are still "
+                         "shown; the game's summary covers only the guessers that played it")
+    ap.add_argument("--compare-profiles", action="store_true",
+                    help="briefed/heldout: print each guesser's accuracy with every profile played against the plain "
+                         "profile, then stop; no calls")
     ap.add_argument("--dry-run", action="store_true",
                     help="build the messages and estimate the cost without calling any model")
     args = ap.parse_args()
@@ -855,6 +933,10 @@ async def main():
         raise SystemExit("The guessing game needs at least two models in config.yaml")
     for name in models:
         providers.resolve({"name": name, "temperature": 0})
+    try:
+        guessers = parse_guessers(args.guessers, models)
+    except ValueError as e:
+        raise SystemExit(str(e))
 
     all_prompts = json.loads(Path(cfg["prompts"]).read_text(encoding="utf-8"))["prompts"]
     prompts = {p["id"]: p for p in all_prompts}
@@ -866,6 +948,13 @@ async def main():
     key = (args.mode, research_rev, assign, profile)
     out_path = run_dir / "guesses.jsonl"
     halves = holdout_halves(all_prompts)  # over the full set, so a --limit run keeps the same halves
+    if args.compare_profiles:
+        if args.mode == "blind":
+            raise SystemExit("--compare-profiles needs --mode briefed or heldout")
+        records = load_jsonl(out_path)
+        for g in guessers:
+            print_contrasts(g, profile_contrasts(records, models, g, args.mode, research_rev, assign))
+        return
 
     def prepare():
         """(profiles by half or None, jobs still to do, records so far)."""
@@ -885,7 +974,7 @@ async def main():
                 for r in records if isinstance(r.get("guesses"), dict) and game_key(r) == key}
         jobs = [(guesser, pid, sample, round_)
                 for (pid, sample), round_ in rounds.items()
-                for guesser in models
+                for guesser in guessers
                 if (guesser, pid, sample) not in done]
         random.shuffle(jobs)
         print(f"{game_title(key)}: {len(jobs)} guesses to collect ({len(done)} already done) "

@@ -885,7 +885,9 @@ python -m spectra.code_behaviors --revision <rev>    # codes.jsonl, two coders o
 python -m spectra.analyze --revision <rev>           # features.csv + analysis.json (local)
 python -m spectra.guess --revision <rev>             # guesses.jsonl (paid calls); --mode briefed|heldout, --independent, --profile
 python -m spectra.guess --revision <rev> --mode heldout --profile all --dry-run   # messages, profile preview + cost estimate, free
+python -m spectra.guess --revision <rev> --mode heldout --compare-profiles --guessers <model>   # profile variants vs plain, free
 python -m spectra.tiebreak --revision <rev> --coder <model>   # third coder on disputed labels -> tiebreak.jsonl/json (paid)
+python -m spectra.describe --revision <rev> [--sample N] [--measured <rev>]   # self-knowledge probe (paid; rescoring free)
 python -m spectra.report --revision <rev>            # report.html (local, no API calls)
 pytest tests/                                        # constraint checks, guess parsing, report builder
 ```
@@ -898,6 +900,7 @@ Rules:
 - On trap prompts (FP, ERR, OP, EMO) a coder's `not_applicable` is a missing label, not a miss. Trap traits keep the prompt ids every coder said yes or no to, and where they split; the report names them.
 - Profiles (`spectra/profile.py`) are built from one source folder, a held-out half or another revision, and nothing else: never from the answers being guessed or from guessing results. `base` must stay byte-identical to the plain brief so earlier games remain comparable. `prompts_v2.json` is the locked test set (hash pinned by a test); tune profiles on v1 only.
 - Guessing games are keyed by (mode, research, assign, profile); a 3-element key means the plain profile. `briefed` with notes from the same revision is in-sample; `heldout` measures each half's notes on the other half's prompts. The default assignment is a permutation (each model once), which lets a guesser that finds its own answer eliminate. `--independent` allows repeats but cannot force them: guessers often still use each model once, so read the game's repeat rate before treating it as free of elimination.
+- `spectra/prereg/` holds pre-registrations. Each is committed and pushed before the data it covers are collected, and is never edited afterwards except to append deviations; the tests it names (`describe.confirm`, `guess.profile_contrasts`) must not change once data exist.
 - Coded traits (answer_first, premise, errors, ambiguity, ...) exist only after `code_behaviors`; `report.py` leaves out the use-cases that need them. Per-label agreement is in analysis.json; `spectra.tiebreak` settles disputed labels with a third coder without touching codes.jsonl.
 - `report.py`'s usage recommendations derive every number, rank, tie and "N/N categories" from `analysis.json`. Never paste a finding from one run into the text as a literal; `tests/test_spectra.py` renders a synthetic analysis to catch that.
 - Effect sizes are relative to the panel: adding or removing a model moves everyone.
