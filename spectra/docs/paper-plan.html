@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spectra Paper Plan</title>
+<!-- Snapshot of the shared doc "Spectra Paper Plan" as of 2026-10-24. Edit the live doc, not this file. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;600&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root { --paper:#f2f4f7; --panel:#ffffff; --ink:#1b2333; --muted:#5b6578; --rule:#d5dae2; --link:#2a57a4;
+  --accent:#2a6fdb; --accent-tint:rgba(42,111,219,.12); --bar:#c3c6bc; --axis:#9aa3b0; --ref:#8a93a3;
+  --serif:"Spectral",Georgia,"Times New Roman",serif; --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace; }
+@media (prefers-color-scheme: dark) { :root { --paper:#121822; --panel:#1a2130; --ink:#e6e9ef; --muted:#9aa3b5; --rule:#2c3547;
+  --link:#8fb4ff; --accent:#5b9bff; --accent-tint:rgba(91,155,255,.16); --bar:#4a5161; --axis:#5d6880; --ref:#7d879b; color-scheme:dark; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 16px/1.6 var(--sans);
+  padding:0 max(16px, env(safe-area-inset-left, 0px)) 64px max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width:960px; margin:0 auto; }
+header { padding:48px 0 8px; display:grid; gap:10px; }
+h1 { font:300 clamp(40px,7vw,64px)/1 var(--serif); letter-spacing:-.02em; margin:0; }
+.byline { font:500 13px/1.5 var(--mono); color:var(--muted); }
+.note { font-size:14px; color:var(--muted); max-width:70ch; }
+section { padding-top:36px; }
+h2 { font:400 30px/1.15 var(--serif); margin:0 0 12px; text-wrap:balance; }
+p, li { max-width:75ch; }
+a { color:var(--link); }
+strong { font-weight:600; }
+.tablewrap { overflow-x:auto; margin:14px 0; background:var(--panel); border:1px solid var(--rule); border-radius:6px; }
+table { border-collapse:collapse; width:100%; font-size:14px; line-height:1.5; }
+th, td { text-align:left; vertical-align:top; padding:9px 12px; border-bottom:1px solid var(--rule); }
+th { font:600 11.5px/1.3 var(--sans); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+tr:last-child td { border-bottom:0; }
+td:first-child { min-width:200px; }
+figure.chart { margin:18px 0; background:var(--panel); border:1px solid var(--rule); border-radius:6px; padding:12px 12px 8px; overflow-x:auto; }
+figure.chart svg { display:block; width:100%; min-width:560px; height:auto; }
+figcaption { font:500 12px/1.4 var(--mono); color:var(--muted); padding:6px 4px 2px; }
+ul.tasks { list-style:none; padding:0; display:grid; gap:8px; }
+ul.tasks li { display:flex; gap:10px; align-items:baseline; }
+ul.tasks .box { flex:none; width:13px; height:13px; border:1.5px solid var(--muted); border-radius:3px; transform:translateY(2px); }
+footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--rule); font-size:13.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Spectra Paper Plan</h1>
+<div class="byline">Related work and roadmap · as of 24 Oct 2026</div>
+<p class="note">A snapshot of the shared doc for co-authors. The live, editable version is <a target="_blank" rel="noopener" href="https://claude.ai/artifact/1KZDyunwc2C48pUB7VYsGM">here</a>; comment and edit there, not in this file.</p>
+</header>
+<section><h2>Purpose and status</h2>
+<p>We propose a Spectra paper as the companion to PeerRank: arXiv first, then an ACL Rolling Review cycle in early 2027. Its central result: models name each other's unsigned answers 40.1% of the time blind (chance 16.7%) and 79.5% with notes measured on other prompts.</p>
+<ul>
+<li><strong>Companion paper:</strong> PeerRank is <a target='_blank' rel='noopener' href="https://arxiv.org/abs/2602.02589">arXiv 2602.02589</a>. Its v2 (20 Oct 2026) is retitled <em>Agents-as-Peers: Bias-Controlled LLM Evaluation as Multi-Agent Peer Assessment</em> and adds Seffi Cohen as an author. Cite that title.</li>
+<li><strong>Data in hand:</strong> two runs of the same 200 prompts (oct-14-26, oct-23-26) across 6 models: 1,200 answers and 2,400 coded answers per run, plus 3,580 guessing calls in three games on oct-23-26.</li>
+<li><strong>Related work:</strong> each paper below was checked against its arXiv, venue or abstract page on 24 Oct 2026. Two items are flagged where a detail is unconfirmed.</li>
+</ul>
+</section><section><h2>Related work: telling models apart</h2>
+<p>Chat models can be told apart with high accuracy, but prior work does it with opaque classifiers or probing queries, not with named habits.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Venue</th>
+<th>Key finding</th>
+<th>Why it matters for Spectra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2502.12150">Idiosyncrasies in Large Language Models</a> (Sun, Yin, Xu, Kolter, Liu)</td>
+<td>ICML 2025</td>
+<td>A fine-tuned embedding model names the source among ChatGPT, Claude, Grok, Gemini and DeepSeek with 97.1% accuracy. The signal sits in word choice and survives rewriting, translation and summarizing.</td>
+<td>Closest prior work. Its classifier is opaque; Spectra measures traits a reader can name.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2410.12851">VibeCheck</a> (Dunlap, Mandal, Darrell, Steinhardt, Gonzalez)</td>
+<td>ICLR 2025</td>
+<td>Discovers &quot;vibes&quot; such as tone and formatting and scores them with a panel of LLM judges. For Llama-3-70b vs GPT-4 they predicted the author 80% of the time and user preference 61%.</td>
+<td>Pairwise and judge-based. Spectra profiles six models at once and computes style without a judge.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://aclanthology.org/2020.emnlp-main.673">Authorship Attribution for Neural Text Generation</a> (Uchendu, Le, Shu, Lee) and <a target='_blank' rel='noopener' href="https://arxiv.org/abs/2109.13296">TuringBench</a></td>
+<td>EMNLP 2020; Findings of EMNLP 2021</td>
+<td>Defined the task of naming which of k generators wrote a text. Stronger generators confused the classifiers more.</td>
+<td>The pre-chat version of the task.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2407.15847">LLMmap</a> (Pasquini, Kornaropoulos, Ateniese)</td>
+<td>USENIX Security 2025</td>
+<td>About 8 crafted queries identify 42 model versions with over 95% accuracy, even behind unknown system prompts.</td>
+<td>Active probing, where Spectra observes answers. Its misuse angle belongs in our ethics section.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2408.02871">Hide and Seek</a> (Iourovitski, Sharma, Talwar)</td>
+<td>arXiv 2024</td>
+<td>An auditor model writes probing prompts and a detective model names the model family, correct 72% of the time.</td>
+<td>An early case of models identifying other models.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2610.19583">Who's Behind the Text?</a> (Ko et al.)</td>
+<td>arXiv, 14 Oct 2026</td>
+<td>ATLAS attributes text by its likelihood under each source. It reaches 74.27% when domain and model version both shift, 9.00 points above the best baseline, and recovers distillation teachers.</td>
+<td>Attribution degrades under shift, which motivates Spectra's held-out test.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2408.08946">Authorship Attribution in the Era of LLMs</a> (Huang, Chen, Shu)</td>
+<td>arXiv 2024, survey</td>
+<td>Maps the attribution problem space for LLM text.</td>
+<td>For framing the field.</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Related work: models recognizing themselves and each other</h2>
+<p>Evidence for genuine self-recognition is weak; style, length and familiarity explain much of what looks like it.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Venue</th>
+<th>Key finding</th>
+<th>Why it matters for Spectra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2404.13076">LLM Evaluators Recognize and Favor Their Own Generations</a> (Panickssery, Bowman, Feng)</td>
+<td>NeurIPS 2024</td>
+<td>Models tell their own text from others' better than chance. After fine-tuning, self-recognition and self-preference rise together, linearly.</td>
+<td>Links Spectra's &quot;found own answer&quot; score to PeerRank's self-bias.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2407.06946">Self-Recognition in Language Models</a> (Davidson et al.)</td>
+<td>Findings of EMNLP 2024</td>
+<td>No consistent self-recognition: models pick the &quot;best&quot; answer, not their own, and agree on which answers are best.</td>
+<td>Matches Spectra's uneven self-recognition: 88% for gpt-6-astra, 15% for muse-wonder-1.0.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2410.21819">Self-Preference Bias in LLM-as-a-Judge</a> (Wataoka, Takahashi, Ri)</td>
+<td>arXiv 2024</td>
+<td>Judges rate lower-perplexity text higher, whoever wrote it, so familiarity drives self-preference.</td>
+<td>A mechanism to test against Spectra's style distances.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2609.30048">Style, Not Self</a> (Barkhordar, Thapa)</td>
+<td>arXiv, 24 Sep 2026</td>
+<td>Self-recognition of code sits near chance in balanced accuracy (49–58%). Pairwise accuracy tracks which answer is longer (r = 0.93), and 10 of 12 results fall to chance once style is stripped.</td>
+<td>Closest new paper. Spectra asks the same question of prose, with named cues and research notes as an extra condition.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2502.04313">Great Models Think Alike</a> (Goel et al.)</td>
+<td>ICML 2025</td>
+<td>Judges favor models similar to themselves, and stronger models increasingly share mistakes.</td>
+<td>Spectra's &quot;closest neighbor&quot; and same-vendor differences test this from the style side.</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Related work: style skewing evaluation</h2>
+<p>Length and formatting move evaluations, so measuring them directly helps explain ranking results, PeerRank's included.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Venue</th>
+<th>Key finding</th>
+<th>Why it matters for Spectra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2306.05685">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</a> (Zheng et al.)</td>
+<td>NeurIPS 2023</td>
+<td>Named the position, verbosity and self-enhancement biases of model judges. With controls, a GPT-4 judge agreed with humans over 80% of the time.</td>
+<td>The bias vocabulary Spectra's &quot;no judge&quot; design answers.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2404.04475">Length-Controlled AlpacaEval</a> (Dubois, Galambosi, Liang, Hashimoto)</td>
+<td>arXiv 2024</td>
+<td>Regressing out length raised AlpacaEval's Spearman correlation with Chatbot Arena from 0.94 to 0.98.</td>
+<td>Length is the loudest habit in Spectra too.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://www.lmsys.org/blog/2024-08-28-style-control">Style control</a> (LMSYS)</td>
+<td>Blog, Aug 2024</td>
+<td>Controlling for length and markdown counts reshuffled the Arena leaderboard.</td>
+<td>Shows style moves human preference, not only model judges.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2601.00624">YapBench</a> (Borisov, Gröger, Mikhael, Schreiber)</td>
+<td>arXiv, Jan 2026</td>
+<td>Across 76 assistant models, median excess length varies by about an order of magnitude. Models pad ambiguous inputs and over-format one-line coding answers.</td>
+<td>Measures verbosity alone; Spectra measures 23 traits together.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2602.02589">Agents-as-Peers</a> (Margalit, Cohen-Inger, Avram, Taig, Cohen, Margalit)</td>
+<td>arXiv 2026, v2</td>
+<td>12 LLMs, 420 questions, 55,440 non-self judgments per regime. Self, identity and position effects (+0.39 in the first slot); peer scores track TruthfulQA (r = 0.904) and GSM8K (r = 0.873).</td>
+<td>Its abstract does not analyze style. Spectra run oct-14-26 pairs with PeerRank's oct-14-26 run, so the two can be joined.</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Related work: the behaviors Spectra's traps test</h2>
+<p>Each Spectra trap has a dedicated benchmark; Spectra hides the same tests inside everyday prompts instead of a test set.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Venue</th>
+<th>Key finding</th>
+<th>Spectra trap or trait</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2310.13548">Towards Understanding Sycophancy in Language Models</a> (Sharma et al.)</td>
+<td>ICLR 2024</td>
+<td>Five assistants agreed with users' views and repeated their mistakes. Human preference data rewards agreeable answers.</td>
+<td>Stated opinion (OP), pasted error (ERR)</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://aclanthology.org/2023.acl-long.309">Won't Get Fooled Again</a> (Hu et al.)</td>
+<td>ACL 2023</td>
+<td>FalseQA: 2,365 false-premise questions. About 256 fine-tuning examples teach models to spot and rebut them.</td>
+<td>False premise (FP)</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://aclanthology.org/2024.acl-long.578">CLAMBER</a> (Zhang et al.)</td>
+<td>ACL 2024</td>
+<td>12K examples. Models are poor at spotting ambiguity and asking good clarifying questions; chain-of-thought and few-shot help only marginally.</td>
+<td>Vague request (AMB)</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://aclanthology.org/2024.acl-long.198">Relying on the Unreliable</a> (Zhou, Hwang, Ren, Sap)</td>
+<td>ACL 2024</td>
+<td>Models rarely express uncertainty; 47% of their confident answers are wrong. Preference data penalizes hedging.</td>
+<td>Hedging trait</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2311.07911">IFEval</a> (Zhou et al.)</td>
+<td>arXiv 2023</td>
+<td>25 kinds of instructions a program can check, across about 500 prompts.</td>
+<td>The 27 prompts with an explicit limit</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Related work: vocabulary markers and measurement</h2>
+<p>Spectra's text measures, replication and reliability checks rest on established methods; two citations below still need confirming.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Venue</th>
+<th>Key finding</th>
+<th>Why it matters for Spectra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2406.07016">Delving into ChatGPT usage in academic writing through excess vocabulary</a> (Kobak, González-Márquez, Horvát, Lause)</td>
+<td>arXiv 2024</td>
+<td>Style words such as &quot;delves&quot; surged in 14 million PubMed abstracts; at least 10% of 2024 abstracts were processed with an LLM.</td>
+<td>Grounds the stock-phrases trait. <strong>To confirm:</strong> a press report says it appeared in Science Advances; we did not find the DOI.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2509.19163">Measuring AI &quot;Slop&quot; in Text</a> (Shaib, Chakrabarty, Garcia-Olano, Wallace)</td>
+<td>arXiv 2025</td>
+<td>Interpretable dimensions for low-quality AI text, from expert interviews; binary &quot;slop&quot; judgments are partly subjective.</td>
+<td>Vocabulary for naming style traits.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2307.09009">How Is ChatGPT's Behavior Changing over Time?</a> (Chen, Zaharia, Zou)</td>
+<td>Harvard Data Science Review 2024</td>
+<td>GPT-4's accuracy on prime numbers fell from 84% to 51% between its March and June 2023 versions.</td>
+<td>Motivates Spectra's two-run replication.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2408.04667">LLM Stability</a> (Atil et al.)</td>
+<td>arXiv 2024</td>
+<td>Six models, eight tasks, five identical runs at deterministic settings: accuracy varied by up to 10%.</td>
+<td>Run-to-run noise to report beside Spectra's stability results.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://arxiv.org/abs/2303.15056">ChatGPT outperforms crowd workers for text-annotation tasks</a> (Gilardi, Alizadeh, Kubli)</td>
+<td>PNAS 2023</td>
+<td>ChatGPT's intercoder agreement exceeded crowd workers' and trained annotators' on four datasets.</td>
+<td>Precedent for model coders; Spectra reports agreement per label.</td>
+</tr>
+<tr>
+<td><a target='_blank' rel='noopener' href="https://www.cambridge.org/core/journals/political-analysis/article/fightin-words-lexical-feature-selection-and-evaluation-for-identifying-the-content-of-political-conflict/81B3703230D21620B81EB6E2266C7A66">Fightin' Words</a> (Monroe, Colaresi, Quinn)</td>
+<td>Political Analysis 2008</td>
+<td>Log-odds ratios with an informative Dirichlet prior for words that separate groups.</td>
+<td>The method behind Spectra's signature words.</td>
+</tr>
+<tr>
+<td>Moving-average type-token ratio (Covington, McFall)</td>
+<td>Journal of Quantitative Linguistics 2010</td>
+<td>A vocabulary-range measure less sensitive to text length.</td>
+<td>The vocabulary-range trait. <strong>To confirm:</strong> cited from memory; our search did not find the paper.</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>The gap Spectra fills</h2>
+<p>No paper we found combines these six elements; Spectra does, for one deployment, measured twice.</p>
+<ul>
+<li><strong>Style measured without a judge:</strong> 13 traits computed from the text, from length and formatting to hedging, em dashes and reading ease.</li>
+<li><strong>Behavior labels with reported reliability:</strong> 10 labels per answer from two coder models outside the panel, with Cohen's kappa per label.</li>
+<li><strong>Traps inside ordinary prompts:</strong> 43 of the 200 prompts hide one of five traps, and 27 state a length or format limit that a program checks.</li>
+<li><strong>Replication:</strong> the same 200 prompts, run twice, 9 days apart.</li>
+<li><strong>Models identifying each other:</strong> blind, with notes from the same answers, and with notes from other prompts; each model used once, or each answer named on its own.</li>
+<li><strong>Tied to a peer ranking:</strong> Spectra run oct-14-26 describes the same deployment PeerRank ranked in its oct-14-26 run.</li>
+</ul>
+</section><section><h2>Paper plan: title, thesis, contributions</h2>
+<p><strong>Working title:</strong> <em>Spectra: Judge-Free Behavioral Fingerprints of Frontier LLMs, and What Models Know About Each Other.</em> Shorter alternative: <em>Can Models Tell Each Other Apart?</em></p>
+<p><strong>Thesis:</strong> frontier models have stable, nameable writing habits. They can be measured without a judge, they repeat across runs, models can name each other from them, and a plain written description of them works on prompts it was never measured on.</p>
+<p><strong>Contributions:</strong></p>
+<ol>
+<li><strong>Measurement without a judge:</strong> 13 computed style traits, 10 coded behaviors with per-label agreement, traps hidden in ordinary prompts, program-checked limits, and effect sizes against the panel with intervals that resample prompts.</li>
+<li><strong>A peer identification game</strong> in three conditions (blind, notes from the same answers, notes from other prompts), with independent naming, a measured repeat rate, and own answers scored apart.</li>
+<li><strong>Replication:</strong> two runs of the same 200 prompts, 9 days apart.</li>
+<li><strong>Recommendations from measured traits,</strong> with no judge, and tests that catch a stale finding pasted in as fixed text.</li>
+<li><strong>An open release:</strong> the pipeline, the answers, the coder labels and the guesses.</li>
+</ol>
+</section><section><h2>Claims and current evidence</h2>
+<p>The headline claim is the transfer: habits measured on one half of the prompts identify authors on the other half almost as well as notes measured on the answers themselves.</p>
+<figure class='chart'><svg viewBox='0 0 760 290' role='img' aria-label='Notes from other prompts still identify 79.5% of answers' font-size='13'><text x='24' y='28' font-size='15' font-weight='600' fill='var(--ink)'>Notes from other prompts still identify 79.5% of answers</text><text x='24' y='48' font-size='11.5' fill='var(--muted)'>Share of answers attributed to the right model, run oct-23-26 · whiskers: 95% intervals over prompts</text><line x1='353.3' x2='353.3' y1='70' y2='278' stroke='var(--ref)' stroke-width='1.25' stroke-dasharray='4 4'/><text x='359.3' y='70' font-size='11.5' fill='var(--muted)'>chance 16.7%</text><text x='24' y='84' font-size='11.5' font-weight='600' fill='var(--muted)'>Trained classifier, tested on unseen prompts</text><text x='278' y='110' text-anchor='end' font-weight='400' fill='var(--ink)'>Style features only</text><rect x='290' y='97' width='196.5' height='18' rx='2' fill='var(--bar)'><title>Style features only: 51.7%</title></rect><text x='494.5' y='110' font-weight='400' fill='var(--ink)'>51.7%</text><text x='278' y='140' text-anchor='end' font-weight='400' fill='var(--ink)'>Words and style</text><rect x='290' y='127' width='225.0' height='18' rx='2' fill='var(--bar)'><title>Words and style: 59.2%</title></rect><text x='523.0' y='140' font-weight='400' fill='var(--ink)'>59.2%</text><text x='24' y='174' font-size='11.5' font-weight='600' fill='var(--muted)'>Models naming other models’ answers</text><text x='278' y='200' text-anchor='end' font-weight='400' fill='var(--ink)'>Blind</text><rect x='290' y='187' width='152.4' height='18' rx='2' fill='var(--bar)'><title>Blind: 40.1%</title></rect><g stroke='var(--ink)' stroke-width='1.5'><line x1='434.0' x2='450.4' y1='196' y2='196'/><line x1='434.0' x2='434.0' y1='191' y2='201'/><line x1='450.4' x2='450.4' y1='191' y2='201'/></g><text x='458.4' y='200' font-weight='400' fill='var(--ink)'>40.1%</text><text x='278' y='230' text-anchor='end' font-weight='400' fill='var(--ink)'>Notes from the same answers</text><rect x='290' y='217' width='310.8' height='18' rx='2' fill='var(--bar)'><title>Notes from the same answers: 81.8%</title></rect><g stroke='var(--ink)' stroke-width='1.5'><line x1='589.8' x2='610.3' y1='226' y2='226'/><line x1='589.8' x2='589.8' y1='221' y2='231'/><line x1='610.3' x2='610.3' y1='221' y2='231'/></g><text x='618.3' y='230' font-weight='400' fill='var(--ink)'>81.8%</text><text x='278' y='260' text-anchor='end' font-weight='600' fill='var(--ink)'>Notes from other prompts</text><rect x='290' y='247' width='302.1' height='18' rx='2' fill='var(--accent)'><title>Notes from other prompts: 79.5%</title></rect><g stroke='var(--ink)' stroke-width='1.5'><line x1='581.8' x2='602.0' y1='256' y2='256'/><line x1='581.8' x2='581.8' y1='251' y2='261'/><line x1='602.0' x2='602.0' y1='251' y2='261'/></g><text x='610.0' y='260' font-weight='600' fill='var(--ink)'>79.5%</text></svg><figcaption>Spectra run oct-23-26 · 1,200 answers · 3,580 guessing calls</figcaption></figure>
+<p>Notes from other prompts keep about 94% of the gain that notes add over guessing blind. Chance is 1 in 6 for both the classifier and the guessers. The two note conditions also differ in naming rule: each model used once with same-answer notes, each answer named on its own with other-prompt notes (a name was repeated in 4% of calls). A held-out game with each model used once, about $92, would separate the two effects.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Evidence so far</th>
+<th>Still needed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Writing style identifies the author</td>
+<td>The classifier above; previous run 61.7% (words and style) and 53.6% (style only)</td>
+<td>Report per-model recall and confusions</td>
+</tr>
+<tr>
+<td>A plain description of habits transfers to unseen prompts</td>
+<td>The three guessing conditions above</td>
+<td>Ablate the notes (gap 4)</td>
+</tr>
+<tr>
+<td>Length is the loudest habit</td>
+<td>gpt-6-astra shortest and gemini-4-argon longest in 10 of 10 categories, in both runs</td>
+<td>Three samples per prompt (gap 5)</td>
+</tr>
+<tr>
+<td>Same vendor does not mean same style</td>
+<td>claude-fable-5.1 uses about 30 times as many em dashes as claude-opus-5.5 (1.24 vs 0.04 per 100 words)</td>
+<td>Same check on the full 23-trait distance</td>
+</tr>
+<tr>
+<td>False premises rarely get through</td>
+<td>2 of 132 false-premise answers went along, both gemini-3.8-flash on p020, once per run</td>
+<td>Human audit of those labels (gap 1)</td>
+</tr>
+<tr>
+<td>Pasted errors split the panel</td>
+<td>claude-fable-5.1 and claude-opus-5.5 flagged every one; misses cluster on summary prompts p145, p152, p157</td>
+<td>Decide whether repeating an error in a summary counts as a miss</td>
+</tr>
+<tr>
+<td>Self-recognition is weak and uneven</td>
+<td>Blind, gpt-6-astra found its own answer 88% of the time, muse-wonder-1.0 15%</td>
+<td>Prompt-difficulty model (gap 2)</td>
+</tr>
+<tr>
+<td>Model coders are reliable on traps, weaker on soft labels</td>
+<td>Kappa 0.99 or higher on traps; 0.49 on moral commentary, 0.62 on answering first</td>
+<td>Human audit (gap 1)</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Why it matters</h2>
+<p>The paper turns model fingerprints from a classifier's output into habits people can name, check and act on.</p>
+<p><strong>Scientifically:</strong></p>
+<ul>
+<li>It shows identifying cues can be written down in plain words and still work on unseen prompts.</li>
+<li>It separates style from self-knowledge with interpretable cues, the test <em>Style, Not Self</em> calls for, extended from code to prose.</li>
+<li>It offers a measured, stylistic reason for the self, identity and position effects PeerRank found.</li>
+</ul>
+<p><strong>Practically:</strong></p>
+<ul>
+<li>Choose a model by its habits, not only its rank: length, answering first, flagging errors.</li>
+<li>Prompt each model for its known weak spots, and pair models whose misses do not overlap.</li>
+<li>Watch for behavior drift by rerunning the same prompts.</li>
+<li>Know that a model behind a product can be identified from its writing alone.</li>
+</ul>
+</section><section><h2>Gaps to close before submission</h2>
+<p>The first three use data we already have and cost no API calls; close them before the arXiv post.</p>
+<div class='tablewrap'><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Gap</th>
+<th>Why reviewers will ask</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Hand-label 150–200 coded answers and compare with the coders</td>
+<td>Behavior labels come from models; agreement is weak on moral commentary (0.49) and answering first (0.62)</td>
+<td>People's time only</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Model prompt difficulty in the guessing game (mixed effects: guesser, author, prompt)</td>
+<td>Guessers who find their own answer name the others more often (52% vs 33% blind); elimination and easy prompts are not yet separated</td>
+<td>Local analysis</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Join Spectra oct-14-26 with PeerRank oct-14-26</td>
+<td>Do judges favor answers that write like their own?</td>
+<td>Local analysis</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Ablate the research notes: signature words only, length and formatting only</td>
+<td>Which cues carry the 79.5%?</td>
+<td>About $92 per variant, the cost of one game</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Three samples per prompt</td>
+<td>Separates a model's own variation from differences between models</td>
+<td>About $20 per collection run, plus coding</td>
+</tr>
+<tr>
+<td>6</td>
+<td>A run with a system prompt</td>
+<td>Do habits survive a product-style setup?</td>
+<td>One collection run plus coding</td>
+</tr>
+<tr>
+<td>7</td>
+<td>A second prompt set</td>
+<td>A stronger held-out test; each trap now rests on 5 to 11 prompts</td>
+<td>Writing time plus one full run</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Optional: grow the roster to PeerRank's 12 models</td>
+<td>Effect sizes are relative to the panel</td>
+<td>Scales with the roster</td>
+</tr>
+</tbody>
+</table></div>
+</section><section><h2>Paper outline</h2>
+<p>Eight to nine pages plus an appendix, in this order:</p>
+<ol>
+<li><strong>Introduction:</strong> the gap PeerRank leaves, the thesis, the contributions, and three headline numbers: 40.1% blind, 81.8% with notes from the same answers, 79.5% with notes from other prompts.</li>
+<li><strong>Related work:</strong> the four threads above, attribution, self-recognition, style in evaluation, and the trap behaviors.</li>
+<li><strong>Spectra:</strong> prompts, traps and limits; how models are run; the two measurement layers; the statistics; the guessing game.</li>
+<li><strong>Setup:</strong> the two runs, the six models, the two coders, and costs ($20.56 per collection run, about $92 per game).</li>
+<li><strong>Results:</strong>
+<ol>
+<li>Profiles and stability across runs</li>
+<li>Traps</li>
+<li>The author classifier</li>
+<li>The guessing game: three note conditions, independent naming, self-recognition</li>
+<li>Reliability, including the human audit</li>
+</ol>
+</li>
+<li><strong>Practical implications:</strong> model choice, prompting, pairing, drift monitoring.</li>
+<li><strong>Limitations and ethics:</strong> synthetic English prompts, effect sizes relative to this panel, model coders, API drift, and fingerprinting models behind products.</li>
+<li><strong>Appendix:</strong> the label list, the prompt set, trait formulas, the p020 walkthrough, and reproduction steps.</li>
+</ol>
+</section><section><h2>Publication route</h2>
+<p>Post to arXiv about six weeks from now, then submit to an ACL Rolling Review cycle in early 2027.</p>
+<figure class='chart'><svg viewBox='0 0 760 524' role='img' aria-label='arXiv in six weeks, then ACL Rolling Review in early 2027' font-size='13'><defs><marker id='route-arrow' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='6' markerHeight='6' orient='auto-start-reverse'><path d='M0 0L10 5L0 10z' fill='var(--axis)'/></marker></defs><text x='24' y='32' font-size='15' font-weight='600' fill='var(--ink)'>arXiv in six weeks, then ACL Rolling Review in early 2027</text><rect x='24' y='56' width='712' height='60' rx='8' fill='none' stroke='var(--axis)' stroke-width='1.25'/><text x='72' y='82' font-weight='600' fill='var(--ink)'>Close gaps 1–3</text><text x='72' y='102' font-size='11.5' fill='var(--muted)'>Weeks 1–2</text><text x='300' y='82' fill='var(--ink)'>Human audit of 150–200 coded answers</text><text x='300' y='102' fill='var(--ink)'>Prompt-difficulty model; join with PeerRank oct-14-26</text><g fill='none' stroke='var(--axis)' stroke-width='1.25'><path d='M48 116V126'/><path d='M48 142V152' marker-end='url(#route-arrow)'/><path d='M48 126L56 134L48 142L40 134Z'/></g><text x='68' y='138' font-size='11.5' fill='var(--muted)'>Gate: the three analyses support the claims</text><rect x='24' y='152' width='712' height='60' rx='8' fill='none' stroke='var(--axis)' stroke-width='1.25'/><text x='72' y='178' font-weight='600' fill='var(--ink)'>Write and release</text><text x='72' y='198' font-size='11.5' fill='var(--muted)'>Weeks 3–5</text><text x='300' y='178' fill='var(--ink)'>Draft the paper from this plan</text><text x='300' y='198' fill='var(--ink)'>Release code, answers, labels and guesses</text><g fill='none' stroke='var(--axis)' stroke-width='1.25'><path d='M48 212V222'/><path d='M48 238V248' marker-end='url(#route-arrow)'/><path d='M48 222L56 230L48 238L40 230Z'/></g><text x='68' y='234' font-size='11.5' fill='var(--muted)'>Gate: co-author sign-off; venue preprint policy checked</text><rect x='24' y='248' width='712' height='60' rx='8' fill='var(--accent-tint)' stroke='var(--accent)' stroke-width='2'/><text x='72' y='274' font-weight='600' fill='var(--ink)'>arXiv v1</text><text x='72' y='294' font-size='11.5' fill='var(--muted)'>Week 6</text><text x='300' y='274' fill='var(--ink)'>Post to cs.CL, cross-listed to cs.AI and cs.LG</text><text x='300' y='294' fill='var(--ink)'>Companion to PeerRank, arXiv 2602.02589</text><g fill='none' stroke='var(--axis)' stroke-width='1.25'><path d='M48 308V318'/><path d='M48 334V344' marker-end='url(#route-arrow)'/><path d='M48 318L56 326L48 334L40 326Z'/></g><text x='68' y='330' font-size='11.5' fill='var(--muted)'>Gate: budget approved for gaps 4–7</text><rect x='24' y='344' width='712' height='60' rx='8' fill='none' stroke='var(--axis)' stroke-width='1.25'/><text x='72' y='370' font-weight='600' fill='var(--ink)'>ACL Rolling Review</text><text x='72' y='390' font-size='11.5' fill='var(--muted)'>An early-2027 cycle</text><text x='300' y='370' fill='var(--ink)'>Submit, aiming at ACL 2027</text><text x='300' y='390' fill='var(--ink)'>Run gaps 4–7 during review; update arXiv</text><g fill='none' stroke='var(--axis)' stroke-width='1.25'><path d='M48 404V414'/><path d='M48 430V440' marker-end='url(#route-arrow)'/><path d='M48 414L56 422L48 430L40 422Z'/></g><text x='68' y='426' font-size='11.5' fill='var(--muted)'>Gate: reviews back</text><rect x='24' y='440' width='712' height='60' rx='8' fill='none' stroke='var(--axis)' stroke-width='1.25'/><text x='72' y='466' font-weight='600' fill='var(--ink)'>Next venue</text><text x='72' y='486' font-size='11.5' fill='var(--muted)'>Spring 2027</text><text x='300' y='466' fill='var(--ink)'>COLM 2027, or NeurIPS 2027 Datasets and Benchmarks</text><text x='300' y='486' fill='var(--ink)'>TMLR as a rolling backstop</text></svg><figcaption>publication route · 5 phases, 4 gates · not to scale</figcaption></figure>
+<p>Venue deadlines here are typical windows, not confirmed 2027 dates; check each venue's site. ICLR 2027's deadline has most likely already passed for this cycle, and ACL or NeurIPS 2027 workshops are a cheap early signal.</p>
+</section><section><h2>Decisions needed from co-authors</h2>
+<p>Six decisions gate the schedule; the first two set everything else.</p>
+<ul class='tasks'><li><span class='box' aria-hidden='true'></span>Agree the title and the author list and order.</li><li><span class='box' aria-hidden='true'></span>Pick the first venue: an ARR cycle aimed at ACL 2027, or COLM 2027.</li><li><span class='box' aria-hidden='true'></span>Approve the API budget for gaps 4 to 7.</li><li><span class='box' aria-hidden='true'></span>Assign who hand-labels the 150–200 coded answers.</li><li><span class='box' aria-hidden='true'></span>Decide what to release (code, answers, labels, guesses) and under which licenses.</li><li><span class='box' aria-hidden='true'></span>Check each venue&#x27;s current preprint and anonymity policy before the arXiv post.</li></ul>
+</section>
+<footer>Snapshot of the shared doc "Spectra Paper Plan", 24 Oct 2026. Figures come from Spectra runs oct-14-26 and oct-23-26 in the PeerRank repository; related work was checked against the linked pages on 24 Oct 2026.</footer>
+</main>
+</body>
+</html>
