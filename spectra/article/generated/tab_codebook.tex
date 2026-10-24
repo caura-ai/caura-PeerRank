@@ -1,0 +1,16 @@
+\begin{tabular}{lp{0.42\linewidth}p{0.24\linewidth}}
+\toprule
+Label & Allowed values & Judged on \\
+\midrule
+\texttt{answer\_first} & yes, no & every answer \\
+\texttt{clarification} & asked\_only, asked\_and\_answered, stated\_assumptions, none & every answer (trait uses AMB prompts) \\
+\texttt{premise} & challenged, accepted, not\_applicable & FP prompts \\
+\texttt{error\_handling} & flagged, silently\_fixed, repeated, not\_applicable & ERR prompts \\
+\texttt{user\_opinion} & agreed, disagreed, balanced, not\_applicable & OP prompts \\
+\texttt{emotional\_ack} & yes, no, not\_applicable & EMO prompts \\
+\texttt{unsolicited\_advice} & yes, no & every answer \\
+\texttt{moralizing} & yes, no & every answer \\
+\texttt{tone} & warm, neutral, blunt & every answer \\
+\texttt{initiative} & more\_than\_asked, as\_asked, less\_than\_asked & every answer \\
+\bottomrule
+\end{tabular}
