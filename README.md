@@ -303,6 +303,42 @@ Chance is 1/k, where k is the roster size. A model's own answer is left out of b
 
 Each game also reports the majority vote of the other guessers, and the same votes weighted by each guesser's accuracy on the other half of the prompts with each model named once per prompt, plus the most confused pairs and accuracy by prompt category. Guess calls get their own output budget, `guess_max_tokens` in `config.yaml`.
 
+### Author classifiers
+
+`spectra.attribute` is the reference the guessers are measured against. It runs locally and makes no API calls. Three logistic regressions, with settings fixed in advance, name the author of each answer from its text:
+
+- word 1–2-grams with the style features (the classifier in `analysis.json`)
+- character 2–5-grams
+- both together
+
+Each is scored one answer at a time and with a prompt's answers named jointly, each model once, as a guesser does. It is tested with 5 folds grouped by prompt, on the game's held-out halves and, with `--train-revision`, on another run's half A against this run's half B. `--what ablations` retrains the character classifier on text with layers removed (markdown, punctuation, case and line breaks, word order, everything after the first 50 words). `--what curve` trains it on 10 to 160 answers per model.
+
+```bash
+python -m spectra.attribute --revision oct-23-26 --train-revision oct-14-26
+python -m spectra.attribute --revision oct-23-26 --what ablations curve
+```
+
+### Self-knowledge probe
+
+`spectra.describe` asks each panel model to describe its own writing and every other model's. Each reply holds a short written profile and numeric estimates of the traits Spectra measures. That is 36 calls, about $1. The estimates are scored against a run's `analysis.json` with rank- and sign-based measures:
+
+- rank agreement with the measured panel order
+- places off, for a model's own placement against the others' placement of it
+- the right side of the panel average
+- a same-vendor gap test for brand stereotypes
+
+`--sample N` collects a fresh set with the panel and the estimates listed in a shuffled order. `--measured REV` rescores against another run without calls. `confirm()` runs the pre-registered tests.
+
+```bash
+python -m spectra.describe --revision oct-23-26 --dry-run
+python -m spectra.describe --revision oct-23-26 --sample 1
+python -m spectra.describe --revision oct-23-26 --sample 1 --measured oct-14-26
+```
+
+### Pre-registration
+
+`spectra/prereg/` holds pre-registrations, each committed and pushed before the data it covers exist. Results go in a separate file next to it. The tests a pre-registration names (`describe.confirm`, `guess.profile_contrasts`) do not change once data exist, and deviations are appended to the pre-registration with their reason.
+
 ### Output
 
 ```
