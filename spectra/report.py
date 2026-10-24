@@ -616,6 +616,8 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
         "<div>" + pct(G.chance) + "<small>expected by chance with " + G.k + " models</small></div></div>" +
         "<div class='split'><div class='tablewrap'><table class='stats'><thead><tr><th>Best guessers</th><th>Accuracy (95% interval)</th><th>Correct</th><th>Found own answer</th></tr></thead><tbody>" +
         G.guessers.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.accuracy) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td><td>" + pct(r.self_rate) + "</td></tr>").join("") +
+        (G.vote ? "<tr>" + ["<em>Majority of the other models</em>", pct(G.vote.accuracy) + span(G.vote.ci), G.vote.n + " answers, " + G.vote.ties + " ties split", "—"]
+          .map(c => "<td style='border-top:2px solid var(--rule)'>" + c + "</td>").join("") + "</tr>" : "") +
         "</tbody></table></div><div class='tablewrap'><table class='stats'><thead><tr><th>Most recognizable</th><th>Named by others (95% interval)</th><th>Correct</th></tr></thead><tbody>" +
         G.recognizable.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.recall) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td></tr>").join("") +
         "</tbody></table></div></div>" +

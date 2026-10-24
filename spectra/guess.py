@@ -34,6 +34,7 @@ import hashlib
 import json
 import random
 import string
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -409,6 +410,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
     rounds: dict[tuple, dict] = {}
     own = {True: [0, 0], False: [0, 0]}  # found own answer -> [others correct, others judged]
     repeats = 0
+    votes: dict[tuple, list] = {}  # (prompt, sample, author) -> what each other guesser named
 
     for rec in usable:
         guesser = rec["guesser"]
@@ -430,6 +432,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
                 continue
             other_n[guesser] += 1
             other_correct[guesser] += int(correct)
+            votes.setdefault((rec["prompt_id"], rec.get("sample", 0), author), []).append(guess)
             recognized_n[author] += 1
             recognized[author] += int(correct)
             own[found][0] += int(correct)
@@ -442,6 +445,20 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
                 matrix[idx[author]][idx[guess]] += 1
             else:
                 unresolved[author] += 1
+
+    # Majority of the other guessers: each answer goes to the model most of them named. A tie splits
+    # the credit evenly (the expected score of a random tie-break); an answer nobody resolved scores 0.
+    # The author never votes on its own answer. This measures how identifiable a model is, not what one guesser knows.
+    vote_credit = vote_ties = 0
+    for (pid, sample, author), named in votes.items():
+        counts = Counter(g for g in named if g)
+        best = [m for m, n in counts.items() if n == max(counts.values())] if counts else []
+        credit = (author in best) / len(best) if best else 0.0
+        vote_credit += credit
+        vote_ties += len(best) > 1
+        cell = rounds.setdefault((pid, sample), {}).setdefault("vote", [0, 0])
+        cell[0] += credit
+        cell[1] += 1
 
     def rate(n_ok, n):
         return (n_ok / n) if n else None
@@ -483,7 +500,8 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "Accuracy is the share of other models' answers named correctly. "
         "Recall is the share of other guessers who named this author. A model's own answer is left out of both, "
         f"and is reported separately as self-recognition. A random guess is right {1.0 / k:.0%} of the time. "
-        "Intervals are 95%, resampling prompts."
+        "Intervals are 95%, resampling prompts. The last row gives each answer to the model most of the other "
+        "guessers named, ties split evenly: how identifiable the models are, not what one guesser knows."
     )
     if mode == "briefed":
         lead = (
@@ -529,6 +547,8 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "ci": ci.get("all"),
         "own_answer_effect": own_effect,
         "repeat_rate": repeat_rate,
+        "vote": {"accuracy": rate(vote_credit, len(votes)), "ci": ci.get("vote"), "n": len(votes), "ties": vote_ties,
+                 "voters": sorted(len(v) for v in votes.values())[len(votes) // 2] if votes else 0},
         "labels": models,
         "guessers": guessers,
         "recognizable": recognizable,
@@ -561,6 +581,9 @@ def print_summary(summary: dict):
               f"when it did not {pct(own['not_found'])}")
     if summary["assign"] == "independent":
         print(f"Calls that named some model twice: {pct(summary['repeat_rate'])} (repeats were allowed)")
+    vote = summary["vote"]
+    print(f"Majority of the other guessers: {pct(vote['accuracy'])}{span(vote['ci'])} over {vote['n']} answers "
+          f"({vote['ties']} ties split evenly, typically {vote['voters']} voters)")
     print("\nBest guessers (other authors named correctly)")
     for i, row in enumerate(summary["guessers"], 1):
         print(f"  {i}. {row['model']:22} {pct(row['accuracy']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})"

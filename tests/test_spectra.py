@@ -219,6 +219,18 @@ def test_a_retried_call_replaces_the_earlier_one():
     assert summarize_guesses(records, GUESSERS)["accuracy"] == 1.0
 
 
+def test_majority_vote_splits_ties_and_ignores_own_votes():
+    records = [
+        guess("alpha-1", "alpha-1", "beta-1", "alpha-1"),   # votes: B -> beta, C -> alpha
+        guess("beta-1", "alpha-1", "beta-1", "alpha-1"),    # votes: A -> alpha, C -> alpha
+        guess("gamma-1", "beta-1", "beta-1", "gamma-1"),    # votes: A -> beta, B -> beta; its own C vote is ignored
+    ]
+    vote = summarize_guesses(records, GUESSERS)["vote"]
+    # A (alpha): alpha vs beta tie -> 0.5; B (beta): 2 of 2 -> 1; C (gamma): both say alpha -> 0
+    assert vote["accuracy"] == pytest.approx(0.5)
+    assert (vote["n"], vote["ties"], vote["voters"]) == (3, 1, 2)
+
+
 def test_intervals_and_the_own_answer_effect():
     records = []
     for i in range(30):
