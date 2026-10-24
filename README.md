@@ -261,7 +261,7 @@ Three modes share `guesses.jsonl`. Each combination of mode, research source and
 | **Based on the results** (`--mode briefed`) | The same, plus measured habits from a Spectra `analysis.json`: length, formatting, hedging, signature words, limit-following, and the strongest departures. Cost and latency are left out. The notes do not say which letter is which. |
 | **Held-out results** (`--mode heldout`) | Like `briefed`, but the prompts split in half within each category, and each half is guessed with notes measured on the other half. No prompt or answer in front of the guesser went into its notes. |
 
-By default every model must be used once, so placing one answer narrows the rest, and a guesser that spots its own answer gets a head start on the others. The report shows the size of that effect. `--independent` asks for a name per answer, judged on its own, with repeats allowed, so each answer is a clean 1-in-k guess.
+By default every model must be used once, so placing one answer narrows the rest. `--independent` asks for a name per answer, judged on its own, with repeats allowed. Guessers can still choose to use each model once, so the report shows how often a call actually repeated a name, and how guessers did on the others when they did and did not find their own answer.
 
 ```bash
 python -m spectra.guess --revision oct-23-26 --limit 5              # blind smoke test

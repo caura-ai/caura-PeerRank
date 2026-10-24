@@ -208,6 +208,10 @@ def test_games_are_kept_apart_and_titled():
     assert games[1]["repeat_rate"] == 1.0 and games[0]["repeat_rate"] == 0.0
     assert "same set of answers" in games[2]["note"]
     assert "no prompt or answer in front of the guesser" in games[3]["note"]
+    # independent games report how often repeats were used, and never claim elimination was ruled out
+    assert "100% of calls did" in games[1]["note"] and "0% of calls did" in games[3]["note"]
+    assert all("did not narrow" not in g["note"] for g in games)
+    assert "Every model had to be used once" in games[0]["note"]
 
 
 def test_a_retried_call_replaces_the_earlier_one():

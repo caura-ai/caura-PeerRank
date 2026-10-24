@@ -12,7 +12,8 @@ and the guesser is never told which model it is.
 
 By default every model must be used once (there is one answer per model), so placing one
 answer narrows the rest. ``--independent`` asks for a name per answer, judged on its own,
-with repeats allowed, so each answer is a clean 1-in-k guess.
+with repeats allowed. Guessers may still choose to use each model once, so the summary reports
+how often a call actually repeated a name.
 
 One call per guesser per prompt. Letters are shuffled per guesser, so position is not
 a shared cue.
@@ -505,12 +506,16 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
             "Each guesser saw every answer to a prompt, labeled with shuffled letters and no author names, "
             "and was not told which model it is. "
         )
+    repeat_rate = repeats / len(usable)
     if assign == "independent":
-        lead += "Each answer was named on its own, with repeats allowed, so placing one answer did not narrow the rest. "
-    elif own_effect["found"] is not None and own_effect["not_found"] is not None:
-        lead += (f"Every model had to be used once, so placing one answer narrows the rest: guessers named "
-                 f"{own_effect['found']:.0%} of the others correctly when they found their own answer and "
-                 f"{own_effect['not_found']:.0%} when they did not. ")
+        # Allowing repeats does not make guessers use them: a call that repeats no name is still a permutation.
+        lead += (f"Guessers could name a model more than once, and {repeat_rate:.0%} of calls did. The other calls "
+                 "used each model at most once, so placing one answer could still narrow the rest. ")
+    else:
+        lead += "Every model had to be used once, so placing one answer narrows the rest. "
+    if own_effect["found"] is not None and own_effect["not_found"] is not None:
+        lead += (f"Guessers named {own_effect['found']:.0%} of the others correctly when they found their own answer "
+                 f"and {own_effect['not_found']:.0%} when they did not. ")
     return {
         "mode": mode,
         "research": [research] if research else [],
@@ -523,7 +528,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "accuracy": rate(n_hit, n_other),
         "ci": ci.get("all"),
         "own_answer_effect": own_effect,
-        "repeat_rate": repeats / len(usable),
+        "repeat_rate": repeat_rate,
         "labels": models,
         "guessers": guessers,
         "recognizable": recognizable,
@@ -551,11 +556,11 @@ def print_summary(summary: dict):
     print(f"\n{summary['title']}: {summary['n_calls']} calls, {summary['n_judgments']} judgments of other models' answers")
     print(f"Overall accuracy {pct(summary['accuracy'])}{span(summary['ci'])}  (chance {pct(summary['chance'])})")
     own = summary["own_answer_effect"]
-    if summary["assign"] == "permutation" and own["found"] is not None:
+    if own["found"] is not None:
         print(f"Others named correctly when a guesser found its own answer {pct(own['found'])}, "
               f"when it did not {pct(own['not_found'])}")
     if summary["assign"] == "independent":
-        print(f"Calls that named some model twice: {pct(summary['repeat_rate'])}")
+        print(f"Calls that named some model twice: {pct(summary['repeat_rate'])} (repeats were allowed)")
     print("\nBest guessers (other authors named correctly)")
     for i, row in enumerate(summary["guessers"], 1):
         print(f"  {i}. {row['model']:22} {pct(row['accuracy']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})"
