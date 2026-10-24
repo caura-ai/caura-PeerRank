@@ -14,7 +14,7 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 
-from spectra import add_run_args, load_config, providers, run_dir as revision_dir
+from spectra import add_run_args, load_config, providers, run_dir as revision_dir, writer_lock
 
 
 def completed_keys(path):
@@ -69,50 +69,51 @@ async def main():
 
     run_dir.mkdir(parents=True, exist_ok=True)
     out_path = run_dir / "responses.jsonl"
-    (run_dir / "run_config.json").write_text(json.dumps(
-        {"started": datetime.now(timezone.utc).isoformat(), "config": cfg, "models": list(resolved.values())},
-        indent=2), encoding="utf-8")
+    with writer_lock(out_path):
+        (run_dir / "run_config.json").write_text(json.dumps(
+            {"started": datetime.now(timezone.utc).isoformat(), "config": cfg, "models": list(resolved.values())},
+            indent=2), encoding="utf-8")
 
-    done = completed_keys(out_path)
-    tasks = [(m, p, s) for m in models for p in prompts for s in range(cfg["samples"])
-             if (m["name"], p["id"], s) not in done]
-    random.shuffle(tasks)  # spread load across providers and avoid order effects in rate limiting
-    print(f"{len(tasks)} calls to make ({len(done)} already done) across {len(models)} models -> {run_dir}")
-    if not tasks:
-        return
+        done = completed_keys(out_path)
+        tasks = [(m, p, s) for m in models for p in prompts for s in range(cfg["samples"])
+                 if (m["name"], p["id"], s) not in done]
+        random.shuffle(tasks)  # spread load across providers and avoid order effects in rate limiting
+        print(f"{len(tasks)} calls to make ({len(done)} already done) across {len(models)} models -> {run_dir}")
+        if not tasks:
+            return
 
-    sems = {m["name"]: asyncio.Semaphore(providers.max_concurrency(m, cfg["concurrency_per_model"])) for m in models}
-    lock = asyncio.Lock()
-    counts = {"ok": 0, "err": 0}
+        sems = providers.semaphores(models, cfg["concurrency_per_model"])  # shared per provider
+        lock = asyncio.Lock()
+        counts = {"ok": 0, "err": 0}
 
-    async def worker(m, p, s):
-        async with sems[m["name"]]:
-            d = resolved[m["name"]]
-            rec = {"model": m["name"], "backend": d["backend"], "model_id": d.get("model_id") or d.get("litellm_model"),
-                   "prompt_id": p["id"], "category": p["category"], "sample": s,
-                   "timestamp": datetime.now(timezone.utc).isoformat()}
-            try:
-                reply = await providers.complete(m, p["prompt"], system_prompt=cfg.get("system_prompt"),
-                                                 timeout=cfg["timeout_seconds"], retries=cfg["retries"])
-                rec.update(reply.fields())
-                counts["ok"] += 1
-            except Exception as e:  # keep going; errors are retried on the next run
-                rec.update(text=None, error=f"{type(e).__name__}: {e}"[:500])
-                counts["err"] += 1
-            async with lock:
-                with out_path.open("a", encoding="utf-8") as f:
-                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                n = counts["ok"] + counts["err"]
-                if n % 25 == 0 or n == len(tasks):
-                    print(f"  {n}/{len(tasks)} done, {counts['err']} errors")
+        async def worker(m, p, s):
+            async with sems[m["name"]]:
+                d = resolved[m["name"]]
+                rec = {"model": m["name"], "backend": d["backend"], "model_id": d.get("model_id") or d.get("litellm_model"),
+                       "prompt_id": p["id"], "category": p["category"], "sample": s,
+                       "timestamp": datetime.now(timezone.utc).isoformat()}
+                try:
+                    reply = await providers.complete(m, p["prompt"], system_prompt=cfg.get("system_prompt"),
+                                                     timeout=cfg["timeout_seconds"], retries=cfg["retries"])
+                    rec.update(reply.fields())
+                    counts["ok"] += 1
+                except Exception as e:  # keep going; errors are retried on the next run
+                    rec.update(text=None, error=f"{type(e).__name__}: {e}"[:500])
+                    counts["err"] += 1
+                async with lock:
+                    with out_path.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    n = counts["ok"] + counts["err"]
+                    if n % 25 == 0 or n == len(tasks):
+                        print(f"  {n}/{len(tasks)} done, {counts['err']} errors")
 
-    try:
-        await asyncio.gather(*(worker(m, p, s) for m, p, s in tasks))
-    finally:
-        await providers.close()
-    print(f"Finished: {counts['ok']} ok, {counts['err']} errors -> {out_path}")
-    if counts["err"]:
-        print("Re-run the same command to retry the failed calls.")
+        try:
+            await asyncio.gather(*(worker(m, p, s) for m, p, s in tasks))
+        finally:
+            await providers.close()
+        print(f"Finished: {counts['ok']} ok, {counts['err']} errors -> {out_path}")
+        if counts["err"]:
+            print("Re-run the same command to retry the failed calls.")
 
 
 if __name__ == "__main__":

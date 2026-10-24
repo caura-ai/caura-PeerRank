@@ -883,7 +883,8 @@ pip install -e ".[spectra]"                          # PyYAML, pandas, scikit-le
 python -m spectra.run --revision <rev>               # responses.jsonl (resumable)
 python -m spectra.code_behaviors --revision <rev>    # codes.jsonl, two coders outside the panel
 python -m spectra.analyze --revision <rev>           # features.csv + analysis.json (local)
-python -m spectra.guess --revision <rev>             # guesses.jsonl; --mode briefed --research <rev> (paid calls)
+python -m spectra.guess --revision <rev>             # guesses.jsonl (paid calls); --mode briefed|heldout, --independent
+python -m spectra.guess --revision <rev> --mode heldout --independent --dry-run   # messages + cost estimate, free
 python -m spectra.report --revision <rev>            # report.html (local, no API calls)
 pytest tests/                                        # constraint checks, guess parsing, report builder
 ```
@@ -891,8 +892,10 @@ pytest tests/                                        # constraint checks, guess 
 Rules:
 - `spectra/providers.py` is the only module that imports PeerRank. Roster and coder names are PeerRank display names from `ALL_MODELS` (any `peerrank` flag), called with Phase 2 settings. `litellm_model` entries go through LiteLLM (`pip install -e ".[litellm]"`).
 - No system prompt by default, so a profile is out-of-the-box API behavior. `system_prompt` only works on `litellm_model` entries.
-- Every writer appends JSONL and resumes on its key; readers keep the last successful record per key (`analyze` dedupes). Do not run two writers on the same revision at once.
-- Concurrency is per model or coder and capped by `PROVIDER_CONCURRENCY` in `run.py`, `guess.py` and `code_behaviors.py`.
+- Every writer appends JSONL and resumes on its key; readers keep the last successful record per key (`analyze` dedupes). Each writer holds `<file>.lock` while it runs, and a second writer on the same file is refused (`spectra.writer_lock`).
+- Concurrency is per provider (`providers.semaphores`): models from one provider share one budget, capped by `PROVIDER_CONCURRENCY`, in `run.py`, `guess.py` and `code_behaviors.py`.
+- On trap prompts (FP, ERR, OP, EMO) a coder's `not_applicable` is a missing label, not a miss. Trap traits keep the prompt ids every coder said yes or no to, and where they split; the report names them.
+- Guessing games are keyed by (mode, research, assign). `briefed` with notes from the same revision is in-sample; `heldout` measures each half's notes on the other half's prompts. The default assignment is a permutation (each model once), which lets a guesser that finds its own answer eliminate; `--independent` removes that.
 - Coded traits (answer_first, premise, errors, ambiguity, ...) exist only after `code_behaviors`; `report.py` leaves out the use-cases that need them. Hand-check 100-200 coder labels before trusting those traits.
 - `report.py`'s usage recommendations derive every number, rank, tie and "N/N categories" from `analysis.json`. Never paste a finding from one run into the text as a literal; `tests/test_spectra.py` renders a synthetic analysis to catch that.
 - Effect sizes are relative to the panel: adding or removing a model moves everyone.

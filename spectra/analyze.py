@@ -528,6 +528,23 @@ def load_codes(path):
     return rows or None
 
 
+def coded_value(labels, code, positives, tagged):
+    """Share of coders whose label for `code` is one of `positives`; NaN when none gave a usable label.
+
+    On a trap prompt, "not_applicable" means the coder saw no trap in the reply to react to. That is
+    a missing label, not a miss, so it is left out instead of counting against the model.
+    """
+    hits = [float(v.get(code) in positives) for v in labels
+            if v.get(code) is not None and not (tagged and v.get(code) == "not_applicable")]
+    return float(np.mean(hits)) if hits else float("nan")
+
+
+def prompt_outcomes(df, model, col):
+    """Prompt ids where every coder agreed the behavior happened, agreed it did not, or split."""
+    v = df[df.model == model].groupby("prompt_id")[col].mean().dropna()
+    return {"yes": sorted(v[v >= 1].index), "no": sorted(v[v <= 0].index), "split": sorted(v[(v > 0) & (v < 1)].index)}
+
+
 def cohen_kappa(a, b):
     pairs = [(x, y) for x, y in zip(a, b) if x is not None and y is not None]
     if len(pairs) < 20:
@@ -541,12 +558,12 @@ def cohen_kappa(a, b):
 
 
 # ----------------------------------------------------------------------------- main
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     add_run_args(ap)
     ap.add_argument("--run-dir", default=None, help="override data/spectra/<revision>")
     ap.add_argument("--demo", action="store_true", help="mark output as demo data")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
     if args.run_dir:
@@ -612,21 +629,26 @@ def main():
             by_key[(c["model"], c["prompt_id"], c["sample"])][c["coder"]] = c["codes"]
         for key, label, desc, tag, code, positives, high, low in CODED_TRAITS:
             col = f"code_{key}"
-            vals = []
+            vals, not_applicable = [], 0
             for _, r in df.iterrows():
                 if tag and tag not in r.tags.split(","):
                     vals.append(float("nan"))
                     continue
-                cs = by_key.get((r.model, r.prompt_id, r["sample"]), {})
-                hits = [float(v.get(code) in positives) for v in cs.values() if v.get(code) is not None]
-                vals.append(float(np.mean(hits)) if hits else float("nan"))
+                cs = list(by_key.get((r.model, r.prompt_id, r["sample"]), {}).values())
+                not_applicable += sum(bool(tag) and v.get(code) == "not_applicable" for v in cs)
+                vals.append(coded_value(cs, code, positives, tagged=bool(tag)))
             df[col] = vals
             if df[col].notna().sum() == 0:
                 continue
             per_model, by_cat, panel = trait_block(df, models, col, categories)
-            traits.append({"key": key, "label": label, "short": SHORT_LABELS.get(key, label), "desc": desc, "unit": "pct", "group": "behavior",
-                           "tag": tag, "high": high, "low": low, "panel": panel, "per_model": per_model,
-                           "by_category": by_cat})
+            trait = {"key": key, "label": label, "short": SHORT_LABELS.get(key, label), "desc": desc, "unit": "pct",
+                     "group": "behavior", "tag": tag, "high": high, "low": low, "panel": panel, "per_model": per_model,
+                     "by_category": by_cat}
+            if tag:  # trap traits rest on a handful of prompts, so keep which ones went which way
+                trait["not_applicable_labels"] = not_applicable
+                for m in models:
+                    per_model[m].update(prompt_outcomes(df, m, col))
+            traits.append(trait)
         if len(coders) >= 2:
             agreement = {}
             for code in CODEBOOK_KEYS:

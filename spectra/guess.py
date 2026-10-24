@@ -2,21 +2,30 @@
 """The guessing game: each model sees a prompt's answers with the authors stripped off,
 and matches every answer to a model on the roster.
 
-Two modes. ``blind`` (the default) gives the prompt, the answers, and the roster names.
+Three modes. ``blind`` (the default) gives the prompt, the answers, and the roster names.
 ``briefed`` adds a research brief: the measured habits from a Spectra analysis.json
-(length, formatting, hedging, signature words, and the rest). The brief does not label
-the answers in front of the guesser, and the guesser is still not told which model it is.
+(length, formatting, hedging, signature words, and the rest). ``heldout`` is briefed with
+notes measured on the other half of this revision's prompts: the prompts split in two,
+stratified by category, and each half is guessed with the other half's notes, so no prompt
+or answer in front of the guesser went into its notes. The brief never labels the answers,
+and the guesser is never told which model it is.
+
+By default every model must be used once (there is one answer per model), so placing one
+answer narrows the rest. ``--independent`` asks for a name per answer, judged on its own,
+with repeats allowed, so each answer is a clean 1-in-k guess.
 
 One call per guesser per prompt. Letters are shuffled per guesser, so position is not
-a shared cue. Each author is used once (there is one answer per model).
+a shared cue.
 
   python -m spectra.guess --revision oct-14-26 --limit 5              # blind smoke test
   python -m spectra.guess --revision oct-14-26                        # blind game
   python -m spectra.guess --revision oct-23-26 --mode briefed --research oct-14-26
+  python -m spectra.guess --revision oct-23-26 --mode heldout --independent --dry-run
 
-Writes data/spectra/<revision>/guesses.jsonl. Records are keyed by mode, so the two
-games can share a file. The report reads both on the next `python -m spectra.report`.
-Headline scores exclude a model's own answer. Chance is 1/k.
+--dry-run builds every message (and, for heldout, the two half analyses) and estimates the
+cost, without calling a model. Writes data/spectra/<revision>/guesses.jsonl. Records carry
+mode, research and assignment style, so every game can share a file; the report shows each
+one. Headline scores exclude a model's own answer. Chance is 1/k.
 """
 import argparse
 import asyncio
@@ -27,11 +36,12 @@ import string
 from datetime import datetime, timezone
 from pathlib import Path
 
-from spectra import DATA_ROOT, add_run_args, load_config, providers, run_dir as revision_dir
+from spectra import DATA_ROOT, add_run_args, load_config, providers, run_dir as revision_dir, writer_lock
 from spectra.run import select_prompts
 
 ANSWER_CHAR_CAP = 20000
-MODES = ("blind", "briefed")
+MODES = ("blind", "briefed", "heldout")
+ASSIGN = ("permutation", "independent")
 
 
 def load_jsonl(path):
@@ -72,6 +82,10 @@ def parse_assignment(raw: str | None, letters: list[str], models: list[str]) -> 
     from peerrank.config import extract_json
 
     obj = extract_json(raw or "")
+    if isinstance(obj, str):  # the object came back as a JSON string: "{\"A\": \"...\"}"
+        obj = extract_json(obj)
+    if obj is None and raw and '\\"' in raw:  # or escaped inside prose
+        obj = extract_json(raw.replace('\\"', '"'))
     if isinstance(obj, list):
         merged = {}
         for item in obj:
@@ -113,6 +127,18 @@ def shuffle_models(prompt_id: str, sample: int, guesser: str, models: list[str])
     order = list(models)
     random.Random(seed).shuffle(order)
     return order
+
+
+def holdout_halves(prompts: list[dict]) -> dict[str, str]:
+    """prompt id -> "A" or "B". Each category splits in half; the split is fixed by a hash of the id."""
+    by_cat: dict[str, list[str]] = {}
+    for p in prompts:
+        by_cat.setdefault(p["category"], []).append(p["id"])
+    half = {}
+    for ids in by_cat.values():
+        for i, pid in enumerate(sorted(ids, key=lambda x: hashlib.sha256(x.encode()).hexdigest())):
+            half[pid] = "AB"[i % 2]
+    return half
 
 
 def _fmt_value(unit: str | None, value) -> str:
@@ -219,8 +245,30 @@ def load_research(revision: str, models: list[str]) -> tuple[str, str]:
     return revision, research_brief(analysis, models)
 
 
+def heldout_briefs(config_path: str, run_dir: Path, revision: str, models: list[str],
+                   halves: dict[str, str]) -> dict[str, str]:
+    """{half: brief} where each half's brief is measured on the other half's prompts only.
+
+    Writes the filtered answers and codes to <run_dir>/holdout/half-<X>/ and runs spectra.analyze there.
+    """
+    from spectra import analyze  # numpy/pandas only when this mode runs
+
+    briefs = {}
+    for half, other in (("A", "B"), ("B", "A")):
+        keep = {pid for pid, h in halves.items() if h == other}
+        out = run_dir / "holdout" / f"half-{other}"
+        out.mkdir(parents=True, exist_ok=True)
+        for name in ("responses.jsonl", "codes.jsonl"):
+            rows = [r for r in load_jsonl(run_dir / name) if r.get("prompt_id") in keep]
+            (out / name).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+        print(f"Measuring half {other} ({len(keep)} prompts) for the guesses on half {half}")
+        analyze.main(["--config", config_path, "--run-dir", str(out), "--revision", f"{revision}-half-{other}"])
+        briefs[half] = research_brief(json.loads((out / "analysis.json").read_text(encoding="utf-8")), models)
+    return briefs
+
+
 def build_message(user_prompt: str, order: list[str], texts: dict[str, str], roster: list[str],
-                  brief: str | None = None) -> str:
+                  brief: str | None = None, independent: bool = False) -> str:
     letters = string.ascii_uppercase[: len(order)]
     blocks = []
     for letter, model in zip(letters, order):
@@ -249,15 +297,22 @@ def build_message(user_prompt: str, order: list[str], texts: dict[str, str], ros
             "about the author. The answers are not signed. One of them may be your own, but you are not "
             "told which, and you are not told which model you are. Judge only by how the answer is written.\n\n"
         )
+    if independent:
+        roster_line = "Each answer below was written by one of the models on this roster:\n"
+        rule = ("Name the most likely model for each letter. Judge each answer on its own: "
+                "a model may be named more than once, and you do not have to use every model.\n\n")
+    else:
+        roster_line = "Each answer below was written by a different model from this roster:\n"
+        rule = "Assign every letter to exactly one model. Use each model once.\n\n"
     return (
         "You are matching anonymous answers to the models that wrote them. "
         "You are not grading quality.\n\n"
-        "Each answer below was written by a different model from this roster:\n"
-        f"{names}\n\n"
+        + roster_line
+        + f"{names}\n\n"
         + research
         + how
-        + "Assign every letter to exactly one model. Use each model once.\n\n"
-        f"<user_prompt>\n{user_prompt}\n</user_prompt>\n\n"
+        + rule
+        + f"<user_prompt>\n{user_prompt}\n</user_prompt>\n\n"
         + "\n\n".join(blocks)
         + "\n\nReturn only this JSON object, using the roster names exactly, "
         f"with one entry for each of {letter_list}:\n"
@@ -283,21 +338,63 @@ def panel_answers(responses: list[dict], models: list[str]) -> dict[tuple, dict[
     return full
 
 
-def _record_mode(rec: dict) -> str:
-    mode = rec.get("mode") or "blind"
-    return mode if mode in MODES else "blind"
+def game_key(rec: dict) -> tuple[str, str | None, str]:
+    """(mode, research, assignment). Records written before a field existed count as blind or permutation."""
+    mode = rec.get("mode") if rec.get("mode") in MODES else "blind"
+    research = rec.get("research") if mode != "blind" else None
+    assign = rec.get("assign") if rec.get("assign") in ASSIGN else "permutation"
+    return mode, research, assign
 
 
-def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind",
-                      answer_revision: str | None = None) -> dict | None:
-    """Recognizability and guessing skill for one mode. Own answers are excluded from both headlines.
+def game_title(key: tuple) -> str:
+    mode, research, assign = key
+    title = {"blind": "Just guess",
+             "briefed": f"Guess from the research ({research} notes)",
+             "heldout": "Guess from held-out research (notes from the other half of the prompts)"}[mode]
+    return title + (", each answer judged on its own" if assign == "independent" else "")
 
-    Records written before modes existed count as blind.
+
+def _bootstrap(rounds: list[dict], reps: int = 1000, seed: int = 7) -> dict:
+    """95% intervals of pooled rates, resampling whole rounds (one prompt's answers are judged together).
+
+    rounds: [{name: [correct, n]}]. Returns {name: [lo, hi]}.
     """
-    usable = [r for r in records
-              if isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict) and _record_mode(r) == mode]
+    if not rounds:
+        return {}
+    rng = random.Random(seed)
+    names = sorted({k for r in rounds for k in r})
+    draws = {k: [] for k in names}
+    for _ in range(reps):
+        tot = {k: [0, 0] for k in names}
+        for _ in range(len(rounds)):
+            for k, (c, n) in rounds[rng.randrange(len(rounds))].items():
+                tot[k][0] += c
+                tot[k][1] += n
+        for k, (c, n) in tot.items():
+            if n:
+                draws[k].append(c / n)
+    out = {}
+    for k, d in draws.items():
+        d.sort()
+        out[k] = [d[int(0.025 * (len(d) - 1))], d[int(0.975 * (len(d) - 1))]] if d else None
+    return out
+
+
+def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("blind", None, "permutation"),
+                      answer_revision: str | None = None) -> dict | None:
+    """Recognizability and guessing skill for one game. Own answers are excluded from both headlines.
+
+    Intervals resample prompts. Under a permutation, placing one answer narrows the rest, so the
+    summary also reports how guessers did on the others when they did and did not find their own answer.
+    """
+    latest = {}
+    for r in records:
+        if isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict) and game_key(r) == key:
+            latest[(r["guesser"], r["prompt_id"], r.get("sample", 0))] = r  # a retried call replaces the earlier one
+    usable = list(latest.values())
     if not usable or len(models) < 2:
         return None
+    mode, research, assign = key
     k = len(models)
     idx = {m: i for i, m in enumerate(models)}
     other_correct = {m: 0 for m in models}
@@ -308,11 +405,19 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
     recognized_n = {m: 0 for m in models}
     matrix = [[0 for _ in models] for _ in models]
     unresolved = {m: 0 for m in models}
+    rounds: dict[tuple, dict] = {}
+    own = {True: [0, 0], False: [0, 0]}  # found own answer -> [others correct, others judged]
+    repeats = 0
 
     for rec in usable:
         guesser = rec["guesser"]
         if guesser not in idx:
             continue
+        named = [g for g in rec["guesses"].values() if g]
+        repeats += len(named) != len(set(named))
+        own_letter = next((L for L, a in rec["labels"].items() if a == guesser), None)
+        found = own_letter is not None and rec["guesses"].get(own_letter) == guesser
+        tally = rounds.setdefault((rec["prompt_id"], rec.get("sample", 0)), {})
         for letter, author in rec["labels"].items():
             if author not in idx:
                 continue
@@ -326,6 +431,12 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
             other_correct[guesser] += int(correct)
             recognized_n[author] += 1
             recognized[author] += int(correct)
+            own[found][0] += int(correct)
+            own[found][1] += 1
+            for name in ("all", "g:" + guesser, "a:" + author):
+                cell = tally.setdefault(name, [0, 0])
+                cell[0] += int(correct)
+                cell[1] += 1
             if guess in idx:
                 matrix[idx[author]][idx[guess]] += 1
             else:
@@ -334,12 +445,14 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
     def rate(n_ok, n):
         return (n_ok / n) if n else None
 
+    ci = _bootstrap(list(rounds.values()))
     guessers = []
     recognizable = []
     for m in models:
         guessers.append({
             "model": m,
             "accuracy": rate(other_correct[m], other_n[m]),
+            "ci": ci.get("g:" + m),
             "correct": other_correct[m],
             "n": other_n[m],
             "self_rate": rate(self_correct[m], self_n[m]),
@@ -348,6 +461,7 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
         recognizable.append({
             "model": m,
             "recall": rate(recognized[m], recognized_n[m]),
+            "ci": ci.get("a:" + m),
             "correct": recognized[m],
             "n": recognized_n[m],
             "unresolved": unresolved[m],
@@ -362,36 +476,54 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
 
     n_other = sum(other_n.values())
     n_hit = sum(other_correct.values())
-    sources = sorted({r.get("research") for r in usable if r.get("research")})
+    own_effect = {"found": rate(*own[True]), "n_found": own[True][1],
+                  "not_found": rate(*own[False]), "n_not_found": own[False][1]}
     scoring = (
         "Accuracy is the share of other models' answers named correctly. "
         "Recall is the share of other guessers who named this author. A model's own answer is left out of both, "
-        f"and is reported separately as self-recognition. A random matching is right {1.0 / k:.0%} of the time."
+        f"and is reported separately as self-recognition. A random guess is right {1.0 / k:.0%} of the time. "
+        "Intervals are 95%, resampling prompts."
     )
     if mode == "briefed":
-        src = ", ".join(sources) if sources else "a Spectra profile"
         lead = (
             "Each guesser saw every answer labeled with shuffled letters and no author names, "
-            f"plus research notes from {src}. The notes do not label these answers, "
+            f"plus research notes from {research or 'a Spectra profile'}. The notes do not label these answers, "
             "and the guesser is not told which model it is. "
         )
-        if answer_revision and sources == [answer_revision]:
+        if answer_revision and research == answer_revision:
             lead += "The notes were measured on this same set of answers, so each answer is one part of its model's average. "
-        elif answer_revision and sources and answer_revision not in sources:
-            lead += "The notes come from a different set of prompts than these answers. "
+        elif answer_revision and research:
+            lead += "The notes come from a different run than these answers. "
+    elif mode == "heldout":
+        lead = (
+            "Each guesser saw every answer labeled with shuffled letters and no author names, plus research notes "
+            "measured on the other half of this run's prompts (split by category), so no prompt or answer in front "
+            "of the guesser went into its notes. The guesser is not told which model it is. "
+        )
     else:
         lead = (
             "Each guesser saw every answer to a prompt, labeled with shuffled letters and no author names, "
             "and was not told which model it is. "
         )
+    if assign == "independent":
+        lead += "Each answer was named on its own, with repeats allowed, so placing one answer did not narrow the rest. "
+    elif own_effect["found"] is not None and own_effect["not_found"] is not None:
+        lead += (f"Every model had to be used once, so placing one answer narrows the rest: guessers named "
+                 f"{own_effect['found']:.0%} of the others correctly when they found their own answer and "
+                 f"{own_effect['not_found']:.0%} when they did not. ")
     return {
         "mode": mode,
-        "research": sources,
+        "research": [research] if research else [],
+        "assign": assign,
+        "title": game_title(key),
         "k": k,
         "chance": 1.0 / k,
         "n_calls": len(usable),
         "n_judgments": n_other,
         "accuracy": rate(n_hit, n_other),
+        "ci": ci.get("all"),
+        "own_answer_effect": own_effect,
+        "repeat_rate": repeats / len(usable),
         "labels": models,
         "guessers": guessers,
         "recognizable": recognizable,
@@ -400,36 +532,56 @@ def summarize_guesses(records: list[dict], models: list[str], mode: str = "blind
     }
 
 
+def summarize_all(records: list[dict], models: list[str], answer_revision: str | None = None) -> list[dict]:
+    """One summary per game in the file: blind, briefed per research source, held-out, each by assignment style."""
+    keys = {game_key(r) for r in records if isinstance(r.get("guesses"), dict)}
+    order = sorted(keys, key=lambda k: (MODES.index(k[0]), k[1] or "", ASSIGN.index(k[2])))
+    return [s for s in (summarize_guesses(records, models, key, answer_revision) for key in order) if s]
+
+
 def print_summary(summary: dict):
     if not summary:
         print("No parsed guesses to score.")
         return
     pct = lambda v: "n/a" if v is None else f"{100 * v:.1f}%"
-    title = "Guess from the research" if summary.get("mode") == "briefed" else "Just guess"
-    research = ", ".join(summary.get("research") or [])
-    suffix = f"  (research {research})" if research else ""
-    print(f"\n{title}: {summary['n_calls']} calls, {summary['n_judgments']} judgments of other models' answers{suffix}")
-    print(f"Overall accuracy {pct(summary['accuracy'])}  (chance {pct(summary['chance'])})")
+
+    def span(ci):
+        return f" [{pct(ci[0])}, {pct(ci[1])}]" if ci else ""
+
+    print(f"\n{summary['title']}: {summary['n_calls']} calls, {summary['n_judgments']} judgments of other models' answers")
+    print(f"Overall accuracy {pct(summary['accuracy'])}{span(summary['ci'])}  (chance {pct(summary['chance'])})")
+    own = summary["own_answer_effect"]
+    if summary["assign"] == "permutation" and own["found"] is not None:
+        print(f"Others named correctly when a guesser found its own answer {pct(own['found'])}, "
+              f"when it did not {pct(own['not_found'])}")
+    if summary["assign"] == "independent":
+        print(f"Calls that named some model twice: {pct(summary['repeat_rate'])}")
     print("\nBest guessers (other authors named correctly)")
     for i, row in enumerate(summary["guessers"], 1):
-        print(f"  {i}. {row['model']:22} {pct(row['accuracy']):7}  ({row['correct']}/{row['n']})"
+        print(f"  {i}. {row['model']:22} {pct(row['accuracy']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})"
               f"   self-recognition {pct(row['self_rate'])}")
     print("\nMost recognizable (named correctly by the others)")
     for i, row in enumerate(summary["recognizable"], 1):
-        print(f"  {i}. {row['model']:22} {pct(row['recall']):7}  ({row['correct']}/{row['n']})")
+        print(f"  {i}. {row['model']:22} {pct(row['recall']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})")
 
 
 async def main():
     ap = argparse.ArgumentParser(description="Author-matching game across the Spectra roster")
     add_run_args(ap)
     ap.add_argument("--limit", type=int, default=None, help="only N prompts, stratified across categories")
-    ap.add_argument("--concurrency", type=int, default=None, help="in-flight calls per guesser (default: config)")
+    ap.add_argument("--concurrency", type=int, default=None,
+                    help="in-flight calls per provider (default: config), capped by PeerRank's PROVIDER_CONCURRENCY")
     ap.add_argument("--mode", choices=MODES, default="blind",
-                    help="blind: prompt and answers only. briefed: also give the Spectra research profile")
+                    help="blind: prompt and answers only. briefed: also a Spectra research profile. "
+                         "heldout: briefed with notes from the other half of this run's prompts")
     ap.add_argument("--research", default=None,
                     help="revision whose analysis.json briefs the guessers (briefed mode; default: this revision)")
+    ap.add_argument("--independent", action="store_true",
+                    help="name each answer on its own, repeats allowed, instead of using each model once")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="build the messages and estimate the cost without calling any model")
     args = ap.parse_args()
-    if args.mode == "blind" and args.research:
+    if args.mode != "briefed" and args.research:
         raise SystemExit("--research is only used with --mode briefed")
 
     cfg = load_config(args.config)
@@ -440,86 +592,115 @@ async def main():
     for name in models:
         providers.resolve({"name": name, "temperature": 0})
 
-    prompts = {p["id"]: p for p in json.loads(Path(cfg["prompts"]).read_text(encoding="utf-8"))["prompts"]}
-    chosen = {p["id"] for p in select_prompts(list(prompts.values()), args.limit)}
+    all_prompts = json.loads(Path(cfg["prompts"]).read_text(encoding="utf-8"))["prompts"]
+    prompts = {p["id"]: p for p in all_prompts}
+    chosen = {p["id"] for p in select_prompts(all_prompts, args.limit)}
     responses = load_jsonl(run_dir / "responses.jsonl")
     rounds = {k: v for k, v in panel_answers(responses, models).items() if k[0] in chosen}
-
-    brief = None
-    research_rev = None
-    if args.mode == "briefed":
-        research_rev, brief = load_research(args.research or cfg["revision"], models)
-        print(f"Research brief from {research_rev} ({len(brief)} characters)")
-
+    assign = "independent" if args.independent else "permutation"
+    research_rev = {"blind": None, "briefed": args.research or cfg["revision"], "heldout": cfg["revision"]}[args.mode]
+    key = (args.mode, research_rev, assign)
     out_path = run_dir / "guesses.jsonl"
+    halves = holdout_halves(all_prompts)  # over the full set, so a --limit run keeps the same halves
 
-    def _already_done(rec) -> bool:
-        if not isinstance(rec.get("guesses"), dict) or _record_mode(rec) != args.mode:
-            return False
-        if args.mode == "briefed" and (rec.get("research") or "") != (research_rev or ""):
-            return False
-        return True
+    def prepare():
+        """(briefs by half or None, jobs still to do, records so far)."""
+        if args.mode == "briefed":
+            _, brief = load_research(research_rev, models)
+            print(f"Research brief from {research_rev} ({len(brief)} characters)")
+            briefs = {"A": brief, "B": brief}
+        elif args.mode == "heldout":
+            briefs = heldout_briefs(args.config, run_dir, cfg["revision"], models, halves)
+            print("Held-out briefs: " + ", ".join(f"half {h} {len(b)} characters" for h, b in briefs.items()))
+        else:
+            briefs = None
+        records = load_jsonl(out_path)
+        done = {(r["guesser"], r["prompt_id"], int(r.get("sample", 0)))
+                for r in records if isinstance(r.get("guesses"), dict) and game_key(r) == key}
+        jobs = [(guesser, pid, sample, round_)
+                for (pid, sample), round_ in rounds.items()
+                for guesser in models
+                if (guesser, pid, sample) not in done]
+        random.shuffle(jobs)
+        print(f"{game_title(key)}: {len(jobs)} guesses to collect ({len(done)} already done) "
+              f"on {len(rounds)} complete prompts -> {out_path}")
+        return briefs, jobs, records
 
-    done = {(r["guesser"], r["prompt_id"], int(r["sample"]))
-            for r in load_jsonl(out_path) if _already_done(r)}
-    jobs = [(guesser, pid, sample, round_)
-            for (pid, sample), round_ in rounds.items()
-            for guesser in models
-            if (guesser, pid, sample) not in done]
-    random.shuffle(jobs)
-    print(f"{len(jobs)} guesses to collect ({len(done)} already done) "
-          f"on {len(rounds)} complete prompts -> {out_path}")
-    if not jobs:
-        print_summary(summarize_guesses(load_jsonl(out_path), models, args.mode, cfg["revision"]))
+    def message_for(guesser, pid, sample, round_, briefs):
+        order = shuffle_models(pid, sample, guesser, models)
+        brief = briefs[halves[pid]] if briefs else None
+        return order, build_message(prompts[pid]["prompt"], order, round_["texts"], models,
+                                    brief=brief, independent=args.independent)
+
+    if args.dry_run:
+        briefs, jobs, records = prepare()
+        if jobs:
+            _, text = message_for(*jobs[0], briefs)
+            preview = run_dir / "guess_preview.txt"
+            preview.write_text(text, encoding="utf-8")
+            sizes = [len(message_for(*job, briefs)[1]) for job in jobs]
+            print(f"Messages: {len(jobs)}, median {sorted(sizes)[len(sizes) // 2]:,} characters. First one: {preview}")
+            basis = "briefed" if args.mode == "heldout" else args.mode  # held-out messages are briefed-sized
+            similar = [r["cost_usd"] for r in records if r.get("cost_usd") is not None and game_key(r)[0] == basis]
+            if similar:
+                print(f"Estimated cost ${len(jobs) * sum(similar) / len(similar):.2f} "
+                      f"(mean of {len(similar)} earlier {basis} calls)")
+        print("Dry run: no model was called.")
         return
 
-    cap = args.concurrency or cfg["concurrency_per_model"]
-    sems = {m: asyncio.Semaphore(providers.max_concurrency({"name": m}, cap)) for m in models}
-    lock = asyncio.Lock()
-    counts = {"ok": 0, "err": 0}
+    with writer_lock(out_path):
+        briefs, jobs, records = prepare()
+        if not jobs:
+            print_summary(summarize_guesses(records, models, key, cfg["revision"]))
+            return
 
-    async def work(guesser, pid, sample, round_):
-        order = shuffle_models(pid, sample, guesser, models)
-        letters = string.ascii_uppercase[: len(order)]
-        labels = dict(zip(letters, order))
-        prompt = prompts[pid]["prompt"]
-        message = build_message(prompt, order, round_["texts"], models, brief=brief)
-        entry = {"name": guesser, "temperature": 0}
-        rec = {"guesser": guesser, "prompt_id": pid, "sample": sample, "mode": args.mode,
-               "category": round_.get("category"), "labels": labels,
-               "timestamp": datetime.now(timezone.utc).isoformat()}
-        if research_rev:
-            rec["research"] = research_rev
-        async with sems[guesser]:
-            try:
-                reply = await providers.complete(entry, message, timeout=cfg["timeout_seconds"], retries=cfg["retries"])
-                parsed = parse_assignment(reply.text, letters, models)
-                if parsed is None:
-                    rec["error"] = "unparseable"
-                    rec["raw"] = (reply.text or "")[:500]
+        sems = providers.semaphores([{"name": m} for m in models], args.concurrency or cfg["concurrency_per_model"])
+        lock = asyncio.Lock()
+        counts = {"ok": 0, "err": 0}
+
+        async def work(guesser, pid, sample, round_):
+            order, message = message_for(guesser, pid, sample, round_, briefs)
+            letters = string.ascii_uppercase[: len(order)]
+            rec = {"guesser": guesser, "prompt_id": pid, "sample": sample, "mode": args.mode, "assign": assign,
+                   "category": round_.get("category"), "labels": dict(zip(letters, order)),
+                   "timestamp": datetime.now(timezone.utc).isoformat()}
+            if research_rev:
+                rec["research"] = research_rev
+            if args.mode == "heldout":
+                rec["half"] = halves[pid]
+            async with sems[guesser]:
+                try:
+                    reply = await providers.complete({"name": guesser, "temperature": 0}, message,
+                                                     timeout=cfg["timeout_seconds"], retries=cfg["retries"])
+                    parsed = parse_assignment(reply.text, list(letters), models)
+                    if parsed is None:
+                        rec["error"] = "unparseable"
+                        rec["raw"] = (reply.text or "")[:500]
+                        if len(reply.text or "") > 500:
+                            rec["raw_tail"] = reply.text[-1500:]  # where a truncated or rambling reply gave up
+                        counts["err"] += 1
+                    else:
+                        rec["guesses"] = parsed
+                        rec["cost_usd"] = reply.cost_usd
+                        counts["ok"] += 1
+                except Exception as e:
+                    rec["error"] = f"{type(e).__name__}: {e}"[:300]
                     counts["err"] += 1
-                else:
-                    rec["guesses"] = parsed
-                    rec["cost_usd"] = reply.cost_usd
-                    counts["ok"] += 1
-            except Exception as e:
-                rec["error"] = f"{type(e).__name__}: {e}"[:300]
-                counts["err"] += 1
-        async with lock:
-            with out_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            n = counts["ok"] + counts["err"]
-            if n % 25 == 0 or n == len(jobs):
-                print(f"  {n}/{len(jobs)} done, {counts['err']} errors")
+            async with lock:
+                with out_path.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                n = counts["ok"] + counts["err"]
+                if n % 25 == 0 or n == len(jobs):
+                    print(f"  {n}/{len(jobs)} done, {counts['err']} errors")
 
-    try:
-        await asyncio.gather(*(work(*job) for job in jobs))
-    finally:
-        await providers.close()
-    print(f"Finished: {counts['ok']} ok, {counts['err']} errors -> {out_path}")
-    if counts["err"]:
-        print("Re-run the same command to retry failed or unparseable calls.")
-    print_summary(summarize_guesses(load_jsonl(out_path), models, args.mode, cfg["revision"]))
+        try:
+            await asyncio.gather(*(work(*job) for job in jobs))
+        finally:
+            await providers.close()
+        print(f"Finished: {counts['ok']} ok, {counts['err']} errors -> {out_path}")
+        if counts["err"]:
+            print("Re-run the same command to retry failed or unparseable calls.")
+        print_summary(summarize_guesses(load_jsonl(out_path), models, key, cfg["revision"]))
 
 
 if __name__ == "__main__":

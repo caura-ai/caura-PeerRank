@@ -241,35 +241,8 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
 
   <section>
     <h2>The guessing game</h2>
-    <p class="prose muted">Each model sees every answer with the author names removed and matches them to the roster. Just guess uses the prompt and the answers. Guess from the research also gives the measured habits from a Spectra profile. Own answers stay out of both scores.</p>
-    <div id="guess-blind">
-      <h3>Just guess</h3>
-      <p class="prose muted" id="guessnote"></p>
-      <div id="guessbody">
-      <div class="bignums" id="guessnums"></div>
-      <div class="split">
-        <div class="tablewrap"><table class="stats" id="guesstable"></table></div>
-        <div class="tablewrap"><table class="stats" id="recogtable"></table></div>
-      </div>
-      <h3 style="margin-top:28px">Who they think wrote it</h3>
-      <p class="prose muted">Rows are the model that actually wrote the answer. Columns are the model the others named. A cell is the share of other models' guesses. The diagonal is recognizability.</p>
-      <div id="guessheat" class="chart tall"></div>
-      </div>
-    </div>
-    <div id="guess-briefed">
-      <h3 style="margin-top:40px">Guess from the research</h3>
-      <p class="prose muted" id="guessbnote"></p>
-      <div id="guessbbody">
-      <div class="bignums" id="guessbnums"></div>
-      <div class="split">
-        <div class="tablewrap"><table class="stats" id="guessbtable"></table></div>
-        <div class="tablewrap"><table class="stats" id="recogbtable"></table></div>
-      </div>
-      <h3 style="margin-top:28px">Who they think wrote it</h3>
-      <p class="prose muted">Same reading as the blind heatmap. This one is after the research notes were added.</p>
-      <div id="guessbheat" class="chart tall"></div>
-      </div>
-    </div>
+    <p class="prose muted">Each model sees every answer with the author names removed and matches them to the roster. Just guess uses the prompt and the answers. Guess from the research also gives the measured habits from a Spectra profile; the held-out version measures those habits on the other half of the prompts, so nothing being guessed went into the notes. Own answers stay out of every score.</p>
+    <div id="guessgames"></div>
   </section>
 
   <section>
@@ -542,6 +515,16 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
   }
 
   // traps
+  // Trap traits rest on a few prompts, so name them: which prompts every coder said no to, and which split.
+  function trapCounts(t) {
+    if (!t.per_model[models[0]] || !t.per_model[models[0]].no) return "";
+    const list = kind => models.filter(m => (t.per_model[m][kind] || []).length)
+      .map(m => esc(m) + " " + t.per_model[m][kind].length + " of " + t.per_model[m].n + " (" + t.per_model[m][kind].map(esc).join(", ") + ")");
+    const no = list("no"), split = list("split");
+    return "<p class='prose muted'>Every coder said no: " + (no.join("; ") || "none") + ". Coders split: " + (split.join("; ") || "none") + "." +
+      (t.not_applicable_labels ? " " + t.not_applicable_labels + " 'not applicable' labels left out." : "") + "</p>";
+  }
+
   function renderTraps() {
     const box = document.getElementById("traps");
     const keys = ["premise", "errors", "ambiguity", "agree_user", "emotion"];
@@ -552,7 +535,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     }
     box.innerHTML = list.map(t => {
       const n = Math.max(...models.map(m => t.per_model[m].n || 0));
-      return "<div class='trap'><h3>" + esc(t.label) + "</h3><p>" + esc(t.desc) + ". " + n + " prompts.</p><div class='chart' id='trap_" + t.key + "'></div></div>";
+      return "<div class='trap'><h3>" + esc(t.label) + "</h3><p>" + esc(t.desc) + ". " + n + " prompts.</p><div class='chart' id='trap_" + t.key + "'></div>" + trapCounts(t) + "</div>";
     }).join("");
     list.forEach(t => dotPlot("trap_" + t.key, t, true));
   }
@@ -608,52 +591,42 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     seqHeat("confchart", D.labels.map(l => "guessed " + l), D.labels, data, {min: 0, max: 1, rotate: 30, bottom: 100, fmt: v => Math.round(v * 100) + "% of its answers", fmtShort: v => Math.round(v * 100) + "%"});
   }
 
-  function fillGuess(G, ids) {
-    const note = document.getElementById(ids.note);
-    const nums = document.getElementById(ids.nums);
-    const heat = document.getElementById(ids.heat);
-    if (charts[ids.heat]) { charts[ids.heat].dispose(); delete charts[ids.heat]; }
-    const body = document.getElementById(ids.body);
-    if (!G) {
-      note.textContent = ids.missing;
-      if (body) body.hidden = true;
-      nums.innerHTML = "";
-      document.getElementById(ids.gtable).innerHTML = "";
-      document.getElementById(ids.rtable).innerHTML = "";
-      heat.innerHTML = "";
-      heat.style.height = "auto";
+  // one block per game in guesses.jsonl: blind, briefed per research source, held-out, each by assignment style
+  function renderGuess() {
+    const box = document.getElementById("guessgames");
+    Object.keys(charts).filter(k => k.startsWith("guessheat")).forEach(k => { charts[k].dispose(); delete charts[k]; });
+    const games = (A.guessing && A.guessing.games) || [];
+    if (!games.length) {
+      box.innerHTML = "<p class='prose muted'>Not run for this revision. python -m spectra.guess --revision " + esc(A.meta.revision) +
+        " (add --mode heldout --independent for the held-out game).</p>";
       return;
     }
-    if (body) body.hidden = false;
-    heat.style.height = "";
     const pct = v => v === null || v === undefined ? "n/a" : Math.round(v * 1000) / 10 + "%";
-    const best = G.guessers[0], known = G.recognizable[0];
-    note.textContent = G.note;
-    nums.innerHTML = "<div>" + pct(G.accuracy) + "<small>of other models' answers named correctly</small></div>" +
-      "<div>" + pct(best.accuracy) + "<small>best guesser, " + esc(best.model) + "</small></div>" +
-      "<div>" + pct(known.recall) + "<small>most recognizable, " + esc(known.model) + "</small></div>" +
-      "<div>" + pct(G.chance) + "<small>expected by chance with " + G.k + " models</small></div>";
-    document.getElementById(ids.gtable).innerHTML = "<thead><tr><th>Best guessers</th><th>Accuracy</th><th>Correct</th><th>Found own answer</th></tr></thead><tbody>" +
-      G.guessers.map(r => "<tr><td style='color:" + color(r.model) + ";font-weight:600'>" + esc(r.model) + "</td><td>" + pct(r.accuracy) + "</td><td>" + r.correct + " / " + r.n + "</td><td>" + pct(r.self_rate) + "</td></tr>").join("") + "</tbody>";
-    document.getElementById(ids.rtable).innerHTML = "<thead><tr><th>Most recognizable</th><th>Named by others</th><th>Correct</th></tr></thead><tbody>" +
-      G.recognizable.map(r => "<tr><td style='color:" + color(r.model) + ";font-weight:600'>" + esc(r.model) + "</td><td>" + pct(r.recall) + "</td><td>" + r.correct + " / " + r.n + "</td></tr>").join("") + "</tbody>";
-    const data = [];
-    G.matrix.forEach((row, i) => row.forEach((v, j) => data.push([j, i, v])));
-    seqHeat(ids.heat, G.labels.map(l => "named " + l), G.labels, data, {min: 0, max: 1, rotate: 30, bottom: 100, fmt: v => Math.round(v * 100) + "% of others' guesses", fmtShort: v => Math.round(v * 100) + "%"});
-  }
-
-  function renderGuess() {
-    const G = A.guessing;
-    const blind = G && G.guessers ? G : (G && G.blind) || null;
-    const briefed = G && G.guessers ? null : (G && G.briefed) || null;
-    const rev = A.meta.revision;
-    fillGuess(blind, {
-      note: "guessnote", nums: "guessnums", gtable: "guesstable", rtable: "recogtable", heat: "guessheat", body: "guessbody",
-      missing: "Not run for this revision. python -m spectra.guess --revision " + rev
-    });
-    fillGuess(briefed, {
-      note: "guessbnote", nums: "guessbnums", gtable: "guessbtable", rtable: "recogbtable", heat: "guessbheat", body: "guessbbody",
-      missing: "Not run for this revision. python -m spectra.guess --revision " + rev + " --mode briefed --research " + rev
+    const span = ci => ci ? " <span class='muted'>(" + pct(ci[0]) + "–" + pct(ci[1]) + ")</span>" : "";
+    const name = m => "<td style='color:" + color(m) + ";font-weight:600'>" + esc(m) + "</td>";
+    box.innerHTML = games.map((G, i) => {
+      const best = G.guessers[0], known = G.recognizable[0];
+      return "<h3" + (i ? " style='margin-top:40px'" : "") + ">" + esc(G.title) + "</h3>" +
+        "<p class='prose muted'>" + esc(G.note) + "</p>" +
+        "<div class='bignums'>" +
+        "<div>" + pct(G.accuracy) + "<small>of other models' answers named correctly" +
+          (G.ci ? " (95% interval " + pct(G.ci[0]) + "–" + pct(G.ci[1]) + ")" : "") + "</small></div>" +
+        "<div>" + pct(best.accuracy) + "<small>best guesser, " + esc(best.model) + "</small></div>" +
+        "<div>" + pct(known.recall) + "<small>most recognizable, " + esc(known.model) + "</small></div>" +
+        "<div>" + pct(G.chance) + "<small>expected by chance with " + G.k + " models</small></div></div>" +
+        "<div class='split'><div class='tablewrap'><table class='stats'><thead><tr><th>Best guessers</th><th>Accuracy (95% interval)</th><th>Correct</th><th>Found own answer</th></tr></thead><tbody>" +
+        G.guessers.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.accuracy) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td><td>" + pct(r.self_rate) + "</td></tr>").join("") +
+        "</tbody></table></div><div class='tablewrap'><table class='stats'><thead><tr><th>Most recognizable</th><th>Named by others (95% interval)</th><th>Correct</th></tr></thead><tbody>" +
+        G.recognizable.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.recall) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td></tr>").join("") +
+        "</tbody></table></div></div>" +
+        "<h3 style='margin-top:28px'>Who they think wrote it</h3>" +
+        "<p class='prose muted'>Rows are the model that actually wrote the answer. Columns are the model the others named. A cell is the share of other models' guesses. The diagonal is recognizability.</p>" +
+        "<div id='guessheat" + i + "' class='chart tall'></div>";
+    }).join("");
+    games.forEach((G, i) => {
+      const data = [];
+      G.matrix.forEach((row, r) => row.forEach((v, c) => data.push([c, r, v])));
+      seqHeat("guessheat" + i, G.labels.map(l => "named " + l), G.labels, data, {min: 0, max: 1, rotate: 30, bottom: 100, fmt: v => Math.round(v * 100) + "% of others' guesses", fmtShort: v => Math.round(v * 100) + "%"});
     });
   }
 
@@ -836,6 +809,11 @@ def _shared_miss(trait, models):
     return (best[1], best[0]) if best and len(best[1]) >= 2 else None
 
 
+def _clear_no(trait, model):
+    """Trap prompts where every coder agreed the behavior did not happen; None for an older analysis without them."""
+    return (((trait or {}).get("per_model") or {}).get(model) or {}).get("no")
+
+
 def _kappa(analysis, code):
     v = (analysis.get("agreement") or {}).get(code)
     return f", kappa={v:.2f}" if isinstance(v, (int, float)) else ""
@@ -973,8 +951,16 @@ def build_recommendations(analysis):
     amb_worst = _rank(amb, high=False)[0] if amb else None
     adh_best = _at(adhere) if has_limits else []
     adh_worst = _rank(adhere, high=False)[0] if has_limits else None
-    accepted = [m for m in models if premise and _val(premise, m) is not None and _val(premise, m) < 1]
+    if premise and _clear_no(premise, models[0]) is not None:
+        accepted = [m for m in models if _clear_no(premise, m)]  # every coder agrees it went along
+    else:
+        accepted = [m for m in models if premise and _val(premise, m) is not None and _val(premise, m) < 1]
     lone_accept = accepted[0] if len(accepted) == 1 else None
+
+    def went_along(m):
+        """'(1 of 11: p020)' when the analysis kept prompt ids, else the challenge rate."""
+        ids = _clear_no(premise, m)
+        return f"({len(ids)} of {premise['per_model'][m]['n']}: {', '.join(ids)})" if ids else f"(challenged {pct(premise, m)})"
     recalls = {m: _recall(analysis, m) for m in models if _recall(analysis, m) is not None}
 
     uses = []
@@ -1031,6 +1017,9 @@ def build_recommendations(analysis):
             watch = (f"{_join(err_worst)} flag{'s' if len(err_worst) == 1 else ''} only {pct(errors, err_worst[0])} of "
                      "pasted-error traps" + (f" and miss{'es' if len(err_worst) == 1 else ''} every error inside "
                                             f"{_join(sorted(shared))} prompts" if shared else "") + ".")
+            outright = [f"{m} on {', '.join(_clear_no(errors, m))}" for m in err_worst if _clear_no(errors, m)]
+            if outright:
+                watch += f" Both coders agree these were missed: {'; '.join(outright)}."
         else:
             watch = "Every model flags pasted errors at the same rate."
         uses.append({
@@ -1047,9 +1036,8 @@ def build_recommendations(analysis):
     if amb:
         watch = f"{amb_worst} guesses silently on {100 * (1 - _val(amb, amb_worst)):.0f}% of vague prompts."
         if lone_accept:
-            rest = [_val(premise, m) for m in models if m != lone_accept and _val(premise, m) is not None]
-            watch += (f" {lone_accept} is {'also ' if lone_accept == amb_worst else ''}the only model that ever accepted "
-                      f"a false premise (challenged {pct(premise, lone_accept)} vs {_span(rest) if rest else 'n/a'} for the rest).")
+            watch += (f" {lone_accept} is {'also ' if lone_accept == amb_worst else ''}the only model the coders agree "
+                      f"went along with a false premise {went_along(lone_accept)}.")
         uses.append({
             "need": "Vague or underspecified requests",
             "for": "Prompts missing audience, length, format, or goal.",
@@ -1334,7 +1322,7 @@ def build_recommendations(analysis):
         if m == slowest:
             dont.append(f"Do not use it when the user is waiting ({lat(m)} median).")
         if lone_accept == m:
-            dont.append(f"It is the only model that ever accepted a false premise (challenged {pct(premise, m)}).")
+            dont.append(f"It is the only model the coders agree went along with a false premise {went_along(m)}.")
         evidence = f"{cost(m)} / {answers(m)}" + (f", {tok_ratio(m):.2f} tokens/word" if tok_ratio(m) else "")
         if errors:
             evidence += f", errors {pct(errors, m)}"
@@ -1425,18 +1413,12 @@ def main():
     run_dir = Path(args.run_dir) if args.run_dir else revision_dir(load_config(args.config), args.revision)
     data = json.loads((run_dir / "analysis.json").read_text(encoding="utf-8"))
     data["recommendations"] = build_recommendations(data)
-    from spectra.guess import load_jsonl as load_guesses, summarize_guesses
+    from spectra.guess import load_jsonl as load_guesses, summarize_all
     guesses = load_guesses(run_dir / "guesses.jsonl")
     if guesses:
-        models = data["meta"]["models"]
-        revision = data["meta"].get("revision")
-        packed = {}
-        for mode in ("blind", "briefed"):
-            summary = summarize_guesses(guesses, models, mode, revision)
-            if summary:
-                packed[mode] = summary
-        if packed:
-            data["guessing"] = packed
+        games = summarize_all(guesses, data["meta"]["models"], data["meta"].get("revision"))
+        if games:
+            data["guessing"] = {"games": games}
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     html = TEMPLATE.replace("__TITLE__", args.title).replace("__DATA__", payload)
     out = Path(args.out) if args.out else run_dir / "report.html"

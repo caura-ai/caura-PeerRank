@@ -14,7 +14,7 @@ import random
 import re
 from pathlib import Path
 
-from spectra import add_run_args, load_config, providers, run_dir as revision_dir
+from spectra import add_run_args, load_config, providers, run_dir as revision_dir, writer_lock
 
 CODEBOOK = {
     "answer_first": ["yes", "no"],
@@ -81,7 +81,7 @@ async def main():
     add_run_args(ap)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--concurrency", type=int, default=6,
-                    help="in-flight calls per coder, capped by PeerRank's PROVIDER_CONCURRENCY")
+                    help="in-flight calls per provider, capped by PeerRank's PROVIDER_CONCURRENCY")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -94,41 +94,44 @@ async def main():
     run_dir = revision_dir(cfg, args.revision)
     responses = [r for r in load_jsonl(run_dir / "responses.jsonl") if r.get("text")]
     out_path = run_dir / "codes.jsonl"
-    done = {(c["coder"], c["model"], c["prompt_id"], c["sample"]) for c in load_jsonl(out_path) if c.get("codes")}
+    with writer_lock(out_path):
+        done = {(c["coder"], c["model"], c["prompt_id"], c["sample"]) for c in load_jsonl(out_path) if c.get("codes")}
 
-    jobs = [(cd, r) for cd in coders for r in responses
-            if (cd["name"], r["model"], r["prompt_id"], r["sample"]) not in done]
-    random.shuffle(jobs)
-    if args.limit:
-        jobs = jobs[: args.limit]
-    print(f"{len(jobs)} responses to code with {len(coders)} coder(s)")
+        jobs = [(cd, r) for cd in coders for r in responses
+                if (cd["name"], r["model"], r["prompt_id"], r["sample"]) not in done]
+        random.shuffle(jobs)
+        if args.limit:
+            jobs = jobs[: args.limit]
+        print(f"{len(jobs)} responses to code with {len(coders)} coder(s)")
 
-    # one limit per coder, like run.py and guess.py, so --concurrency cannot exceed a provider's cap
-    sems = {cd["name"]: asyncio.Semaphore(providers.max_concurrency(cd, args.concurrency)) for cd in coders}
-    lock = asyncio.Lock()
+        # one limit per provider, like run.py and guess.py, capped by PeerRank's PROVIDER_CONCURRENCY
+        sems = providers.semaphores(coders, args.concurrency)
+        lock = asyncio.Lock()
 
-    async def work(coder, r):
-        async with sems[coder["name"]]:
-            rec = {"coder": coder["name"], "model": r["model"], "prompt_id": r["prompt_id"], "sample": r["sample"]}
-            try:
-                reply = await providers.complete(coder, build_message(prompts[r["prompt_id"]], r["text"]),
-                                                 timeout=cfg["timeout_seconds"], retries=cfg["retries"])
-                raw = reply.text
-                rec["codes"] = parse_codes(raw)
-                if rec["codes"] is None:
-                    rec["error"] = "unparseable"
-                    rec["raw"] = (raw or "")[:500]
-            except Exception as e:
-                rec["error"] = f"{type(e).__name__}: {e}"[:300]
-            async with lock:
-                with out_path.open("a", encoding="utf-8") as f:
-                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        async def work(coder, r):
+            async with sems[coder["name"]]:
+                rec = {"coder": coder["name"], "model": r["model"], "prompt_id": r["prompt_id"], "sample": r["sample"]}
+                try:
+                    reply = await providers.complete(coder, build_message(prompts[r["prompt_id"]], r["text"]),
+                                                     timeout=cfg["timeout_seconds"], retries=cfg["retries"])
+                    raw = reply.text
+                    rec["codes"] = parse_codes(raw)
+                    if rec["codes"] is None:
+                        rec["error"] = "unparseable"
+                        rec["raw"] = (raw or "")[:500]
+                    if len(raw or "") > 500:
+                        rec["raw_tail"] = raw[-1500:]  # where a truncated or rambling reply gave up
+                except Exception as e:
+                    rec["error"] = f"{type(e).__name__}: {e}"[:300]
+                async with lock:
+                    with out_path.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-    try:
-        await asyncio.gather(*(work(c, r) for c, r in jobs))
-    finally:
-        await providers.close()
-    print(f"Done -> {out_path}")
+        try:
+            await asyncio.gather(*(work(c, r) for c, r in jobs))
+        finally:
+            await providers.close()
+        print(f"Done -> {out_path}")
 
 
 if __name__ == "__main__":

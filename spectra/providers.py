@@ -97,6 +97,22 @@ def max_concurrency(entry: dict, default: int) -> int:
     return max(1, min(default, config.PROVIDER_CONCURRENCY.get(e["provider"], default)))
 
 
+def semaphores(entries: list[dict], cap: int) -> dict:
+    """{entry name: semaphore}, one semaphore per provider, shared by every entry that calls it.
+
+    PROVIDER_CONCURRENCY is a per-provider limit (PeerRank's phases throttle by provider too),
+    so two Google models draw on one budget instead of each getting the full cap.
+    """
+    import asyncio
+    per_provider, out = {}, {}
+    for entry in entries:
+        e = resolve(entry)
+        if e["provider"] not in per_provider:
+            per_provider[e["provider"]] = asyncio.Semaphore(max_concurrency(entry, cap))
+        out[e["name"]] = per_provider[e["provider"]]
+    return out
+
+
 async def complete(entry: dict, prompt: str, *, system_prompt: str | None = None,
                    timeout: int = 180, retries: int = 3) -> Reply:
     e = resolve(entry)

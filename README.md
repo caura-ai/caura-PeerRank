@@ -253,22 +253,29 @@ python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/
 
 For each prompt that every model answered, each model sees all of the answers with the author names removed and matches each answer to the roster. The prompt does not say which model is guessing. Letter order is shuffled separately for each guesser.
 
-Two modes share `guesses.jsonl` and are scored separately:
+Three modes share `guesses.jsonl`. Each combination of mode, research source and `--independent` is scored as its own game:
 
 | Mode | What the guesser sees |
 |------|------------------------|
 | **No extra context** (`--mode blind`, the default) | The prompt, the answers, and the roster names |
 | **Based on the results** (`--mode briefed`) | The same, plus measured habits from a Spectra `analysis.json`: length, formatting, hedging, signature words, limit-following, and the strongest departures. Cost and latency are left out. The notes do not say which letter is which. |
+| **Held-out results** (`--mode heldout`) | Like `briefed`, but the prompts split in half within each category, and each half is guessed with notes measured on the other half. No prompt or answer in front of the guesser went into its notes. |
+
+By default every model must be used once, so placing one answer narrows the rest, and a guesser that spots its own answer gets a head start on the others. The report shows the size of that effect. `--independent` asks for a name per answer, judged on its own, with repeats allowed, so each answer is a clean 1-in-k guess.
 
 ```bash
 python -m spectra.guess --revision oct-23-26 --limit 5              # blind smoke test
 python -m spectra.guess --revision oct-23-26                        # no extra context
 python -m spectra.guess --revision oct-23-26 --mode briefed         # profile from this same revision
 python -m spectra.guess --revision oct-23-26 --mode briefed --research oct-14-26
-python -m spectra.report --revision oct-23-26                       # fills both sections
+python -m spectra.guess --revision oct-23-26 --mode heldout --independent --dry-run   # messages + cost estimate, no calls
+python -m spectra.guess --revision oct-23-26 --mode heldout --independent             # the clean test
+python -m spectra.report --revision oct-23-26                       # one section per game
 ```
 
-`--research` chooses which profile is pasted in. It defaults to the same revision as the answers, which is "guess from the results just measured." Passing an earlier revision is the cleaner test: the notes were measured on other prompts. A full game is one call per guesser per prompt (1,200 calls for 200 prompts and 6 models), and each mode is resumable on its own. Run `spectra.analyze` before `briefed`, then regenerate the report. The report reads `guesses.jsonl` and does not rerun analysis.
+`--research` chooses which profile `briefed` pastes in. It defaults to the same revision as the answers, so each answer is part of the averages it is guessed with. An earlier revision avoids that, but revisions that use the same prompt file share every prompt. `heldout` is the clean test: it writes each half's answers and codes to `data/spectra/<revision>/holdout/` and runs `spectra.analyze` there. `--dry-run` builds every message and estimates the cost from earlier calls without calling a model.
+
+A full game is one call per guesser per prompt (1,200 calls for 200 prompts and 6 models). Each game is resumable on its own, and a lock file stops a second run from writing `guesses.jsonl` at the same time. Run `spectra.analyze` before `briefed`, then regenerate the report. The report reads `guesses.jsonl` and does not rerun analysis.
 
 | Score | Meaning |
 |-------|---------|
@@ -276,7 +283,7 @@ python -m spectra.report --revision oct-23-26                       # fills both
 | **Most recognizable** | Share of the *other* models who named this author |
 | **Found own answer** | How often a model picks its own unlabeled answer (reported separately) |
 
-Chance is 1/k, where k is the roster size. A model's own answer is left out of both headlines. The two modes are scored separately. Ambiguous short names such as "claude" or "gemini" count as a miss. "opus" and "flash" count when they match one model.
+Chance is 1/k, where k is the roster size. A model's own answer is left out of both headlines, and every score has a 95% interval that resamples prompts. Ambiguous short names such as "claude" or "gemini" count as a miss. "opus" and "flash" count when they match one model.
 
 ### Output
 

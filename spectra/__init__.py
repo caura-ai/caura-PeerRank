@@ -25,6 +25,10 @@ behaviors rest on 5-11 prompts each, enough for large differences and not for fi
 100-200 coder labels before trusting the behavior traits.
 """
 
+import os
+import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 SPECTRA_DIR = Path(__file__).resolve().parent
@@ -55,6 +59,60 @@ def load_config(path=None) -> dict:
 def add_run_args(ap):
     ap.add_argument("--config", default=str(DEFAULT_CONFIG))
     ap.add_argument("--revision", default=None, help="PeerRank-style revision tag, e.g. oct-14-26")
+
+
+def _pid_alive(pid: int) -> bool:
+    if os.name == "nt":  # os.kill(pid, 0) would terminate the process on Windows
+        import ctypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return ctypes.get_last_error() == 5  # access denied: it exists
+        code = ctypes.c_ulong()
+        kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        kernel32.CloseHandle(handle)
+        return code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+@contextmanager
+def writer_lock(path: Path):
+    """Refuse a second writer on the same output file: two runs appending at once duplicate rows.
+
+    The lock is <file>.lock next to the output and holds the writer's PID. A lock left behind by a
+    process that is no longer running is taken over.
+    """
+    lock = path.with_name(path.name + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    for _ in range(2):
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                pid = int(lock.read_text(encoding="utf-8").split()[0])
+            except (OSError, ValueError, IndexError):
+                pid = None
+            fresh = pid is None and time.time() - lock.stat().st_mtime < 10  # its writer may not have written the PID yet
+            if fresh or (pid and _pid_alive(pid)):
+                raise SystemExit(f"{path.name} is already being written by process {pid or '(starting)'}. "
+                                 f"Wait for it to finish, or delete {lock} if that process is gone.")
+            print(f"Taking over a stale lock left by process {pid}: {lock}")
+            lock.unlink(missing_ok=True)
+    else:
+        raise SystemExit(f"Could not take {lock}")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(f"{os.getpid()} {' '.join(sys.argv)}\n")
+    try:
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 def run_dir(cfg: dict, revision: str | None = None) -> Path:

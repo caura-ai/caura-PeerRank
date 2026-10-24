@@ -12,7 +12,7 @@ revision: oct-23-26
 prompts: prompts/prompts_v1.json  # relative to spectra/
 
 samples: 1                        # answers per prompt per model; use 3 once the pipeline works
-concurrency_per_model: 10         # also capped by PeerRank's PROVIDER_CONCURRENCY
+concurrency_per_model: 10         # in-flight calls per provider (models from one provider share it), capped by PROVIDER_CONCURRENCY
 timeout_seconds: 180
 retries: 3
 
@@ -42,3 +42,5 @@ coders:
 # recognizable and who guesses best. Uses the models list above; coders are not guessers.
 # --mode blind is the prompt and the answers only. --mode briefed also pastes the measured
 # habits from analysis.json (--research <revision>, default this revision). Run analyze first.
+# --mode heldout briefs each half of the prompts with notes from the other half (the clean test).
+# --independent names each answer on its own instead of using each model once. --dry-run is free.

@@ -1,16 +1,21 @@
-"""Spectra unit tests: constraint checks, guess parsing and scoring, and the report's recommendation text.
+"""Spectra unit tests: constraint checks, coded traits, guess parsing and scoring, held-out briefs,
+writer locks, provider throttling, and the report's recommendation text.
 
   pytest tests/
 """
 import json
 import math
 import re
+import subprocess
 import sys
 
+import pandas as pd
 import pytest
 
-from spectra.analyze import check_constraint
-from spectra.guess import parse_assignment, resolve_name, summarize_guesses
+from spectra import SPECTRA_DIR, providers, writer_lock
+from spectra.analyze import check_constraint, coded_value, prompt_outcomes
+from spectra.guess import (build_message, heldout_briefs, holdout_halves, parse_assignment, resolve_name,
+                           summarize_all, summarize_guesses)
 from spectra.report import build_recommendations
 from spectra.run import select_prompts
 
@@ -121,24 +126,173 @@ class TestGuessParsing:
     def test_no_json(self):
         assert parse_assignment("I think A is GPT.", ["A", "B"], ROSTER) is None
 
+    def test_object_sent_back_as_a_json_string(self):
+        raw = json.dumps(json.dumps({"A": "gpt-6-astra", "B": "muse-wonder-1.0"}))
+        assert parse_assignment(raw, ["A", "B"], ROSTER) == {"A": "gpt-6-astra", "B": "muse-wonder-1.0"}
+
+    def test_escaped_object_inside_prose(self):
+        raw = 'My answer: {\\"A\\": \\"gemini-4-argon\\", \\"B\\": \\"gpt-6-astra\\"}'
+        assert parse_assignment(raw, ["A", "B"], ROSTER) == {"A": "gemini-4-argon", "B": "gpt-6-astra"}
+
+
+class TestMessages:
+    ORDER = ["gpt-6-astra", "muse-wonder-1.0"]
+    TEXTS = {"gpt-6-astra": "one", "muse-wonder-1.0": "two"}
+
+    def test_permutation_wording(self):
+        text = build_message("Q?", self.ORDER, self.TEXTS, ROSTER)
+        assert "written by a different model" in text and "Use each model once." in text
+        assert "Judge only by how the answer is written." in text
+
+    def test_independent_wording(self):
+        text = build_message("Q?", self.ORDER, self.TEXTS, ROSTER, independent=True)
+        assert "Use each model once" not in text and "different model" not in text
+        assert "may be named more than once" in text
+
+    def test_brief_is_included(self):
+        text = build_message("Q?", self.ORDER, self.TEXTS, ROSTER, brief="NOTES HERE")
+        assert "<research>\nNOTES HERE\n</research>" in text
+
+
+def test_holdout_halves_split_every_category_evenly():
+    prompts = [{"id": f"p{i:03d}", "category": f"c{i % 4}"} for i in range(40)]
+    halves = holdout_halves(prompts)
+    assert set(halves) == {p["id"] for p in prompts}
+    for c in range(4):
+        got = [halves[p["id"]] for p in prompts if p["category"] == f"c{c}"]
+        assert got.count("A") == got.count("B") == 5
+    assert holdout_halves(list(reversed(prompts))) == halves  # fixed by the ids, not the order
+
+
+# ----------------------------------------------------------------------------- guess scoring
+GUESSERS = ["alpha-1", "beta-1", "gamma-1"]
+LABELS = {"A": "alpha-1", "B": "beta-1", "C": "gamma-1"}
+
+
+def guess(guesser, a, b, c, prompt="p1", **extra):
+    return {"guesser": guesser, "prompt_id": prompt, "sample": 0, "labels": LABELS,
+            "guesses": {"A": a, "B": b, "C": c}, **extra}
+
 
 def test_summarize_guesses_leaves_own_answer_out():
-    models = ["alpha-1", "beta-1", "gamma-1"]
-    labels = {"A": "alpha-1", "B": "beta-1", "C": "gamma-1"}
     records = [
-        {"guesser": "alpha-1", "labels": labels, "guesses": {"A": "alpha-1", "B": "beta-1", "C": "alpha-1"}},
-        {"guesser": "beta-1", "labels": labels, "guesses": {"A": "gamma-1", "B": "beta-1", "C": "alpha-1"},
-         "mode": "briefed", "research": "r1"},
+        guess("alpha-1", "alpha-1", "beta-1", "alpha-1"),
+        guess("beta-1", "gamma-1", "beta-1", "alpha-1", mode="briefed", research="r1"),
     ]
-    blind = summarize_guesses(records, models, "blind")
+    blind = summarize_guesses(records, GUESSERS)
     assert blind["n_calls"] == 1 and blind["n_judgments"] == 2
     assert blind["chance"] == pytest.approx(1 / 3)
     alpha = next(g for g in blind["guessers"] if g["model"] == "alpha-1")
     assert (alpha["correct"], alpha["n"], alpha["self_rate"]) == (1, 2, 1.0)
     recall = {r["model"]: r["recall"] for r in blind["recognizable"]}
     assert recall == {"beta-1": 1.0, "gamma-1": 0.0, "alpha-1": None}
-    briefed = summarize_guesses(records, models, "briefed")
+    briefed = summarize_guesses(records, GUESSERS, ("briefed", "r1", "permutation"))
     assert briefed["n_calls"] == 1 and briefed["research"] == ["r1"]
+    assert summarize_guesses(records, GUESSERS, ("briefed", "other", "permutation")) is None
+
+
+def test_games_are_kept_apart_and_titled():
+    records = [
+        guess("alpha-1", "alpha-1", "beta-1", "gamma-1"),
+        guess("alpha-1", "beta-1", "beta-1", "gamma-1", assign="independent"),
+        guess("alpha-1", "alpha-1", "beta-1", "gamma-1", mode="heldout", research="rev", assign="independent"),
+        guess("alpha-1", "alpha-1", "gamma-1", "beta-1", mode="briefed", research="rev"),
+    ]
+    games = summarize_all(records, GUESSERS, "rev")
+    assert [g["title"] for g in games] == [
+        "Just guess",
+        "Just guess, each answer judged on its own",
+        "Guess from the research (rev notes)",
+        "Guess from held-out research (notes from the other half of the prompts), each answer judged on its own",
+    ]
+    assert games[1]["repeat_rate"] == 1.0 and games[0]["repeat_rate"] == 0.0
+    assert "same set of answers" in games[2]["note"]
+    assert "no prompt or answer in front of the guesser" in games[3]["note"]
+
+
+def test_a_retried_call_replaces_the_earlier_one():
+    records = [guess("alpha-1", "gamma-1", "alpha-1", "beta-1"), guess("alpha-1", "alpha-1", "beta-1", "gamma-1")]
+    assert summarize_guesses(records, GUESSERS)["accuracy"] == 1.0
+
+
+def test_intervals_and_the_own_answer_effect():
+    records = []
+    for i in range(30):
+        found = i % 2 == 0  # alpha finds its own answer on even prompts and then gets the others right
+        records.append(guess("alpha-1", "alpha-1" if found else "beta-1", "beta-1" if found else "gamma-1",
+                             "gamma-1" if found else "alpha-1", prompt=f"p{i}"))
+    s = summarize_guesses(records, GUESSERS)
+    lo, hi = s["ci"]
+    assert lo <= s["accuracy"] <= hi and lo < hi
+    assert s["own_answer_effect"]["found"] == 1.0 and s["own_answer_effect"]["not_found"] == 0.0
+    assert "when they found their own answer" in s["note"]
+
+
+# ----------------------------------------------------------------------------- held-out briefs end to end
+def test_heldout_briefs_never_see_the_prompts_they_brief(tmp_path):
+    prompts = json.loads((SPECTRA_DIR / "prompts" / "prompts_v1.json").read_text(encoding="utf-8"))["prompts"]
+    picked = [p for c in sorted({p["category"] for p in prompts})
+              for p in [q for q in prompts if q["category"] == c][:4]]  # 40 prompts, 4 per category
+    styles = {"alpha-1": lambda i: f"Short answer {i}. " + "Plain words here. " * 12,
+              "beta-1": lambda i: f"## Plan {i}\n" + "".join(f"- **step {j}** do the thing carefully\n" for j in range(8)),
+              "gamma-1": lambda i: f"Honestly, it depends {i} — you might perhaps try this. " * 10}
+    rows = [{"model": m, "prompt_id": p["id"], "category": p["category"], "sample": 0, "text": f(i)}
+            for i, p in enumerate(picked) for m, f in styles.items()]
+    (tmp_path / "responses.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(json.dumps({"revision": "t", "prompts": str(SPECTRA_DIR / "prompts" / "prompts_v1.json"),
+                                  "models": list(styles)}), encoding="utf-8")  # JSON is valid YAML
+    halves = holdout_halves(prompts)
+    briefs = heldout_briefs(str(config), tmp_path, "t", list(styles), halves)
+    assert set(briefs) == {"A", "B"} and briefs["A"] != briefs["B"]
+    in_b = sum(halves[p["id"]] == "B" for p in picked)  # halves are fixed over the full prompt set
+    assert f"Source: Spectra revision t-half-B, {in_b} prompts" in briefs["A"]  # half A is briefed from half B
+    for half in "AB":
+        analysis = json.loads((tmp_path / "holdout" / f"half-{half}" / "analysis.json").read_text(encoding="utf-8"))
+        assert {p["id"] for p in analysis["viewer"]["prompts"]} <= {pid for pid, h in halves.items() if h == half}
+
+
+# ----------------------------------------------------------------------------- coded traits
+class TestCodedTraits:
+    def test_not_applicable_on_a_trap_prompt_is_left_out(self):
+        labels = [{"premise": "not_applicable"}, {"premise": "challenged"}]
+        assert coded_value(labels, "premise", {"challenged"}, tagged=True) == 1.0
+        assert math.isnan(coded_value([{"premise": "not_applicable"}], "premise", {"challenged"}, tagged=True))
+
+    def test_untagged_codes_are_unchanged(self):
+        assert coded_value([{"tone": "warm"}, {"tone": "blunt"}], "tone", {"warm"}, tagged=False) == 0.5
+        assert math.isnan(coded_value([{}], "tone", {"warm"}, tagged=False))
+
+    def test_prompt_outcomes(self):
+        df = pd.DataFrame({"model": ["m"] * 4, "prompt_id": ["p1", "p2", "p3", "p4"], "c": [1.0, 0.0, 0.5, None]})
+        assert prompt_outcomes(df, "m", "c") == {"yes": ["p1"], "no": ["p2"], "split": ["p3"]}
+
+
+# ----------------------------------------------------------------------------- throttling and locks
+def test_models_from_one_provider_share_a_semaphore():
+    sems = providers.semaphores([{"name": "gemini-4-argon"}, {"name": "gemini-3.8-flash"}, {"name": "gpt-6-astra"}], 32)
+    assert sems["gemini-4-argon"] is sems["gemini-3.8-flash"]
+    assert sems["gpt-6-astra"] is not sems["gemini-4-argon"]
+    from peerrank.config import PROVIDER_CONCURRENCY
+    assert sems["gemini-4-argon"]._value == min(32, PROVIDER_CONCURRENCY["google"])
+
+
+class TestWriterLock:
+    def test_a_second_writer_is_refused(self, tmp_path):
+        out = tmp_path / "guesses.jsonl"
+        with writer_lock(out):
+            assert (tmp_path / "guesses.jsonl.lock").exists()
+            with pytest.raises(SystemExit, match="already being written"):
+                with writer_lock(out):
+                    pass
+        assert not (tmp_path / "guesses.jsonl.lock").exists()
+
+    def test_a_stale_lock_is_taken_over(self, tmp_path):
+        done = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True)
+        (tmp_path / "codes.jsonl.lock").write_text(done.stdout.strip() + " old run\n", encoding="utf-8")
+        with writer_lock(tmp_path / "codes.jsonl"):
+            pid = int((tmp_path / "codes.jsonl.lock").read_text(encoding="utf-8").split()[0])
+            assert pid != int(done.stdout)
 
 
 # ----------------------------------------------------------------------------- report recommendations
@@ -246,10 +400,25 @@ class TestRecommendations:
 
     def test_lone_false_premise_claim_only_when_true(self):
         analysis = synthetic_analysis()
-        assert "the only model that ever accepted a false premise" in all_text(build_recommendations(analysis))
+        claim = "the only model the coders agree went along with a false premise"
+        assert claim + " (challenged 80%)" in all_text(build_recommendations(analysis))  # no prompt ids kept
         premise = next(t for t in analysis["traits"] if t["key"] == "premise")
-        premise["per_model"]["alpha-1"]["value"] = 0.8  # now two models accepted one
+        premise["per_model"]["alpha-1"]["value"] = 0.8  # now two models went along with one
         assert "the only model" not in all_text(build_recommendations(analysis))
+
+    def test_trap_claims_name_their_prompts(self):
+        analysis = synthetic_analysis()
+        for t in analysis["traits"]:
+            if t["key"] in ("premise", "errors"):
+                for m in MODELS:
+                    t["per_model"][m].update(yes=[], no=[], split=[])
+        premise = next(t for t in analysis["traits"] if t["key"] == "premise")
+        premise["per_model"]["beta-1"]["no"] = ["p020"]
+        errors = next(t for t in analysis["traits"] if t["key"] == "errors")
+        errors["per_model"]["beta-1"]["no"] = ["p145", "p157"]
+        text = all_text(build_recommendations(analysis))
+        assert "went along with a false premise (1 of 5: p020)" in text
+        assert "Both coders agree these were missed: beta-1 on p145, p157." in text
 
     def test_runs_without_behavior_codes(self):
         recs = build_recommendations(synthetic_analysis(coded=False))
@@ -264,4 +433,16 @@ class TestRecommendations:
         monkeypatch.setattr(sys, "argv", ["report", "--run-dir", str(tmp_path)])
         report.main()
         html = (tmp_path / "report.html").read_text(encoding="utf-8")
-        assert "Usage recommendations" in html and '"drive_note"' in html
+        assert "Usage recommendations" in html and '"drive_note"' in html and '"guessing"' not in html
+
+        labels = {"A": "alpha-1", "B": "alpha-2", "C": "beta-1"}
+        rows = [{"guesser": "alpha-1", "prompt_id": "p1", "sample": 0, "labels": labels, "guesses": labels},
+                {"guesser": "alpha-1", "prompt_id": "p1", "sample": 0, "labels": labels, "guesses": labels,
+                 "mode": "heldout", "research": "test-rev", "assign": "independent"}]
+        (tmp_path / "guesses.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        report.main()
+        html = (tmp_path / "report.html").read_text(encoding="utf-8")
+        data = json.loads(re.search(r'<script type="application/json" id="data">(.*?)</script>', html, re.S).group(1))
+        assert [g["title"] for g in data["guessing"]["games"]] == [
+            "Just guess",
+            "Guess from held-out research (notes from the other half of the prompts), each answer judged on its own"]
