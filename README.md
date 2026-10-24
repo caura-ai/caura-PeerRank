@@ -2,6 +2,8 @@
 
 **Do LLMs agree on which LLM is best?** PeerRank lets AI models evaluate each other through a structured peer review process—generating questions, answering them with web search, and cross-evaluating responses to produce ranked results with bias analysis.
 
+The same repo includes **Spectra**, a behavioral profile of how those models write. It measures style and habits. It does not rank answer quality. See [Spectra](#spectra).
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -14,6 +16,7 @@
 - **Cost Tracking** — Real-time token usage and cost analysis per model
 - **Publication Figures** — Generate publication-quality charts and statistical analysis
 - **Ground Truth Validation** — TruthfulQA (r=0.858) and GSM8K (r=0.986) correlation with accuracy
+- **Spectra** — Style and behavior profiles of the same roster, plus a guessing game in two modes: the answers alone, or the answers plus the measured profile
 
 ## Quick Start
 
@@ -140,7 +143,8 @@ data/
 ├── phase2_web_grounding_v1.json    # Web grounding data (current events only)
 ├── phase3_rankings_v1.json         # Cross-evaluations (3 bias modes)
 ├── phase4_report_v1.md             # Markdown report with rankings
-└── phase5_analysis_v1.md           # Judge analysis and insights
+├── phase5_analysis_v1.md           # Judge analysis and insights
+└── spectra/<revision>/             # Spectra run (see below)
 ```
 
 ### Sample Report Sections
@@ -168,6 +172,14 @@ generate_figures_*.py    # Publication figure generation
 validate_truthfulqa.py   # TruthfulQA validation
 validate_gsm8k.py        # GSM8K math validation
 validate_mmlu.py         # MMLU benchmark validation
+spectra/                 # Behavioral profiles (style, habits, guessing game)
+  config.yaml            # Roster, revision, coders
+  run.py                 # Collect answers
+  code_behaviors.py      # Optional yes/no behavior labels
+  guess.py               # Author-matching game (blind, or briefed with the profile)
+  analyze.py             # Features, traits, style map
+  report.py              # HTML report
+  prompts/               # Prompt set
 pyproject.toml           # Package configuration
 ```
 
@@ -200,6 +212,85 @@ python validate_mmlu.py --all             # Run validation
 python validate_mmlu.py --subjects math,physics  # Specific subjects
 ```
 
+## Spectra
+
+Spectra profiles how each model on the PeerRank roster answers the same everyday prompts: length, formatting, hedging, vocabulary, and what it does when a prompt hides a trap. Calls go out with no system prompt, so the profile is out-of-the-box API behavior. A revision tag matches a PeerRank revision (`oct-14-26`), so the two describe the same deployment.
+
+The roster lives in `spectra/config.yaml`. Names are PeerRank display names from `peerrank/models.py`, called through PeerRank's providers.
+
+### Pipeline
+
+```bash
+python -m spectra.run --revision oct-23-26 --limit 5   # smoke test: 5 prompts, every model
+python -m spectra.run --revision oct-23-26             # full run (resumable; re-run retries errors)
+python -m spectra.code_behaviors --revision oct-23-26  # optional behavior codes
+python -m spectra.analyze --revision oct-23-26         # features, traits, style map, classifier
+python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/report.html
+```
+
+`--revision` defaults to `revision` in `spectra/config.yaml`. `--limit` picks prompts evenly across categories. The full set is 200 English prompts in 10 categories: writing, editing, info, explain, howto, advice, coding, summarize, brainstorm, and opinion.
+
+`code_behaviors` is optional. Two coder models apply fixed yes/no labels (answer first, flag a pasted error, accept a false premise, and similar). They sit outside the profiled panel. Hand-check 100–200 of their labels before relying on those traits. Style traits and limit checks are computed from the text itself.
+
+### Report
+
+`report.html` includes:
+
+- **Profiles** and a **trait explorer** — departures from the panel average, as effect sizes
+- **Traps** — false premise, pasted error, vague request, stated opinion, emotional framing
+- **Explicit limits** — whether a stated length or format constraint was met
+- **Style map** — two principal components of the measured style features
+- **Can you tell them apart?** — a classifier naming the author of answers from prompts it did not train on
+- **The guessing game** — best guessers and most recognizable models, scored separately for the blind mode and the research mode
+- **Usage recommendations** — which model fits a need, ranked from the measured traits (no judge model)
+- **Same prompt, different answers** — the raw replies side by side
+
+### The guessing game
+
+For each prompt that every model answered, each model sees all of the answers with the author names removed and matches each answer to the roster. The prompt does not say which model is guessing. Letter order is shuffled separately for each guesser.
+
+Two modes share `guesses.jsonl` and are scored separately:
+
+| Mode | What the guesser sees |
+|------|------------------------|
+| **No extra context** (`--mode blind`, the default) | The prompt, the answers, and the roster names |
+| **Based on the results** (`--mode briefed`) | The same, plus measured habits from a Spectra `analysis.json`: length, formatting, hedging, signature words, limit-following, and the strongest departures. Cost and latency are left out. The notes do not say which letter is which. |
+
+```bash
+python -m spectra.guess --revision oct-23-26 --limit 5              # blind smoke test
+python -m spectra.guess --revision oct-23-26                        # no extra context
+python -m spectra.guess --revision oct-23-26 --mode briefed         # profile from this same revision
+python -m spectra.guess --revision oct-23-26 --mode briefed --research oct-14-26
+python -m spectra.report --revision oct-23-26                       # fills both sections
+```
+
+`--research` chooses which profile is pasted in. It defaults to the same revision as the answers, which is "guess from the results just measured." Passing an earlier revision is the cleaner test: the notes were measured on other prompts. A full game is one call per guesser per prompt (1,200 calls for 200 prompts and 6 models), and each mode is resumable on its own. Run `spectra.analyze` before `briefed`, then regenerate the report. The report reads `guesses.jsonl` and does not rerun analysis.
+
+| Score | Meaning |
+|-------|---------|
+| **Best guessers** | Share of the *other* models' answers this model named correctly |
+| **Most recognizable** | Share of the *other* models who named this author |
+| **Found own answer** | How often a model picks its own unlabeled answer (reported separately) |
+
+Chance is 1/k, where k is the roster size. A model's own answer is left out of both headlines. The two modes are scored separately. Ambiguous short names such as "claude" or "gemini" count as a miss. "opus" and "flash" count when they match one model.
+
+### Output
+
+```
+data/spectra/<revision>/
+├── responses.jsonl     # One answer per model, prompt, and sample
+├── codes.jsonl         # Present after code_behaviors
+├── features.csv        # Style features per answer
+├── analysis.json       # Traits, style map, classifier
+├── guesses.jsonl       # Present after the guessing game
+├── report.html         # The report
+└── run_config.json     # Roster and settings for the run
+```
+
+### Caveats
+
+The prompts are synthetic and English-only. Effect sizes are relative to the models in that run, so adding or removing a model moves everyone. Trap results rest on a small number of prompts each, which is enough to see large differences and too thin for fine ones.
+
 ## Contributing
 
 Contributions welcome! Please:
@@ -220,10 +311,12 @@ Contributions welcome! Please:
 MIT License - see [LICENSE](LICENSE) for details.
 
 ## Citation
-bibtex
+
+```bibtex
 @software{peerrank2026,
   title = {PeerRank: LLM Peer Evaluation System},
   author = {Caura AI},
   year = {2026},
   url = {https://github.com/caura-ai/caura-PeerRank}
 }
+```

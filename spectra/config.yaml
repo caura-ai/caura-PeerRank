@@ -8,7 +8,7 @@
 # A model PeerRank does not carry goes through LiteLLM: {name: x, litellm_model: openai/x, params: {...}}.
 
 # Same naming as PeerRank revisions, so data/spectra/<revision>/ pairs with data/phase*_<revision>.*
-revision: oct-14-26
+revision: oct-23-26
 prompts: prompts/prompts_v1.json  # relative to spectra/
 
 samples: 1                        # answers per prompt per model; use 3 once the pipeline works
@@ -36,3 +36,9 @@ models:
 coders:
   - {name: grok-4.7, temperature: 0}
   - {name: deepseek-v4-pro, temperature: 0}
+
+# Optional guessing game (python -m spectra.guess). Each roster model sees every answer to a
+# prompt with the authors stripped off and matches answers to models. Scores who is most
+# recognizable and who guesses best. Uses the models list above; coders are not guessers.
+# --mode blind is the prompt and the answers only. --mode briefed also pastes the measured
+# habits from analysis.json (--research <revision>, default this revision). Run analyze first.

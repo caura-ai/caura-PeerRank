@@ -156,6 +156,21 @@ table.stats th { font-weight: 600; color: var(--muted); }
 footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
 .nochart { color: var(--muted); font-size: .9rem; padding: 24px 0; }
 
+/* ---------- usage recommendations ---------- */
+.uses { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px 28px; margin-top: 18px; }
+.use { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 20px; }
+.use h3 { font-size: 1.2rem; margin: 0 0 .35em; }
+.use .for { font-size: .9rem; color: var(--muted); margin: 0 0 12px; }
+.use .line { display: flex; gap: 10px; align-items: baseline; margin: 0 0 6px; font-size: .95rem; }
+.use .line b { flex: none; width: 3.4em; color: var(--muted); font-weight: 600; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
+.use .ev { font-size: .82rem; color: var(--muted); margin: 10px 0 0; }
+.drive { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px 28px; margin-top: 18px; }
+.drive article { border-top: 3px solid var(--rule); padding: 12px 0 4px; }
+.drive h3 { font-size: 1.25rem; display: flex; align-items: center; gap: 10px; margin: 0 0 .2em; }
+.drive h3 i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.drive .role { font-size: .9rem; color: var(--muted); margin: 0 0 10px; }
+.drive p { font-size: .92rem; margin: 0 0 .7em; }
+
 @media (max-width: 760px) {
   .wrap { padding: 0 18px; }
   .spec-head { display: none; }
@@ -164,6 +179,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
   .band { height: 34px; }
   .split { grid-template-columns: 1fr; }
   .profiles { grid-template-columns: 1fr; }
+  .uses, .drive { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -224,6 +240,39 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
   </section>
 
   <section>
+    <h2>The guessing game</h2>
+    <p class="prose muted">Each model sees every answer with the author names removed and matches them to the roster. Just guess uses the prompt and the answers. Guess from the research also gives the measured habits from a Spectra profile. Own answers stay out of both scores.</p>
+    <div id="guess-blind">
+      <h3>Just guess</h3>
+      <p class="prose muted" id="guessnote"></p>
+      <div id="guessbody">
+      <div class="bignums" id="guessnums"></div>
+      <div class="split">
+        <div class="tablewrap"><table class="stats" id="guesstable"></table></div>
+        <div class="tablewrap"><table class="stats" id="recogtable"></table></div>
+      </div>
+      <h3 style="margin-top:28px">Who they think wrote it</h3>
+      <p class="prose muted">Rows are the model that actually wrote the answer. Columns are the model the others named. A cell is the share of other models' guesses. The diagonal is recognizability.</p>
+      <div id="guessheat" class="chart tall"></div>
+      </div>
+    </div>
+    <div id="guess-briefed">
+      <h3 style="margin-top:40px">Guess from the research</h3>
+      <p class="prose muted" id="guessbnote"></p>
+      <div id="guessbbody">
+      <div class="bignums" id="guessbnums"></div>
+      <div class="split">
+        <div class="tablewrap"><table class="stats" id="guessbtable"></table></div>
+        <div class="tablewrap"><table class="stats" id="recogbtable"></table></div>
+      </div>
+      <h3 style="margin-top:28px">Who they think wrote it</h3>
+      <p class="prose muted">Same reading as the blind heatmap. This one is after the research notes were added.</p>
+      <div id="guessbheat" class="chart tall"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>Same prompt, different answers</h2>
     <div class="picker">
       <label class="small" for="catsel">Category</label><select id="catsel"></select>
@@ -233,6 +282,17 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     <div class="promptbox" id="promptbox"></div>
     <div class="tagline" id="tagline"></div>
     <div class="answers" id="answers"></div>
+  </section>
+
+  <section>
+    <h2>Usage recommendations</h2>
+    <p class="prose muted" id="recsmethod"></p>
+    <div class="tablewrap" style="margin:18px 0 8px"><table class="stats" id="recstable"></table></div>
+    <h3 style="margin-top:36px">By need</h3>
+    <div class="uses" id="uses"></div>
+    <h3 style="margin-top:40px">How to drive each model</h3>
+    <p class="prose muted">These are out-of-the-box API habits with no system prompt. A consumer app can override some of them; the ones that held in every category (length, answering first, vocabulary range, em dashes) are the hardest to talk the model out of.</p>
+    <div class="drive" id="drive"></div>
   </section>
 
   <section>
@@ -547,6 +607,55 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     seqHeat("confchart", D.labels.map(l => "guessed " + l), D.labels, data, {min: 0, max: 1, rotate: 30, bottom: 100, fmt: v => Math.round(v * 100) + "% of its answers", fmtShort: v => Math.round(v * 100) + "%"});
   }
 
+  function fillGuess(G, ids) {
+    const note = document.getElementById(ids.note);
+    const nums = document.getElementById(ids.nums);
+    const heat = document.getElementById(ids.heat);
+    if (charts[ids.heat]) { charts[ids.heat].dispose(); delete charts[ids.heat]; }
+    const body = document.getElementById(ids.body);
+    if (!G) {
+      note.textContent = ids.missing;
+      if (body) body.hidden = true;
+      nums.innerHTML = "";
+      document.getElementById(ids.gtable).innerHTML = "";
+      document.getElementById(ids.rtable).innerHTML = "";
+      heat.innerHTML = "";
+      heat.style.height = "auto";
+      return;
+    }
+    if (body) body.hidden = false;
+    heat.style.height = "";
+    const pct = v => v === null || v === undefined ? "n/a" : Math.round(v * 1000) / 10 + "%";
+    const best = G.guessers[0], known = G.recognizable[0];
+    note.textContent = G.note;
+    nums.innerHTML = "<div>" + pct(G.accuracy) + "<small>of other models' answers named correctly</small></div>" +
+      "<div>" + pct(best.accuracy) + "<small>best guesser, " + esc(best.model) + "</small></div>" +
+      "<div>" + pct(known.recall) + "<small>most recognizable, " + esc(known.model) + "</small></div>" +
+      "<div>" + pct(G.chance) + "<small>expected by chance with " + G.k + " models</small></div>";
+    document.getElementById(ids.gtable).innerHTML = "<thead><tr><th>Best guessers</th><th>Accuracy</th><th>Correct</th><th>Found own answer</th></tr></thead><tbody>" +
+      G.guessers.map(r => "<tr><td style='color:" + color(r.model) + ";font-weight:600'>" + esc(r.model) + "</td><td>" + pct(r.accuracy) + "</td><td>" + r.correct + " / " + r.n + "</td><td>" + pct(r.self_rate) + "</td></tr>").join("") + "</tbody>";
+    document.getElementById(ids.rtable).innerHTML = "<thead><tr><th>Most recognizable</th><th>Named by others</th><th>Correct</th></tr></thead><tbody>" +
+      G.recognizable.map(r => "<tr><td style='color:" + color(r.model) + ";font-weight:600'>" + esc(r.model) + "</td><td>" + pct(r.recall) + "</td><td>" + r.correct + " / " + r.n + "</td></tr>").join("") + "</tbody>";
+    const data = [];
+    G.matrix.forEach((row, i) => row.forEach((v, j) => data.push([j, i, v])));
+    seqHeat(ids.heat, G.labels.map(l => "named " + l), G.labels, data, {min: 0, max: 1, rotate: 30, bottom: 100, fmt: v => Math.round(v * 100) + "% of others' guesses", fmtShort: v => Math.round(v * 100) + "%"});
+  }
+
+  function renderGuess() {
+    const G = A.guessing;
+    const blind = G && G.guessers ? G : (G && G.blind) || null;
+    const briefed = G && G.guessers ? null : (G && G.briefed) || null;
+    const rev = A.meta.revision;
+    fillGuess(blind, {
+      note: "guessnote", nums: "guessnums", gtable: "guesstable", rtable: "recogtable", heat: "guessheat", body: "guessbody",
+      missing: "Not run for this revision. python -m spectra.guess --revision " + rev
+    });
+    fillGuess(briefed, {
+      note: "guessbnote", nums: "guessbnums", gtable: "guessbtable", rtable: "recogbtable", heat: "guessbheat", body: "guessbbody",
+      missing: "Not run for this revision. python -m spectra.guess --revision " + rev + " --mode briefed --research " + rev
+    });
+  }
+
   // viewer
   const V = A.viewer, catsel = document.getElementById("catsel"), psel = document.getElementById("psel");
   const TAGS = A.meta.tags || {};
@@ -582,6 +691,29 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
   document.getElementById("randbtn").addEventListener("click", () => { const opts = [...psel.options]; showPrompt(opts[Math.floor(Math.random() * opts.length)].value); });
   fillPrompts();
 
+  // usage recommendations (ranked from measured traits; no LLM judge)
+  (function renderRecs() {
+    const R = A.recommendations; if (!R) return;
+    document.getElementById("recsmethod").textContent = R.method;
+    const names = m => "<span style='color:" + color(m) + ";font-weight:600'>" + esc(m) + "</span>";
+    document.getElementById("recstable").innerHTML = "<thead><tr><th>Need</th><th>Use</th><th>Avoid</th></tr></thead><tbody>" +
+      R.uses.map(u => "<tr><td>" + esc(u.need) + "</td><td>" + u.use.map(names).join(", ") + "</td><td>" + (u.avoid.length ? u.avoid.map(names).join(", ") : "—") + "</td></tr>").join("") + "</tbody>";
+    document.getElementById("uses").innerHTML = R.uses.map(u =>
+      "<article class='use'><h3>" + esc(u.need) + "</h3>" +
+      "<p class='for'>" + esc(u.for) + "</p>" +
+      "<div class='line'><b>Use</b><span>" + u.use.map(names).join(", ") + "</span></div>" +
+      (u.avoid.length ? "<div class='line'><b>Avoid</b><span>" + u.avoid.map(names).join(", ") + "</span></div>" : "") +
+      "<div class='line'><b>How</b><span>" + esc(u.how) + "</span></div>" +
+      "<div class='line'><b>Watch</b><span>" + esc(u.watch) + "</span></div>" +
+      "<p class='ev'>" + esc(u.evidence) + "</p></article>").join("");
+    document.getElementById("drive").innerHTML = R.drive.map(d =>
+      "<article><h3><i style='background:" + color(d.model) + "'></i>" + esc(d.model) + "</h3>" +
+      "<p class='role'>" + esc(d.role) + "</p>" +
+      "<p><strong>Do. </strong>" + esc(d.do) + "</p>" +
+      "<p><strong>Don't. </strong>" + esc(d.dont) + "</p>" +
+      "<p class='ev'>" + esc(d.evidence) + "</p></article>").join("");
+  })();
+
   // run details
   const RS = A.runstats;
   const n = v => v === null || v === undefined ? "n/a" : Math.round(v);
@@ -597,7 +729,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
   function renderAll() {
     paintBands();
     selectTrait(current);
-    renderTraps(); renderConstraints(); renderMap(); renderDistinct();
+    renderTraps(); renderConstraints(); renderMap(); renderDistinct(); renderGuess();
   }
   renderAll();
   const tb = document.getElementById("themebtn");
@@ -616,6 +748,271 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
 """
 
 
+def _trait(analysis, key):
+    return next(t for t in analysis["traits"] if t["key"] == key)
+
+
+def _rank(trait, high=True):
+    return sorted(trait["per_model"], key=lambda m: trait["per_model"][m]["value"], reverse=high)
+
+
+def _val(trait, model):
+    return trait["per_model"][model]["value"]
+
+
+def _constraint_rate(analysis, model):
+    types = analysis["constraints"]["types"]
+    vals = analysis["constraints"]["per_model"][model]
+    num = sum(vals[t["key"]] * t["n_prompts"] for t in types)
+    den = sum(t["n_prompts"] for t in types) or 1
+    return num / den
+
+
+def build_recommendations(analysis):
+    """Map measured traits to use-cases. No LLM judge: a judge would replay PeerRank taste."""
+    models = analysis["meta"]["models"]
+    rs = analysis["runstats"]
+    length = _trait(analysis, "length")
+    answer = _trait(analysis, "answer_first")
+    initiative = _trait(analysis, "initiative")
+    hedging = _trait(analysis, "hedging")
+    errors = _trait(analysis, "errors")
+    amb = _trait(analysis, "ambiguity")
+    premise = _trait(analysis, "premise")
+    adhere = _trait(analysis, "adherence")
+    structure = _trait(analysis, "structure")
+    warm = _trait(analysis, "warm_tone")
+    advice = _trait(analysis, "advice")
+    hooks = _trait(analysis, "hooks")
+    read = _trait(analysis, "readability")
+    vocab = _trait(analysis, "vocab")
+    emdash = _trait(analysis, "emdash")
+    caveats = _trait(analysis, "caveats")
+    agree = _trait(analysis, "agree_user")
+
+    short = _rank(length, high=False)[0]
+    long = _rank(length, high=True)[0]
+    first = _rank(answer, high=True)[0]
+    warmup = _rank(answer, high=False)[0]
+    extra = _rank(initiative, high=True)[0]
+    justask = _rank(initiative, high=False)[0]
+    err_best = [m for m in _rank(errors) if _val(errors, m) >= 0.99]
+    err_worst = [m for m in _rank(errors, high=False) if _val(errors, m) <= 0.55]
+    amb_best = _rank(amb)[0]
+    amb_worst = _rank(amb, high=False)[0]
+    adh_best = [m for m in _rank(adhere) if _val(adhere, m) >= max(_val(adhere, x) for x in models) - 1e-9]
+    adh_worst = _rank(adhere, high=False)[0]
+    struct = _rank(structure)[0]
+    plain = _rank(read)[0]
+    warmest = _rank(warm)[0]
+    fastest = min(models, key=lambda m: rs[m]["median_latency_s"] or 1e9)
+    slowest = max(models, key=lambda m: rs[m]["median_latency_s"] or 0)
+    cheapest = min(models, key=lambda m: rs[m]["total_cost_usd"] if rs[m]["total_cost_usd"] is not None else 1e9)
+    hedge_hi = _rank(hedging)[0]
+    hedge_lo = _rank(hedging, high=False)[0]
+    prem_lo = _rank(premise, high=False)[0]
+
+    def pct(t, m):
+        return f"{100 * _val(t, m):.0f}%"
+
+    def words(m):
+        return f"{_val(length, m):.0f}w"
+
+    def lat(m):
+        return f"{rs[m]['median_latency_s']:.1f}s"
+
+    def cost(m):
+        return f"${rs[m]['total_cost_usd']:.2f}"
+
+    def tok_ratio(m):
+        w = rs[m]["median_words"] or 1
+        return rs[m]["median_output_tokens"] / w
+
+    uses = [
+        {
+            "need": "Short, fast first answers",
+            "for": "Chat, support, lookup — anything where the first two sentences should be the answer.",
+            "use": [short],
+            "avoid": [long],
+            "how": "Ask the question. Do not add 'be concise'; it already is. Add 'go longer' or 'give options' only if you want depth.",
+            "watch": f"{long} writes the longest answer in every category and answers first only {pct(answer, long)} of the time.",
+            "evidence": f"{short} is shortest in 10/10 categories ({words(short)} geom. mean), answers first {pct(answer, first)}, median {lat(short)}.",
+        },
+        {
+            "need": "Long teaching or 'do the work for me'",
+            "for": "Explanations, how-tos, advice, brainstorms where extra options and warmth are welcome.",
+            "use": [long],
+            "avoid": [short] if short != long else [],
+            "how": "Cap words and say 'start with the answer'. Do not use exact item counts unless you will trim extras. Expect labeled alternatives.",
+            "watch": f"Helpfulness overflows hard constraints: {adh_worst} met {pct(adhere, adh_worst)} of limits (fails exact item counts and 'no intro'). Follow-up offers are rare ({pct(hooks, long)}); extras land in the body, then it stops.",
+            "evidence": f"{long} longest in 10/10 categories ({words(long)} geom. mean, {rs[long]['median_words']:.0f}w median), does extra {pct(initiative, long)}, warm {pct(warm, long)}, unasked advice {pct(advice, long)}.",
+        },
+        {
+            "need": "Catch errors in pasted text",
+            "for": "Editing, invoices, summaries, or any prompt that pastes user text which might be wrong.",
+            "use": err_best or [_rank(errors)[0]],
+            "avoid": err_worst,
+            "how": "You do not need to say the text is wrong. The top models flag it unprompted. If you must use a weaker model, add 'check the source for errors' and verify.",
+            "watch": f"{' and '.join(err_worst) if err_worst else 'None'} flag only {pct(errors, err_worst[0]) if err_worst else 'n/a'} of pasted-error traps and miss every error inside a summarize prompt. n=6 traps; intervals are wide.",
+            "evidence": f"Pasted-error rate (n=6, kappa={analysis['agreement'].get('error_handling', 0):.2f}): " +
+                        ", ".join(f"{m} {pct(errors, m)}" for m in _rank(errors)) + ".",
+        },
+        {
+            "need": "Vague or underspecified requests",
+            "for": "Prompts missing audience, length, format, or goal.",
+            "use": [amb_best],
+            "avoid": [amb_worst],
+            "how": "Leave the ambiguity in if you want it surfaced. With a silent-guesser, state assumptions yourself or ask it to list them first.",
+            "watch": f"{amb_worst} guesses silently half the time ({pct(amb, amb_worst)}). {prem_lo} is also the only model that ever accepted a false premise ({pct(premise, prem_lo)} vs 100% for the rest).",
+            "evidence": f"Ambiguity surfaced (n=11, kappa={analysis['agreement'].get('clarification', 0):.2f}): {amb_best} {pct(amb, amb_best)}, {amb_worst} {pct(amb, amb_worst)}.",
+        },
+        {
+            "need": "Hard format or length limits",
+            "for": "Exact N bullets, word caps, 'no intro', tables, code-only, start with yes/no.",
+            "use": adh_best,
+            "avoid": [adh_worst],
+            "how": "State the limit in the prompt. After a draft-aware word-count check, word caps are 89–100% for everyone; the remaining misses are extra bullets and preambles.",
+            "watch": f"{adh_worst} will add bonus items and an intro. If you need it anyway, say 'exactly N items, no intro, no extras' and count.",
+            "evidence": "Limits met (27 constrained prompts): " +
+                        ", ".join(f"{m} {100 * _constraint_rate(analysis, m):.0f}%" for m in sorted(models, key=lambda x: -_constraint_rate(analysis, x))) + ".",
+        },
+        {
+            "need": "Cheap bulk generation",
+            "for": "High-volume drafts where latency and error-catching are secondary.",
+            "use": [cheapest],
+            "avoid": [max(models, key=lambda m: rs[m]["total_cost_usd"] or 0)],
+            "how": f"Budget ~{rs[cheapest]['median_latency_s']:.0f}s per call. Add 'flag errors in the source' and 'state your assumptions' — {cheapest} will not do either by default. It is strong on headers and lists.",
+            "watch": f"{cheapest} is the slowest model ({lat(cheapest)}) and bills {tok_ratio(cheapest):.1f} output tokens per visible word (hidden thinking). Do not use it to summarize or edit untrusted pasted text.",
+            "evidence": f"{cheapest} cost {cost(cheapest)} for 200 prompts vs {cost(max(models, key=lambda m: rs[m]['total_cost_usd'] or 0))} for the most expensive. Formatting {_val(structure, cheapest):.1f}/100w.",
+        },
+        {
+            "need": "Interactive latency",
+            "for": "Live chat or any loop where the user is waiting.",
+            "use": [fastest],
+            "avoid": [slowest],
+            "how": "Prefer the fast cluster. Hidden thinking, not visible length, is what makes the slow models slow.",
+            "watch": f"{slowest} median {lat(slowest)}; {long} {lat(long)} even though it writes more visible words than {cheapest}.",
+            "evidence": "Median latency: " + ", ".join(f"{m} {lat(m)}" for m in sorted(models, key=lambda x: rs[x]["median_latency_s"] or 0)) + ".",
+        },
+        {
+            "need": "Plain drafts in the user's voice",
+            "for": "Emails, notes, captions, anything that should read like a person, not a template.",
+            "use": [plain],
+            "avoid": [struct],
+            "how": "Ask for the draft. It already prefers paragraphs over headers. Do not rely on it to catch errors in source text.",
+            "watch": f"{plain} is tied-worst on pasted errors ({pct(errors, plain)}). {struct} will dress the same request in headers, bullets and bold ({_val(structure, struct):.1f}/100w).",
+            "evidence": f"{plain} highest Flesch reading ease ({_val(read, plain):.1f}), lowest markdown ({_val(structure, plain):.1f}/100w), casual signature vocabulary.",
+        },
+        {
+            "need": "Structured how-tos and docs",
+            "for": "Guides that should arrive with headers, numbered steps and bold callouts.",
+            "use": [struct],
+            "avoid": [plain],
+            "how": "Ask for sections. These models lean on markdown even when you do not. Opus also offers a follow-up ({pct(hooks, struct)}).",
+            "watch": "Formatting density is not the same as length: the longest model is not the most structured.",
+            "evidence": f"{struct} highest markdown density ({_val(structure, struct):.1f}/100w). {plain} lowest ({_val(structure, plain):.1f}/100w).",
+        },
+        {
+            "need": "Warm extras, options, a companion tone",
+            "for": "Brainstorms, advice, coaching — when doing more than asked is the point.",
+            "use": [warmest],
+            "avoid": [justask],
+            "how": f"Let it run. Cap length if the extras get expensive. {warmest} almost never opens with praise ({100 * _val(_trait(analysis, 'warm_open'), warmest):.1f}%) — warmth is in the body, not the first line.",
+            "watch": f"{justask} does extra only {pct(initiative, justask)} of the time and stays cooler ({pct(warm, justask)}). Hedging is highest in {hedge_hi} ({_val(hedging, hedge_hi):.2f}/100w) and lowest in {hedge_lo} ({_val(hedging, hedge_lo):.2f}/100w) — not the same as warmth.",
+            "evidence": f"{warmest} warm {pct(warm, warmest)}, extra {pct(initiative, extra)}, unasked advice {pct(advice, warmest)}. Caveats {pct(caveats, warmest)} vs hedges {_val(hedging, warmest):.2f}/100w.",
+        },
+        {
+            "need": "Two-model pipelines",
+            "for": "When one habit should draft and another should check or compress.",
+            "use": [short, extra if extra in err_best else (err_best[0] if err_best else _rank(errors)[0])],
+            "avoid": [],
+            "how": f"Expand with {long}, compress with {short}. Draft cheap with {cheapest}, then error-check with {' or '.join(err_best) if err_best else _rank(errors)[0]}. First pass {short}, deepen with {struct} if the answer needs structure.",
+            "watch": "Do not pair two models that share a miss: Flash and Muse both let summarize-errors through.",
+            "evidence": f"Opposite poles on the style map: {short} (short, dense, hedged) vs {long} (long, plain, extra). Family confusion: Flash is mistaken for Argon 23.5% of the time but is its safety opposite.",
+        },
+    ]
+
+    drive = [
+        {
+            "model": short,
+            "role": "The short, answer-first model — closest neighbor " + analysis["cards"][short]["neighbor"] + ".",
+            "do": "Use it as the default for chat and lookup. Put hard constraints here. Add 'give three options' or 'explain why' when you want more than a first answer.",
+            "dont": "Do not pile on 'be brief' or 'no fluff'. It already does just what was asked "
+                    f"({pct(initiative, short)} extra) and wrote zero caveats in 200 answers, while hedging often "
+                    f"({_val(hedging, short):.2f}/100w). Denser wording (Flesch {_val(read, short):.1f}).",
+            "evidence": f"{words(short)} geom. mean, answer-first {pct(answer, short)} in 10/10 categories, "
+                        f"{lat(short)}, {cost(short)} / 200 prompts, {tok_ratio(short):.2f} tokens/word.",
+        },
+        {
+            "model": next((m for m in models if "fable" in m), amb_best),
+            "role": "The messy-prompt specialist — surfaces ambiguity and flags pasted errors.",
+            "do": "Send underspecified or dirty-source prompts here. Expect a warmer open and em dashes.",
+            "dont": "Do not treat it as interchangeable with Opus. Same vendor, opposite punctuation "
+                    f"({_val(emdash, next((m for m in models if 'fable' in m), amb_best)):.2f}/100w vs "
+                    f"{_val(emdash, next((m for m in models if 'opus' in m), struct)):.3f}/100w).",
+            "evidence": f"Ambiguity {pct(amb, amb_best)}, pasted errors {pct(errors, err_best[0] if err_best else amb_best)}, "
+                        f"limits {pct(adhere, adh_best[0])}, warm open {100 * _val(_trait(analysis, 'warm_open'), amb_best):.0f}%.",
+        },
+        {
+            "model": struct,
+            "role": "Structured extras with error catching — the most identifiable fingerprint in the panel.",
+            "do": "Use for how-tos, docs, and any paste that might be wrong. It will format, do extra, and offer another turn.",
+            "dont": "Do not expect em dashes or a short reply. It almost never uses the mark Fable treats as default, "
+                    f"and hedges the most ({_val(hedging, hedge_hi):.2f}/100w).",
+            "evidence": f"Markdown {_val(structure, struct):.1f}/100w, extra {pct(initiative, struct)}, "
+                        f"hooks {pct(hooks, struct)}, errors {pct(errors, struct)}, {lat(struct)}, {cost(struct)} / 200 prompts.",
+        },
+        {
+            "model": long,
+            "role": "The long, warm, option-heavy model — shortest in PeerRank, longest here.",
+            "do": "Use when you want alternatives and a companion tone. Always set a word cap and 'answer first'. Verify item counts.",
+            "dont": "Do not send exact-N or no-preamble jobs. Do not confuse low hedging "
+                    f"({_val(hedging, long):.2f}/100w, lowest) with caution — it caveats the most ({pct(caveats, long)}) "
+                    f"and repeats vocabulary the most (MATTR {_val(vocab, long):.3f}, last in 10/10 categories).",
+            "evidence": f"{words(long)} geom. mean, answer-first {pct(answer, long)} (last in 10/10), "
+                        f"extra {pct(initiative, long)}, {lat(long)}, {tok_ratio(long):.2f} tokens/word, {cost(long)} / 200 prompts.",
+        },
+        {
+            "model": cheapest,
+            "role": "Cheapest, slowest, style-cousin of the long model — and its safety opposite.",
+            "do": "Use for bulk structured drafts. Add explicit error-check and 'state assumptions' instructions.",
+            "dont": "Do not use it to summarize or edit untrusted text, and do not use it when the user is waiting "
+                    f"({lat(cheapest)} median). It is the only model that ever accepted a false premise ({pct(premise, cheapest)}).",
+            "evidence": f"{cost(cheapest)} / 200 prompts, {tok_ratio(cheapest):.2f} tokens/word, "
+                        f"errors {pct(errors, cheapest)}, ambiguity {pct(amb, cheapest)}, "
+                        f"classifier recall lowest in the panel (confused with {long} 23.5% of the time).",
+        },
+        {
+            "model": plain,
+            "role": "Plainest conversational prose — neighbor "
+                    + analysis["cards"].get(plain, {}).get("neighbor", "—") + ".",
+            "do": "Use for drafts that should sound like a person. Ask it to write, not to outline.",
+            "dont": "Do not use it as a fact-checker. Tied-worst on pasted errors, casual register "
+                    "('perfect', 'get', 'want', 'etc').",
+            "evidence": f"Flesch {_val(read, plain):.1f}, markdown {_val(structure, plain):.1f}/100w, "
+                        f"em dashes {_val(emdash, plain):.2f}/100w, errors {pct(errors, plain)}, {lat(plain)}, {cost(plain)} / 200 prompts.",
+        },
+    ]
+
+    # Keep drive in roster order
+    order = {m: i for i, m in enumerate(models)}
+    drive = sorted(drive, key=lambda d: order.get(d["model"], 99))
+
+    return {
+        "method": (
+            "Picks are ranked from this run's measured traits (length, answer-first, initiative, "
+            "constraint adherence, pasted-error and ambiguity rates, latency, cost) — not from an LLM judge. "
+            "A judge would replay PeerRank taste: the same verbosity that put the longest model last under a "
+            "200-word cap is the initiative this section treats as a feature. Spectra does not score correctness. "
+            "Consumer apps add system prompts and can shift some habits; category-invariant ones (length, "
+            "answering first, vocabulary range, em dashes) are the hardest to override. Pasted-error n=6 and "
+            "emotion n=5 have wide intervals even when coder agreement is high."
+        ),
+        "uses": uses,
+        "drive": drive,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     add_run_args(ap)
@@ -625,6 +1022,19 @@ def main():
     args = ap.parse_args()
     run_dir = Path(args.run_dir) if args.run_dir else revision_dir(load_config(args.config), args.revision)
     data = json.loads((run_dir / "analysis.json").read_text(encoding="utf-8"))
+    data["recommendations"] = build_recommendations(data)
+    from spectra.guess import load_jsonl as load_guesses, summarize_guesses
+    guesses = load_guesses(run_dir / "guesses.jsonl")
+    if guesses:
+        models = data["meta"]["models"]
+        revision = data["meta"].get("revision")
+        packed = {}
+        for mode in ("blind", "briefed"):
+            summary = summarize_guesses(guesses, models, mode, revision)
+            if summary:
+                packed[mode] = summary
+        if packed:
+            data["guessing"] = packed
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     html = TEMPLATE.replace("__TITLE__", args.title).replace("__DATA__", payload)
     out = Path(args.out) if args.out else run_dir / "report.html"

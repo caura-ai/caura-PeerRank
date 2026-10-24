@@ -12,6 +12,8 @@ Run from the repo root:
   python -m spectra.run --revision oct-14-26 --limit 5   # smoke test: 5 prompts x every model
   python -m spectra.run --revision oct-14-26             # full run (resumable; re-run to retry errors)
   python -m spectra.code_behaviors --revision oct-14-26  # optional: behavior codes from coder models
+  python -m spectra.guess --revision oct-14-26           # optional: blind author-matching game
+  python -m spectra.guess --revision oct-14-26 --mode briefed --research oct-14-26
   python -m spectra.analyze --revision oct-14-26         # features, traits, signature words, classifier
   python -m spectra.report --revision oct-14-26          # -> data/spectra/oct-14-26/report.html
 
