@@ -8,6 +8,7 @@ and writes spectra/article/generated/: numbers.tex (one macro per number), tab_*
 The article reads numbers only through these files, so no figure in the text is typed by hand.
 """
 import collections
+import hashlib
 import json
 import pathlib
 import statistics
@@ -83,6 +84,12 @@ for tag in ["FP", "ERR", "AMB", "OP", "EMO", "CAS", "EXP"]:
     mac("n" + tag.title().replace("Fp", "FP"), tag_n[tag])
 mac("nLimitPrompts", sum(1 for p in P if p.get("constraint")))
 mac("nLimitKinds", len({p["constraint"]["type"] for p in P if p.get("constraint")}))
+# the locked test set: the hash in its lock file, checked against the file itself
+v2 = json.loads((ROOT / "spectra" / "prompts" / "prompts_v2.json").read_text(encoding="utf-8"))
+v2_hash = hashlib.sha256(json.dumps(v2, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+assert v2_hash == (ROOT / "spectra" / "prompts" / "prompts_v2.lock").read_text(encoding="utf-8").split()[0]
+assert len(v2["prompts"]) == len(P)
+mac("vTwoHash", v2_hash[:16])
 mac("nAnswers", f"{A['meta']['n_responses']:,}".replace(",", "{,}"))
 mac("nCoders", len(A["meta"]["coders"]))
 mac("coderA", tt(A["meta"]["coders"][1]))

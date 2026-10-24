@@ -29,7 +29,7 @@
 \begin{abstract}
 Chat models are compared by rank, yet users meet them through habits: how long they write, whether they lead with the answer, whether they flag a mistake in what the user pasted.
 We present Spectra, a method that measures these habits without asking any model to grade quality.
-\nStyleTraits{} style traits are computed directly from the text, and \nBehaviorTraits{} behaviors are labeled by two coder models from outside the measured panel, with agreement reported per label.
+It computes \nStyleTraits{} style traits directly from the text, and two coder models from outside the measured panel label \nBehaviorTraits{} behaviors, with agreement reported per label.
 The \nPrompts{} everyday prompts hide five kinds of trap (a false premise, an error in pasted text, a vague request, a stated opinion, emotional framing) and \nLimitPrompts{} of them state a length or format limit that a program checks.
 Across \nModels{} frontier models and two runs of the same prompts \daysApart{} days apart, the habits are stable: effect sizes correlate at $r=\stabR$ between runs, and the shortest and longest writers hold their places in every category of both runs.
 We then ask the models to name each other's unsigned answers.
@@ -66,7 +66,7 @@ The decisive condition uses notes measured on one half of the prompts to name au
 \item \textbf{Judge-free measurement.} \nStyleTraits{} computed style traits, \nBehaviorTraits{} coded behaviors with per-label agreement, traps embedded in everyday prompts, program-checked limits, and effect sizes against the panel with confidence intervals that resample prompts (Section~\ref{sec:method}).
 \item \textbf{Replication.} Two runs of the same \nPrompts{} prompts, \daysApart{} days apart, show that the profiles are stable (Section~\ref{sec:stability}).
 \item \textbf{A peer identification game} in three note conditions and two naming rules, with own answers scored apart, a majority vote of the other models, a classifier scored the same way, and a fixed-effects analysis of prompts, guessers and authors. Notes from unseen prompts identify \accHeldPerm{} of answers against \accBlind{} blind (Section~\ref{sec:game}).
-\item \textbf{A reliability analysis of model coders} showing that no conclusion depends on which coder one trusts, including a case of the kappa paradox (Section~\ref{sec:reliability}).
+\item \textbf{A reliability analysis of model coders} showing that no conclusion depends on which coder one trusts, including a case of the kappa paradox and a third-coder tie-break on the disputed labels (Section~\ref{sec:reliability}).
 \item \textbf{An open release} of the pipeline, the answers, the coder labels and the guesses.
 \end{enumerate}
 
@@ -109,11 +109,11 @@ Model coders can match or exceed crowd annotators \citep{gilardi2023chatgpt}; we
 
 \subsection{Prompts, traps and limits}
 The prompt set has \nPrompts{} prompts, \nPerCategory{} in each of \nCategories{} categories: writing, editing, information, explanation, how-to, advice, coding, summarizing, brainstorming and opinion.
-\nTrapPrompts{} prompts carry a trap tag: a false premise or bad practice stated as fact (\trap{fp}, \nFP{} prompts), pasted text containing a factual or numeric error (\trap{err}, \nErr{}), an underspecified request (\trap{amb}, \nAmb{}), a stated opinion or preferred answer (\trap{op}, \nOp{}), and emotional framing (\trap{emo}, \nEmo{}).
+Of these, \nTrapPrompts{} carry a trap tag: a false premise or bad practice stated as fact (\trap{fp}, \nFP{} prompts), pasted text containing a factual or numeric error (\trap{err}, \nErr{}), an underspecified request (\trap{amb}, \nAmb{}), a stated opinion or preferred answer (\trap{op}, \nOp{}), and emotional framing (\trap{emo}, \nEmo{}).
 Two further tags, a casual register (\nCas{}) and a claim of expertise (\nExp{}), are recorded but not used by any trait in this paper.
 The traps read as ordinary requests.
 Prompt p020, for example, asks for a graduation speech that mentions how the Wright brothers' first flight ``lasted a full hour'' (Appendix~\ref{app:walkthrough}).
-\nLimitPrompts{} prompts state an explicit limit of one of \nLimitKinds{} kinds, such as a word or sentence limit, an exact number of items, a table, or code only; a program checks each answer against its limit.
+An explicit limit, of one of \nLimitKinds{} kinds, appears in \nLimitPrompts{} prompts: a word or sentence limit, an exact number of items, a table, or code only, for example; a program checks each answer against its limit.
 
 \subsection{Models and settings}
 We measure \nModels{} models from four providers (Table~\ref{tab:settings}).
@@ -403,7 +403,7 @@ The tie-break leaves the traits as two-coder averages; it confirms that no concl
 % =====================================================================
 \section{Limitations and ethics}
 \label{sec:limits}
-\paragraph{Prompts.} The prompts are synthetic, English, and written by the authors. Each trap rests on \nEmo{} to \nFP{} prompts, so per-trap rates have wide intervals, and a second prompt set would give a stronger held-out test.
+\paragraph{Prompts.} The prompts are synthetic, English, and written by the authors. Each trap rests on \nEmo{} to \nFP{} prompts, so per-trap rates have wide intervals. For a stronger held-out test we have written a second set of \nPrompts{} prompts with the same design, slot for slot (category, trap and stated limit), and new content, and locked it before collecting any answers to it (SHA-256 \texttt{\vTwoHash}\dots{} in the repository). Profiles will be developed on the first set only, and the second set will be used once, with the frozen profile.
 \paragraph{One answer per prompt.} Each model answered each prompt once per run, so within-model variation is visible only across runs. Three samples per prompt would separate a model's own variation from differences between models.
 \paragraph{No system prompt.} Habits may change under a product's system prompt.
 \paragraph{Relative effect sizes.} $d$ is measured against this panel of \nModels{}; adding or removing a model moves every value.
@@ -459,6 +459,7 @@ python -m spectra.guess          --revision oct-23-26                   # blind
 python -m spectra.guess          --revision oct-23-26 --mode briefed    # same-answer notes
 python -m spectra.guess          --revision oct-23-26 --mode heldout    # each model once
 python -m spectra.guess          --revision oct-23-26 --mode heldout --independent
+python -m spectra.tiebreak       --revision oct-23-26 --coder kimi-k3
 python spectra/article/make_assets.py
 \end{verbatim}
 
