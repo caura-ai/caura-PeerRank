@@ -5,7 +5,8 @@
 ## Features
 
 - **5-Phase Pipeline**: Question generation → Answering → Cross-evaluation → Report → Analysis
-- **10 Active Models** (22 tracked): OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
+- **6 Active Models** (25 tracked): see [Models](#models)
+- **Spectra**: behavioral style profiles of the same roster, see [Spectra](#spectra-spectra)
 - **Bias Detection**: Measures self-bias, name bias, and position bias through controlled evaluation modes
 - **Elo Ratings**: Alternative ranking via pairwise comparisons (K=32, excludes self-evaluations)
 - **Standardized Web Grounding**: Single search per question via Tavily or SerpAPI, identical context for all models (fair comparison)
@@ -188,40 +189,21 @@ Defined in `peerrank/models.py`. Each model has:
 - `cost`: (input_cost_per_1M, output_cost_per_1M) in USD
 
 ```python
-# peerrank/models.py  (roster + pricing verified 2026-08-27; see models.py for promo notes)
-ALL_MODELS = [
-    # Active (peerrank=True) — participate in evaluation
-    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-sol",     "name": "gpt-5.6-sol",           "cost": (4.00, 20.00)},
-    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-terra",   "name": "gpt-5.6-terra",         "cost": (2.00, 12.00)},
-    {"peerrank": True,  "provider": "openai",     "model_id": "gpt-5.6-luna",    "name": "gpt-5.6-luna",          "cost": (0.20, 1.20)},
-    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-fable-5",  "name": "claude-fable-5",        "cost": (10.00, 50.00)},
-    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-opus-5",   "name": "claude-opus-5",         "cost": (5.00, 25.00)},
-    {"peerrank": True,  "provider": "anthropic",  "model_id": "claude-sonnet-5", "name": "claude-sonnet-5",       "cost": (2.00, 10.00)},
-    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.7-flash",       "name": "gemini-3.7-flash",       "cost": (0.75, 3.75)},
-    {"peerrank": True,  "provider": "google",     "model_id": "gemini-3.5-flash-lite",  "name": "gemini-3.5-flash-lite",  "cost": (0.30, 2.50)},
-    {"peerrank": True,  "provider": "grok",       "model_id": "grok-4.6",        "name": "grok-4.6",              "cost": (2.00, 6.00)},
-    {"peerrank": True,  "provider": "deepseek",   "model_id": "deepseek-v4-pro", "name": "deepseek-v4-pro",       "cost": (0.66, 1.98)},
-    # Cost-tracking only (peerrank=False) — not evaluated
-    {"peerrank": False, "provider": "deepseek",   "model_id": "deepseek-v4-flash", "name": "deepseek-v4-flash",   "cost": (0.22, 0.66)},
-    {"peerrank": False, "provider": "together",   "model_id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "llama-3.3-70b", "cost": (1.04, 1.04)},
-    {"peerrank": False, "provider": "kimi",       "model_id": "kimi-k3",         "name": "kimi-k3",               "cost": (3.00, 15.00)},
-    {"peerrank": False, "provider": "mistral",    "model_id": "mistral-large-latest", "name": "mistral-large",    "cost": (0.50, 1.50)},
-    {"peerrank": False, "provider": "perplexity", "model_id": "medium",          "name": "pplx-agent-medium",     "cost": (0.20, 1.20)},
-    {"peerrank": False, "provider": "grok",       "model_id": "grok-code-fast-1", "name": "grok-code-fast-1",     "cost": (1.00, 2.00)},
-    {"peerrank": False, "provider": "anthropic",  "model_id": "claude-haiku-4-5", "name": "claude-haiku-4-5",     "cost": (1.00, 5.00)},
-    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.1-pro-preview", "name": "gemini-3.1-pro-preview", "cost": (2.00, 12.00)},
-    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.5-flash",       "name": "gemini-3.5-flash",       "cost": (1.50, 9.00)},
-    {"peerrank": False, "provider": "google",     "model_id": "gemini-3.1-flash-lite",  "name": "gemini-3.1-flash-lite",  "cost": (0.25, 1.50)},
-    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-nano",      "name": "gpt-5-nano",            "cost": (0.05, 0.40)},
-    {"peerrank": False, "provider": "openai",     "model_id": "gpt-5-mini",      "name": "gpt-5-mini",            "cost": (0.25, 2.00)},
-]
+# peerrank/models.py is the source of truth; prices and promo notes live there, not here.
+# Active (peerrank=True) — participate in evaluation
+gpt-6-astra             # openai, model_id gpt-6-astra
+claude-fable-5.1        # anthropic, model_id claude-fable-5-1
+claude-opus-5.5         # anthropic, model_id claude-opus-5-5
+gemini-4-argon          # google, model_id gemini-4-argon
+gemini-3.8-flash        # google, model_id gemini-3.8-flash
+muse-wonder-1.0         # meta, model_id muse-wonder-1.0
 
 # Derived in config.py:
 TOKEN_COSTS = {m["model_id"]: m["cost"] for m in ALL_MODELS}
 PEERRANK_MODELS = [(m["provider"], m["model_id"], m["name"]) for m in ALL_MODELS if m["peerrank"]]
 ```
 
-Total: **10 active models** (peerrank=True) across 5 providers (OpenAI, Anthropic, Google, xAI, DeepSeek). Twelve more models with `peerrank: False` are tracked for cost only and are NOT evaluated (deepseek-v4-flash, llama-3.3-70b, kimi-k3, mistral-large, pplx-agent-medium, grok-code-fast-1, claude-haiku-4-5, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite, gpt-5-nano, gpt-5-mini).
+Total: **6 active models** (peerrank=True) across 4 providers (openai, anthropic, google, meta). 19 more with `peerrank: False` are tracked for cost and can be Spectra coders or Phase 5 judges, but are NOT evaluated (gpt-5.6-terra, gpt-5.6-luna, claude-sonnet-5, gemini-3.5-flash-lite, grok-4.7, deepseek-v4-pro, deepseek-v4.1-flash, muse-spark-1.3, llama-3.3-70b, kimi-k3, mistral-large, pplx-agent-medium, grok-code-fast-1, claude-haiku-4-5, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite, gpt-5-nano, gpt-5-mini).
 
 ## Categories
 
@@ -891,6 +873,29 @@ peer_score_ci(scores, alpha=0.05) -> (low, high)  # t-distribution for means
 ```
 
 Used by: validate_gsm8k.py, validate_truthfulqa.py, validate_mmlu.py
+
+## Spectra (`spectra/`)
+
+Behavioral profiles of the active roster: how each model writes (length, formatting, hedging, habits, behavior on trap prompts), not which answer is better. A Spectra revision uses the PeerRank revision tag, so `data/spectra/<revision>/` pairs with `data/phase*_<revision>.*`.
+
+```bash
+pip install -e ".[spectra]"                          # PyYAML, pandas, scikit-learn
+python -m spectra.run --revision <rev>               # responses.jsonl (resumable)
+python -m spectra.code_behaviors --revision <rev>    # codes.jsonl, two coders outside the panel
+python -m spectra.analyze --revision <rev>           # features.csv + analysis.json (local)
+python -m spectra.guess --revision <rev>             # guesses.jsonl; --mode briefed --research <rev> (paid calls)
+python -m spectra.report --revision <rev>            # report.html (local, no API calls)
+pytest tests/                                        # constraint checks, guess parsing, report builder
+```
+
+Rules:
+- `spectra/providers.py` is the only module that imports PeerRank. Roster and coder names are PeerRank display names from `ALL_MODELS` (any `peerrank` flag), called with Phase 2 settings. `litellm_model` entries go through LiteLLM (`pip install -e ".[litellm]"`).
+- No system prompt by default, so a profile is out-of-the-box API behavior. `system_prompt` only works on `litellm_model` entries.
+- Every writer appends JSONL and resumes on its key; readers keep the last successful record per key (`analyze` dedupes). Do not run two writers on the same revision at once.
+- Concurrency is per model or coder and capped by `PROVIDER_CONCURRENCY` in `run.py`, `guess.py` and `code_behaviors.py`.
+- Coded traits (answer_first, premise, errors, ambiguity, ...) exist only after `code_behaviors`; `report.py` leaves out the use-cases that need them. Hand-check 100-200 coder labels before trusting those traits.
+- `report.py`'s usage recommendations derive every number, rank, tie and "N/N categories" from `analysis.json`. Never paste a finding from one run into the text as a literal; `tests/test_spectra.py` renders a synthetic analysis to catch that.
+- Effect sizes are relative to the panel: adding or removing a model moves everyone.
 
 ## Contributing
 

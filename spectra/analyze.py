@@ -490,8 +490,11 @@ def distinctiveness(df, models):
 
 
 def style_map(df, models, max_points=3000):
-    from sklearn.decomposition import PCA
-    from sklearn.preprocessing import StandardScaler
+    try:
+        from sklearn.decomposition import PCA
+        from sklearn.preprocessing import StandardScaler
+    except ImportError:
+        return None
     X = numeric_matrix(df)
     Z = StandardScaler().fit_transform(X.to_numpy())
     pca = PCA(n_components=2, random_state=0).fit(Z)

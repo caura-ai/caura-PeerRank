@@ -10,7 +10,7 @@ The same repo includes **Spectra**, a behavioral profile of how those models wri
 ## Key Features
 
 - **5-Phase Pipeline** — Question generation → Answering → Cross-evaluation → Report → Analysis
-- **12 Models Supported** — OpenAI, Anthropic, Google, xAI, DeepSeek, Together AI, Perplexity, Moonshot AI, Mistral
+- **25 Models, 10 Providers** — OpenAI, Anthropic, Google, xAI, DeepSeek, Meta, Together AI, Moonshot AI, Mistral, Perplexity (6 on the active roster)
 - **Bias Detection** — Measures self-bias, name bias, and position bias through controlled evaluation modes
 - **Standardized Web Grounding** — Tavily or SerpAPI search, same context for all models (fair comparison)
 - **Cost Tracking** — Real-time token usage and cost analysis per model
@@ -80,14 +80,14 @@ python peerrank.py --resume         # Resume from last completed
 python peerrank.py --health         # Test API connectivity
 
 # Model selection
-python peerrank.py --models gpt-5.5,claude-opus-4-8     # Include only these
-python peerrank.py --exclude deepseek-v4-flash          # Exclude these
+python peerrank.py --models gpt-6-astra,claude-opus-5.5  # Include only these
+python peerrank.py --exclude gemini-3.8-flash           # Exclude these
 
 # Configuration
 python peerrank.py --web-search off           # Disable web grounding (test pure knowledge)
 python peerrank.py --grounding-provider serpapi  # Use SerpAPI instead of Tavily
 python peerrank.py --seed 42                  # Reproducible shuffle ordering
-python peerrank.py --judge claude-opus-4-8    # Set Phase 5 judge model
+python peerrank.py --judge claude-opus-5.5    # Set Phase 5 judge model
 python peerrank.py --rev v2                   # Set revision tag for output files
 
 # UI and figures
@@ -97,17 +97,20 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 
 ## Supported Models
 
-| Provider | Models |
-|----------|--------|
-| OpenAI | gpt-5.5, gpt-5-mini |
-| Anthropic | claude-opus-4-8, claude-sonnet-5 |
-| Google | gemini-3-pro-preview, gemini-3.6-flash |
-| xAI | grok-4.3 |
-| DeepSeek | deepseek-v4-flash |
-| Together AI | llama-3.3-70b |
-| Perplexity | sonar-pro |
-| Moonshot AI | kimi-k2.6 |
-| Mistral | mistral-large |
+| Provider | Active roster | Also available |
+|----------|---------------|----------------|
+| OpenAI | gpt-6-astra | gpt-5.6-terra, gpt-5.6-luna, gpt-5-nano, gpt-5-mini |
+| Anthropic | claude-fable-5.1, claude-opus-5.5 | claude-sonnet-5, claude-haiku-4-5 |
+| Google | gemini-4-argon, gemini-3.8-flash | gemini-3.5-flash-lite, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite |
+| xAI | — | grok-4.7, grok-code-fast-1 |
+| DeepSeek | — | deepseek-v4-pro, deepseek-v4.1-flash |
+| Meta | muse-wonder-1.0 | muse-spark-1.3 |
+| Together AI | — | llama-3.3-70b |
+| Moonshot AI | — | kimi-k3 |
+| Mistral | — | mistral-large |
+| Perplexity | — | pplx-agent-medium |
+
+The active roster is the 6 models with `peerrank: True` in `peerrank/models.py`; `--models` and `--exclude` filter within that roster, so set `peerrank: True` to bring another model in. Spectra's roster and coders in `spectra/config.yaml` can name any model in the table.
 
 ## API Keys
 
@@ -221,6 +224,7 @@ The roster lives in `spectra/config.yaml`. Names are PeerRank display names from
 ### Pipeline
 
 ```bash
+pip install -e ".[spectra]"                            # PyYAML, pandas, scikit-learn
 python -m spectra.run --revision oct-23-26 --limit 5   # smoke test: 5 prompts, every model
 python -m spectra.run --revision oct-23-26             # full run (resumable; re-run retries errors)
 python -m spectra.code_behaviors --revision oct-23-26  # optional behavior codes

@@ -80,7 +80,8 @@ async def main():
     ap = argparse.ArgumentParser()
     add_run_args(ap)
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--concurrency", type=int, default=6)
+    ap.add_argument("--concurrency", type=int, default=6,
+                    help="in-flight calls per coder, capped by PeerRank's PROVIDER_CONCURRENCY")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -102,11 +103,12 @@ async def main():
         jobs = jobs[: args.limit]
     print(f"{len(jobs)} responses to code with {len(coders)} coder(s)")
 
-    sem = asyncio.Semaphore(args.concurrency)
+    # one limit per coder, like run.py and guess.py, so --concurrency cannot exceed a provider's cap
+    sems = {cd["name"]: asyncio.Semaphore(providers.max_concurrency(cd, args.concurrency)) for cd in coders}
     lock = asyncio.Lock()
 
     async def work(coder, r):
-        async with sem:
+        async with sems[coder["name"]]:
             rec = {"coder": coder["name"], "model": r["model"], "prompt_id": r["prompt_id"], "sample": r["sample"]}
             try:
                 reply = await providers.complete(coder, build_message(prompts[r["prompt_id"]], r["text"]),

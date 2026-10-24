@@ -14,3 +14,5 @@ together
 tavily-python
 numpy
 pandas
+pyyaml
+scikit-learn
