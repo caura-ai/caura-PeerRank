@@ -487,6 +487,23 @@ def test_profile_contrasts_pair_each_variant_with_the_plain_profile():
     assert row["gain"] == 0.5 and row["ci"][0] > 0
 
 
+def test_character_attribution_learns_punctuation_habits():
+    from spectra.analyze import features
+    from spectra.attribute import across, attribute
+
+    rows = []
+    for i in range(40):
+        for m, text in (("a", f"Sure! Here is item {i} — quick and done."),
+                        ("b", f"Certainly. Item {i}; as requested, finished.")):
+            f, prose = features(text, "explain")
+            f.update(model=m, prompt_id=f"q{i}", sample=0, category="explain" if i % 2 else "code", prose=prose)
+            rows.append(f)
+    df = pd.DataFrame(rows)
+    res = attribute(df, ["a", "b"], sets=("characters",))["characters"]
+    assert res["cv"]["accuracy"] == 1.0 and res["halves"]["matched_accuracy"] == 1.0
+    assert across(df, df, ["a", "b"], sets=("characters",))["characters"]["accuracy"] == 1.0
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

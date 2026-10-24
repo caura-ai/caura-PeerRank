@@ -183,6 +183,7 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   guess.py               # Author-matching game (blind, briefed, or held-out notes)
   profile.py             # The guessers' profile and its optional parts (--profile)
   describe.py            # Self-knowledge probe: models describe their own and each other's habits
+  attribute.py           # Author classifiers on the text (words, character n-grams), the guessers' reference
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash
@@ -315,6 +316,7 @@ data/spectra/<revision>/
 ├── holdout/half-A|B/   # Each half's answers, codes and analysis, written by --mode heldout
 ├── tiebreak.jsonl      # Third-coder labels on disputed answers (spectra.tiebreak); tiebreak.json: summary
 ├── descriptions.jsonl  # Self-knowledge probe (spectra.describe); descriptions[-sN][-vs-<rev>].json: scores and tests
+├── attribution.json    # Author classifiers on the text (spectra.attribute, local)
 ├── report.html         # The report
 └── run_config.json     # Roster and settings for the run
 ```
