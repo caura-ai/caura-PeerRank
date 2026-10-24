@@ -304,6 +304,11 @@ mac("retentionInd", pct((held_ind["accuracy"] - blind["accuracy"]) / gain, 0))
 mac("namingRuleGap", f"{100 * abs(held['accuracy'] - held_ind['accuracy']):.1f}")
 mac("repeatHeld", pct(held_ind["repeat_rate"]))
 mac("ownFoundBlind", pct(blind["own_answer_effect"]["found"], 0))
+pairs = held["confused_pairs"]
+mac("pairsHeldPerm", "; ".join(f"{tt(p['pair'][0])} and {tt(p['pair'][1])} ({pct(p['share'], 0)})" for p in pairs))
+mac("pairsShareHeldPerm", pct(sum(p["share"] for p in pairs), 0))
+mac("nPairs", ["no", "one", "two", "three"][len(pairs)])
+mac("pairsSameVendor", ["No", "One", "Two", "All three"][sum(prov[p["pair"][0]] == prov[p["pair"][1]] for p in pairs)])
 mac("ownNotBlind", pct(blind["own_answer_effect"]["not_found"], 0))
 
 # how much belongs to the prompt, and the own-answer effect with prompt, guesser and author held fixed
@@ -318,8 +323,10 @@ for name, e in effects.items():
     mac("ownWithin" + name, f"{100 * e['own_within']['effect']:.0f}")
     lo, hi = e["own_within"]["ci"]
     mac("ownWithinCI" + name, f"{100 * lo:.0f}--{100 * hi:.0f}")
-labels = {"Blind": "Blind", "Same": "Notes from the same answers", "HeldPerm": "Notes from other prompts",
-          "HeldInd": "Notes from other prompts"}
+ratio = round(effects["HeldPerm"]["icc"]["prompt"] / effects["HeldPerm"]["icc"]["guesser"])
+mac("iccRatioWord", ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][ratio])
+labels = {"Blind": "Blind", "Same": "Profile from the same answers", "HeldPerm": "Profile from other prompts",
+          "HeldInd": "Profile from other prompts"}
 lines = [f"{labels[n]} & {dict(GAMES)[n]['assign']} & {e['icc']['prompt']:.2f} & {e['icc']['guesser']:.2f} & "
          f"{e['icc']['author']:.2f} & {100 * e['own_raw']:+.0f} & {100 * e['own_within']['effect']:+.0f} "
          f"({100 * e['own_within']['ci'][0]:.0f} to {100 * e['own_within']['ci'][1]:.0f}) \\\\" for n, e in effects.items()]
@@ -373,7 +380,7 @@ for m in models:
                  f"{pct(gue['Blind'][m]['self_rate'], 0)} \\\\")
 (OUT / "tab_recognition.tex").write_text(
     "\\begin{tabular}{lrrrrr}\n\\toprule\n& \\multicolumn{2}{c}{As guesser} & \\multicolumn{2}{c}{As author (named by others)} & Found own \\\\\n"
-    "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\nModel & Blind & Held-out notes & Blind & Held-out notes & answer (blind) \\\\\n"
+    "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\nModel & Blind & Held-out profile & Blind & Held-out profile & answer (blind) \\\\\n"
     "\\midrule\n" + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 # ---------------------------------------------------------------- coder reliability and sensitivity
@@ -490,12 +497,12 @@ half = A["distinctiveness"]["halves"]
 rows = [("Classifier, other half: one answer at a time", half["accuracy"], half["accuracy_ci"], "#BBBBBB"),
         ("Classifier, other half: six answers jointly", half["matched_accuracy"], half["matched_accuracy_ci"], "#BBBBBB"),
         ("One guesser: blind", blind["accuracy"], blind["ci"], "#999999"),
-        ("One guesser: notes, same answers", same["accuracy"], same["ci"], "#999999"),
-        ("One guesser: notes, other prompts", held["accuracy"], held["ci"], "#0072B2"),
+        ("One guesser: profile from the same answers", same["accuracy"], same["ci"], "#999999"),
+        ("One guesser: profile from other prompts", held["accuracy"], held["ci"], "#0072B2"),
         ("One guesser: other prompts, names may repeat", held_ind["accuracy"], held_ind["ci"], "#9CC3E0"),
         ("Vote of five: blind", blind["vote"]["accuracy"], blind["vote"]["ci"], "#777777"),
-        ("Vote of five: notes, same answers", same["vote"]["accuracy"], same["vote"]["ci"], "#777777"),
-        ("Vote of five: notes, other prompts", held["vote"]["accuracy"], held["vote"]["ci"], "#56B4E9"),
+        ("Vote of five: profile from the same answers", same["vote"]["accuracy"], same["vote"]["ci"], "#777777"),
+        ("Vote of five: profile from other prompts", held["vote"]["accuracy"], held["vote"]["ci"], "#56B4E9"),
         ("Vote of five: other prompts, names may repeat", held_ind["vote"]["accuracy"], held_ind["vote"]["ci"], "#BFDDF3")]
 fig, ax = plt.subplots(figsize=(5.5, 3.2))
 y = np.arange(len(rows))[::-1]
@@ -518,7 +525,7 @@ for i, c in enumerate(cat_order):
     b, h = effects["Blind"]["by_category"][c], effects["HeldPerm"]["by_category"][c]
     ax.plot([b, h], [i, i], color="#CCCCCC", lw=1, zorder=1)
     ax.scatter(b, i, color="#999999", s=24, zorder=2, label="blind" if i == 0 else None)
-    ax.scatter(h, i, color="#0072B2", s=24, zorder=3, label="notes from other prompts" if i == 0 else None)
+    ax.scatter(h, i, color="#0072B2", s=24, zorder=3, label="profile from other prompts" if i == 0 else None)
 ax.axvline(1 / len(models), color="black", ls="--", lw=0.8)
 ax.set_yticks(range(len(cat_order)), [CATS[c] for c in cat_order])
 ax.set_xlim(0, 1)
