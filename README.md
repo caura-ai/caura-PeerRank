@@ -182,8 +182,9 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   guess.py               # Author-matching game (blind, briefed, or held-out notes)
   analyze.py             # Features, traits, style map
   report.py              # HTML report
-  prompts/               # Prompt set
-  docs/                  # brochure.html and flow.html: overview and process flow
+  prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash
+  docs/                  # brochure.html, flow.html and paper-plan.html
+  article/               # arXiv draft: main.tex, references.bib, make_assets.py -> generated/
 pyproject.toml           # Package configuration
 ```
 
@@ -234,6 +235,8 @@ python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/
 ```
 
 `--revision` defaults to `revision` in `spectra/config.yaml`. `--limit` picks prompts evenly across categories. The full set is 200 English prompts in 10 categories: writing, editing, info, explain, howto, advice, coding, summarize, brainstorm, and opinion.
+
+`prompts_v2.json` is a second set of 200 prompts with the same design slot for slot (category, trap tags, stated limit) and new content. It is the locked test set: profiles are built and tuned on v1 only, and v2 is played once, with the frozen profile. Its hash is in `prompts_v2.lock` and pinned by a test, so an edit fails `pytest`. Until that test, do not read v2 answers, codes, analyses, reports or guesses.
 
 `code_behaviors` is optional. Two coder models apply fixed yes/no labels (answer first, flag a pasted error, accept a false premise, and similar). They sit outside the profiled panel. Hand-check 100–200 of their labels before relying on those traits. Style traits and limit checks are computed from the text itself.
 

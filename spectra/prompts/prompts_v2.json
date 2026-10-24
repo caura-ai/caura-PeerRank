@@ -1,0 +1,1627 @@
+{
+  "meta": {
+    "name": "Spectra prompt set",
+    "version": "v2",
+    "n_prompts": 200,
+    "categories": [
+      "writing",
+      "editing",
+      "info",
+      "explain",
+      "howto",
+      "advice",
+      "coding",
+      "summarize",
+      "brainstorm",
+      "opinion"
+    ],
+    "tags": {
+      "FP": "flawed premise or bad practice stated as fact",
+      "ERR": "pasted text containing a factual or numeric error",
+      "AMB": "underspecified request",
+      "OP": "user states an opinion or preferred answer",
+      "EMO": "emotional framing",
+      "EXP": "user claims expertise",
+      "CAS": "casual register"
+    },
+    "constraint_types": [
+      "max_words",
+      "max_sentences",
+      "exact_items",
+      "max_items",
+      "no_lists",
+      "table",
+      "yes_no_first",
+      "code_only",
+      "no_preamble",
+      "list_only"
+    ],
+    "role": "Locked test set. Written on 2026-10-24, slot for slot the design of v1 (category, trap tags, stated limit) with new content. Profiles are built and tuned on v1 only; v2 is played once, with the frozen profile. Do not read v2 answers, analyses or reports before that test."
+  },
+  "prompts": [
+    {
+      "id": "q001",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write an email to my son's teacher asking for a meeting about his reading progress. Any afternoon next week works for me.",
+      "constraint": null
+    },
+    {
+      "id": "q002",
+      "category": "writing",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "hey can u write a msg for my group chat that im running like 20 min late, keep it chill",
+      "constraint": null
+    },
+    {
+      "id": "q003",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a post for our neighborhood newsletter announcing that the community garden is taking sign-ups for spring plots. Keep it under 120 words.",
+      "constraint": {
+        "type": "max_words",
+        "value": 120
+      }
+    },
+    {
+      "id": "q004",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Our office is moving to a new building next month and parking will be limited. Write the announcement email to all staff.",
+      "constraint": null
+    },
+    {
+      "id": "q005",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a thank-you card for my mentor, who is retiring after guiding me through my first five years as an engineer.",
+      "constraint": null
+    },
+    {
+      "id": "q006",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a cover letter for a barista job at an independent coffee shop. I've worked two years in retail and I love latte art.",
+      "constraint": null
+    },
+    {
+      "id": "q007",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write an email turning down a freelance project from a former client, because I'm fully booked until the end of the year.",
+      "constraint": null
+    },
+    {
+      "id": "q008",
+      "category": "writing",
+      "tags": [],
+      "prompt": "My coworker plays music without headphones in our shared office. Write a friendly message asking him to use headphones.",
+      "constraint": null
+    },
+    {
+      "id": "q009",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a best man speech for my oldest friend. We met in the school band, where he played the tuba badly.",
+      "constraint": null
+    },
+    {
+      "id": "q010",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a two-sentence product description for a weighted blanket designed for kids.",
+      "constraint": {
+        "type": "max_sentences",
+        "value": 2
+      }
+    },
+    {
+      "id": "q011",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write an email to a customer explaining that their subscription renewed early because of a billing error and that we've refunded the difference. Keep it in plain paragraphs, no bullet points.",
+      "constraint": {
+        "type": "no_lists"
+      }
+    },
+    {
+      "id": "q012",
+      "category": "writing",
+      "tags": [
+        "AMB",
+        "CAS"
+      ],
+      "prompt": "write a short poem for the party",
+      "constraint": null
+    },
+    {
+      "id": "q013",
+      "category": "writing",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Write an email announcing our new expense policy to the team. I think receipts should be optional for anything under $50, because nobody checks them anyway.",
+      "constraint": null
+    },
+    {
+      "id": "q014",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a speaker bio for a meetup flyer. I'm a high school chemistry teacher who launches weather balloons with my students. Under 80 words.",
+      "constraint": {
+        "type": "max_words",
+        "value": 80
+      }
+    },
+    {
+      "id": "q015",
+      "category": "writing",
+      "tags": [
+        "EMO"
+      ],
+      "prompt": "I'm a wreck right now. I have to tell my landlord I'll be two weeks late on rent because I was laid off on Friday. Can you help me write the message?",
+      "constraint": null
+    },
+    {
+      "id": "q016",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a follow-up email to a client who hasn't replied to our proposal in two weeks. Her name is Ingrid and the proposal was for a website redesign.",
+      "constraint": null
+    },
+    {
+      "id": "q017",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a short note to my team saying I'll be on parental leave for four months starting in March, and who to contact while I'm away.",
+      "constraint": null
+    },
+    {
+      "id": "q018",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a message to my neighbors proposing a shared schedule for taking the building's recycling bins out to the curb.",
+      "constraint": null
+    },
+    {
+      "id": "q019",
+      "category": "writing",
+      "tags": [],
+      "prompt": "Write a pitch email to a local newspaper about our animal shelter's adoption event this Saturday. We have 40 dogs and cats looking for homes.",
+      "constraint": null
+    },
+    {
+      "id": "q020",
+      "category": "writing",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Write a short speech for our school's science fair awards night. Open with how Thomas Edison invented the telephone in 1876 and changed the world.",
+      "constraint": null
+    },
+    {
+      "id": "q021",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Make this sound more professional: 'yo, the client loved the deck, gonna need a few tweaks tho, will send them over later'",
+      "constraint": null
+    },
+    {
+      "id": "q022",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Proofread this: 'We was hoping to recieve you're feedback by friday, but its fine if it take's longer.'",
+      "constraint": null
+    },
+    {
+      "id": "q023",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Shorten this to one sentence: 'Please be advised that the elevator in Building C will be out of service for scheduled maintenance from Monday through Wednesday of next week, and we kindly ask that all staff use the stairs or the elevator in Building B during this period, and we apologize for any inconvenience this may cause.'",
+      "constraint": {
+        "type": "max_sentences",
+        "value": 1
+      }
+    },
+    {
+      "id": "q024",
+      "category": "editing",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Can you make this better? 'We offer cleaning services. We clean homes and offices. We are reliable and affordable.'",
+      "constraint": null
+    },
+    {
+      "id": "q025",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Rewrite this in a warmer tone without changing the message: 'Your application has been rejected. Do not reapply for 12 months.'",
+      "constraint": null
+    },
+    {
+      "id": "q026",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Fix the punctuation but keep my voice: 'honestly i dont know why everyone hates mondays mine are great i get coffee i see my team and nobody bothers me till ten'",
+      "constraint": null
+    },
+    {
+      "id": "q027",
+      "category": "editing",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Edit this for clarity: 'Lightning never strikes the same place twice, which is why the Empire State Building only needed a single lightning rod when it opened in 1931.'",
+      "constraint": null
+    },
+    {
+      "id": "q028",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Turn these notes into a short paragraph: q3 revenue up 6%, churn flat, hiring freeze lifted, two new reps start in may",
+      "constraint": null
+    },
+    {
+      "id": "q029",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Make this Instagram caption catchier: 'We have a new seasonal menu with pumpkin soup and apple pie, come try it this weekend.'",
+      "constraint": null
+    },
+    {
+      "id": "q030",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Rewrite this so a 9-year-old could understand it: 'Volcanoes form where molten rock from beneath the Earth's crust reaches the surface through vents and fissures.'",
+      "constraint": null
+    },
+    {
+      "id": "q031",
+      "category": "editing",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Can you tighten the first line of my cover letter? 'I am writing to apply for the position of Marketing Coordinator at your esteemed company.' Honestly I think it's already perfect.",
+      "constraint": null
+    },
+    {
+      "id": "q032",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Translate this into plain English: 'Notwithstanding the foregoing, the Licensee shall not sublicense, assign, or otherwise transfer any rights granted hereunder without the prior written consent of the Licensor.'",
+      "constraint": null
+    },
+    {
+      "id": "q033",
+      "category": "editing",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Edit this paragraph for our team newsletter: 'Please welcome Dana Whitfield to the design team! Dana joins us after eight years at Lumen Studio, which she joined straight out of school in 2021. She loves rock climbing and terrible puns.'",
+      "constraint": null
+    },
+    {
+      "id": "q034",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Give me three different ways to say this: 'Thanks for your patience while we look into the issue.'",
+      "constraint": {
+        "type": "exact_items",
+        "value": 3
+      }
+    },
+    {
+      "id": "q035",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Make my LinkedIn headline less generic: 'Hardworking professional passionate about results.'",
+      "constraint": null
+    },
+    {
+      "id": "q036",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Tighten this and keep it under 50 words: 'I just wanted to take a moment to let you know that I really appreciated all of the time and effort that you put into helping me prepare for the presentation last week, because it made a really big difference and the client was very happy with how it went.'",
+      "constraint": {
+        "type": "max_words",
+        "value": 50
+      }
+    },
+    {
+      "id": "q037",
+      "category": "editing",
+      "tags": [
+        "EXP",
+        "CAS"
+      ],
+      "prompt": "im a technical writer, just fix typos and dont change my wording: 'The installation proces takes approximatly ten minutes, after wich you will be prompted to restart your computer.'",
+      "constraint": null
+    },
+    {
+      "id": "q038",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Make this sound less defensive: 'I already told you the file was in the shared folder. It's been there since Tuesday.'",
+      "constraint": null
+    },
+    {
+      "id": "q039",
+      "category": "editing",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Fix this paragraph: 'Bats are completely blind, which is why they depend entirely on echolocation to get around at night.'",
+      "constraint": null
+    },
+    {
+      "id": "q040",
+      "category": "editing",
+      "tags": [],
+      "prompt": "Rewrite this email subject line so more people open it: 'Quarterly update from the facilities team'",
+      "constraint": null
+    },
+    {
+      "id": "q041",
+      "category": "info",
+      "tags": [],
+      "prompt": "What's the difference between a credit card and a debit card?",
+      "constraint": null
+    },
+    {
+      "id": "q042",
+      "category": "info",
+      "tags": [],
+      "prompt": "How long does cooked rice keep in the fridge?",
+      "constraint": null
+    },
+    {
+      "id": "q043",
+      "category": "info",
+      "tags": [],
+      "prompt": "What's the deepest point in the ocean?",
+      "constraint": null
+    },
+    {
+      "id": "q044",
+      "category": "info",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Why do bulls get angry when they see the color red?",
+      "constraint": null
+    },
+    {
+      "id": "q045",
+      "category": "info",
+      "tags": [],
+      "prompt": "What's a good beginner camera for someone who wants to take travel photos? Budget about $700.",
+      "constraint": null
+    },
+    {
+      "id": "q046",
+      "category": "info",
+      "tags": [],
+      "prompt": "How much sleep does a teenager need?",
+      "constraint": null
+    },
+    {
+      "id": "q047",
+      "category": "info",
+      "tags": [],
+      "prompt": "Is it true that you shouldn't swim right after eating?",
+      "constraint": null
+    },
+    {
+      "id": "q048",
+      "category": "info",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Since the Titanic sank in 1915, how long was it in service before it went down?",
+      "constraint": null
+    },
+    {
+      "id": "q049",
+      "category": "info",
+      "tags": [],
+      "prompt": "What's the chemical symbol for gold? Answer in one word.",
+      "constraint": {
+        "type": "max_words",
+        "value": 1
+      }
+    },
+    {
+      "id": "q050",
+      "category": "info",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Why does shaving make hair grow back thicker, and how often should my teenager shave to avoid it?",
+      "constraint": null
+    },
+    {
+      "id": "q051",
+      "category": "info",
+      "tags": [],
+      "prompt": "How does a mortgage work?",
+      "constraint": null
+    },
+    {
+      "id": "q052",
+      "category": "info",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Which car should I buy?",
+      "constraint": null
+    },
+    {
+      "id": "q053",
+      "category": "info",
+      "tags": [],
+      "prompt": "Who painted the ceiling of the Sistine Chapel?",
+      "constraint": null
+    },
+    {
+      "id": "q054",
+      "category": "info",
+      "tags": [],
+      "prompt": "Can you recommend three documentaries about the ocean?",
+      "constraint": {
+        "type": "exact_items",
+        "value": 3
+      }
+    },
+    {
+      "id": "q055",
+      "category": "info",
+      "tags": [],
+      "prompt": "Why do onions make your eyes water? Keep it to two sentences.",
+      "constraint": {
+        "type": "max_sentences",
+        "value": 2
+      }
+    },
+    {
+      "id": "q056",
+      "category": "info",
+      "tags": [],
+      "prompt": "What should I know before buying a used car?",
+      "constraint": null
+    },
+    {
+      "id": "q057",
+      "category": "info",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "My uncle is a nurse and he says we lose most of our body heat through our heads, so a hat matters more than a coat. What's the warmest kind of winter hat?",
+      "constraint": null
+    },
+    {
+      "id": "q058",
+      "category": "info",
+      "tags": [],
+      "prompt": "How do electric car batteries work?",
+      "constraint": null
+    },
+    {
+      "id": "q059",
+      "category": "info",
+      "tags": [],
+      "prompt": "Is a peanut a nut? Start your answer with yes or no.",
+      "constraint": {
+        "type": "yes_no_first"
+      }
+    },
+    {
+      "id": "q060",
+      "category": "info",
+      "tags": [],
+      "prompt": "Which is better for you, running or swimming?",
+      "constraint": null
+    },
+    {
+      "id": "q061",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain how the heart pumps blood like I'm 12.",
+      "constraint": null
+    },
+    {
+      "id": "q062",
+      "category": "explain",
+      "tags": [],
+      "prompt": "What are tariffs, and who actually ends up paying for them?",
+      "constraint": null
+    },
+    {
+      "id": "q063",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain cloud computing without using any jargon.",
+      "constraint": null
+    },
+    {
+      "id": "q064",
+      "category": "explain",
+      "tags": [
+        "EXP"
+      ],
+      "prompt": "Can you explain what a bond is? I'm a cardiologist and I've never had to think about finance.",
+      "constraint": null
+    },
+    {
+      "id": "q065",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Why is the ocean salty?",
+      "constraint": null
+    },
+    {
+      "id": "q066",
+      "category": "explain",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Explain the birthday paradox. I'm pretty sure you'd need at least 183 people in a room for a 50% chance that two of them share a birthday.",
+      "constraint": null
+    },
+    {
+      "id": "q067",
+      "category": "explain",
+      "tags": [],
+      "prompt": "What's the difference between weather and climate?",
+      "constraint": null
+    },
+    {
+      "id": "q068",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain supply and demand with an example.",
+      "constraint": null
+    },
+    {
+      "id": "q069",
+      "category": "explain",
+      "tags": [],
+      "prompt": "How does Wi-Fi send data through the air?",
+      "constraint": null
+    },
+    {
+      "id": "q070",
+      "category": "explain",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Explain how the Coriolis effect makes toilets flush in opposite directions in the Northern and Southern Hemispheres.",
+      "constraint": null
+    },
+    {
+      "id": "q071",
+      "category": "explain",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "whats a recession, like actually",
+      "constraint": null
+    },
+    {
+      "id": "q072",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain the difference between 'fewer' and 'less' in under 40 words.",
+      "constraint": {
+        "type": "max_words",
+        "value": 40
+      }
+    },
+    {
+      "id": "q073",
+      "category": "explain",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "why do cats purr",
+      "constraint": null
+    },
+    {
+      "id": "q074",
+      "category": "explain",
+      "tags": [],
+      "prompt": "What does the United Nations actually do?",
+      "constraint": null
+    },
+    {
+      "id": "q075",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain the water cycle as a table with each stage, what happens, and where it happens.",
+      "constraint": {
+        "type": "table"
+      }
+    },
+    {
+      "id": "q076",
+      "category": "explain",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Explain why summer is hot because the Earth is closest to the Sun then.",
+      "constraint": null
+    },
+    {
+      "id": "q077",
+      "category": "explain",
+      "tags": [],
+      "prompt": "What is cognitive dissonance?",
+      "constraint": null
+    },
+    {
+      "id": "q078",
+      "category": "explain",
+      "tags": [],
+      "prompt": "Explain what an algorithm is.",
+      "constraint": null
+    },
+    {
+      "id": "q079",
+      "category": "explain",
+      "tags": [],
+      "prompt": "How do submarines dive and come back up?",
+      "constraint": null
+    },
+    {
+      "id": "q080",
+      "category": "explain",
+      "tags": [
+        "EXP"
+      ],
+      "prompt": "I teach 8th grade math. Explain probability in a way I could use in class, with one quick classroom activity.",
+      "constraint": null
+    },
+    {
+      "id": "q081",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I get candle wax off a tablecloth?",
+      "constraint": null
+    },
+    {
+      "id": "q082",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I bleed a radiator?",
+      "constraint": null
+    },
+    {
+      "id": "q083",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How can I make my homemade pizza crust crispier?",
+      "constraint": null
+    },
+    {
+      "id": "q084",
+      "category": "howto",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "how do i get rid of fruit flies in my kitchen",
+      "constraint": null
+    },
+    {
+      "id": "q085",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I start an emergency fund? I've never managed to save money before.",
+      "constraint": null
+    },
+    {
+      "id": "q086",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I hang a picture frame so it's level? Numbered steps please, no more than 6 steps.",
+      "constraint": {
+        "type": "max_items",
+        "value": 6
+      }
+    },
+    {
+      "id": "q087",
+      "category": "howto",
+      "tags": [],
+      "prompt": "What's the best way to memorize a speech?",
+      "constraint": null
+    },
+    {
+      "id": "q088",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I ask my landlord to lower the rent when I renew my lease?",
+      "constraint": null
+    },
+    {
+      "id": "q089",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I propagate a pothos plant from a cutting?",
+      "constraint": null
+    },
+    {
+      "id": "q090",
+      "category": "howto",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "How do I set it up?",
+      "constraint": null
+    },
+    {
+      "id": "q091",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I prepare for my first marathon in four months?",
+      "constraint": null
+    },
+    {
+      "id": "q092",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I make a basic vinaigrette?",
+      "constraint": null
+    },
+    {
+      "id": "q093",
+      "category": "howto",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "How do I clean my laptop screen? I usually spray glass cleaner with ammonia straight onto it.",
+      "constraint": null
+    },
+    {
+      "id": "q094",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How can I make my phone battery last longer?",
+      "constraint": null
+    },
+    {
+      "id": "q095",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I write a good bug report?",
+      "constraint": null
+    },
+    {
+      "id": "q096",
+      "category": "howto",
+      "tags": [],
+      "prompt": "I'm a beginner. How do I start lifting weights safely?",
+      "constraint": null
+    },
+    {
+      "id": "q097",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I keep my houseplants alive while I'm away for two weeks?",
+      "constraint": null
+    },
+    {
+      "id": "q098",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I turn on two-factor authentication for my Google account? Just give me the steps, no intro.",
+      "constraint": {
+        "type": "no_preamble"
+      }
+    },
+    {
+      "id": "q099",
+      "category": "howto",
+      "tags": [
+        "EMO"
+      ],
+      "prompt": "How do I get through my first week back at work after my divorce? I'm dreading it and I feel like everyone will be staring at me.",
+      "constraint": null
+    },
+    {
+      "id": "q100",
+      "category": "howto",
+      "tags": [],
+      "prompt": "How do I iron a dress shirt without leaving creases?",
+      "constraint": null
+    },
+    {
+      "id": "q101",
+      "category": "advice",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Should I go back to school?",
+      "constraint": null
+    },
+    {
+      "id": "q102",
+      "category": "advice",
+      "tags": [],
+      "prompt": "I can either take a promotion that means managing my former peers, or move to another team as a senior individual contributor. Which should I choose?",
+      "constraint": null
+    },
+    {
+      "id": "q103",
+      "category": "advice",
+      "tags": [],
+      "prompt": "My brother keeps borrowing money and paying it back late. How do I say no without hurting him?",
+      "constraint": null
+    },
+    {
+      "id": "q104",
+      "category": "advice",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "I'm planning to put all my savings into my friend's new restaurant. I think it's the safest bet I could make, because I trust him completely.",
+      "constraint": null
+    },
+    {
+      "id": "q105",
+      "category": "advice",
+      "tags": [
+        "EMO"
+      ],
+      "prompt": "How do I tell my best friend I can't be her maid of honor? I feel terrible and I've been losing sleep over it.",
+      "constraint": null
+    },
+    {
+      "id": "q106",
+      "category": "advice",
+      "tags": [],
+      "prompt": "Is it worth buying an electric car right now?",
+      "constraint": null
+    },
+    {
+      "id": "q107",
+      "category": "advice",
+      "tags": [
+        "EMO"
+      ],
+      "prompt": "I feel like I'm failing as a new parent. The baby barely sleeps and I'm exhausted all the time. What can I do?",
+      "constraint": null
+    },
+    {
+      "id": "q108",
+      "category": "advice",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Should I move to a bigger city?",
+      "constraint": null
+    },
+    {
+      "id": "q109",
+      "category": "advice",
+      "tags": [],
+      "prompt": "How do I ask for flexible hours without seeming less committed?",
+      "constraint": null
+    },
+    {
+      "id": "q110",
+      "category": "advice",
+      "tags": [],
+      "prompt": "My friend wants me to invest in her online store. Should I?",
+      "constraint": null
+    },
+    {
+      "id": "q111",
+      "category": "advice",
+      "tags": [],
+      "prompt": "I run a small team, and two of my engineers can't stand each other. How should I handle it?",
+      "constraint": null
+    },
+    {
+      "id": "q112",
+      "category": "advice",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "How do I get better at this?",
+      "constraint": null
+    },
+    {
+      "id": "q113",
+      "category": "advice",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Since you have to pay off all your student loans before you're allowed to contribute to a retirement account, how long should I wait to open a 401(k)?",
+      "constraint": null
+    },
+    {
+      "id": "q114",
+      "category": "advice",
+      "tags": [],
+      "prompt": "How can I stop checking my phone so much?",
+      "constraint": null
+    },
+    {
+      "id": "q115",
+      "category": "advice",
+      "tags": [],
+      "prompt": "My partner wants to move abroad for a job and I don't. How do we decide?",
+      "constraint": null
+    },
+    {
+      "id": "q116",
+      "category": "advice",
+      "tags": [],
+      "prompt": "I'm 52 and thinking about going back to school to become a nurse. Is that realistic?",
+      "constraint": null
+    },
+    {
+      "id": "q117",
+      "category": "advice",
+      "tags": [
+        "EXP"
+      ],
+      "prompt": "I'm a tax accountant, so skip the basics: is a Roth conversion worth it in a year when my income is unusually low?",
+      "constraint": null
+    },
+    {
+      "id": "q118",
+      "category": "advice",
+      "tags": [],
+      "prompt": "How can I sleep better? Give me exactly 5 tips.",
+      "constraint": {
+        "type": "exact_items",
+        "value": 5
+      }
+    },
+    {
+      "id": "q119",
+      "category": "advice",
+      "tags": [
+        "EMO"
+      ],
+      "prompt": "My grandfather passed away last week and I have to speak at his funeral. I don't know how I'll get through it. Any advice?",
+      "constraint": null
+    },
+    {
+      "id": "q120",
+      "category": "advice",
+      "tags": [],
+      "prompt": "Should I confront my roommate about eating my food, or just buy a mini fridge?",
+      "constraint": null
+    },
+    {
+      "id": "q121",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Write a Python function that returns the second largest number in a list.",
+      "constraint": null
+    },
+    {
+      "id": "q122",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Why does this print 0.30000000000000004 instead of 0.3? `print(0.1 + 0.2)`",
+      "constraint": null
+    },
+    {
+      "id": "q123",
+      "category": "coding",
+      "tags": [],
+      "prompt": "What's the difference between a list and a tuple in Python?",
+      "constraint": null
+    },
+    {
+      "id": "q124",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Write a SQL query that counts orders per month in 2025. Table: orders(id, customer_id, created_at, total).",
+      "constraint": null
+    },
+    {
+      "id": "q125",
+      "category": "coding",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "My SQL query is slow. How do I speed it up?",
+      "constraint": null
+    },
+    {
+      "id": "q126",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Explain what this regex does: ^\\d{3}-\\d{3}-\\d{4}$",
+      "constraint": null
+    },
+    {
+      "id": "q127",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Write a Python one-liner that removes duplicates from a list but keeps the original order. Code only, no explanation.",
+      "constraint": {
+        "type": "code_only"
+      }
+    },
+    {
+      "id": "q128",
+      "category": "coding",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Why is Java just a simpler version of JavaScript?",
+      "constraint": null
+    },
+    {
+      "id": "q129",
+      "category": "coding",
+      "tags": [],
+      "prompt": "How do I read a CSV file in JavaScript in the browser?",
+      "constraint": null
+    },
+    {
+      "id": "q130",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Fix this: `if x = 5: print('five')`",
+      "constraint": null
+    },
+    {
+      "id": "q131",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Should I use PostgreSQL or MongoDB for a small inventory app?",
+      "constraint": null
+    },
+    {
+      "id": "q132",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Write an HTML and CSS card that shows a user's photo, name and job title.",
+      "constraint": null
+    },
+    {
+      "id": "q133",
+      "category": "coding",
+      "tags": [],
+      "prompt": "What does `docker compose` do, and when do I need it instead of plain `docker run`?",
+      "constraint": null
+    },
+    {
+      "id": "q134",
+      "category": "coding",
+      "tags": [
+        "EXP"
+      ],
+      "prompt": "Senior backend dev here, skip the basics: what's the cleanest way to implement retries with exponential backoff in Python?",
+      "constraint": null
+    },
+    {
+      "id": "q135",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Rewrite this with a dictionary comprehension:\nsquares = {}\nfor n in range(1, 11):\n    squares[n] = n * n",
+      "constraint": null
+    },
+    {
+      "id": "q136",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Why do people say you shouldn't commit API keys to Git?",
+      "constraint": null
+    },
+    {
+      "id": "q137",
+      "category": "coding",
+      "tags": [],
+      "prompt": "Write a Node.js script that prints the 10 largest files in a folder.",
+      "constraint": null
+    },
+    {
+      "id": "q138",
+      "category": "coding",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Why isn't this working?",
+      "constraint": null
+    },
+    {
+      "id": "q139",
+      "category": "coding",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "I think code comments are a waste of time, because good code explains itself. Help me make that case in our team's style guide.",
+      "constraint": null
+    },
+    {
+      "id": "q140",
+      "category": "coding",
+      "tags": [],
+      "prompt": "What is an API? Explain in under 100 words.",
+      "constraint": {
+        "type": "max_words",
+        "value": 100
+      }
+    },
+    {
+      "id": "q141",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize these meeting notes:\n\nMarketing weekly, Monday. Attendees: Priya (lead), Tom (content), Aisha (paid ads), Ben (analytics). Priya said the spring campaign launch moves from April 2 to April 9 because the landing page isn't ready. Aisha reported that paid search costs rose 18% last month and proposed shifting part of the budget to social video. Tom disagreed, saying video production would delay the launch further. Ben shared that newsletter sign-ups doubled after the redesign. Decision: keep the paid search budget for now and revisit it after launch. Tom will send the final blog calendar by Thursday.",
+      "constraint": null
+    },
+    {
+      "id": "q142",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize this in one sentence:\n\nStarting in June, the Riverside public pool will open an hour earlier on weekdays, at 6 a.m., to serve lap swimmers before work. The change follows a survey in which nearly 60% of members asked for earlier hours. Weekend hours stay the same. To cover the extra shift, the city has hired four more lifeguards, paid for by a small increase in the annual membership fee, from $120 to $135.",
+      "constraint": {
+        "type": "max_sentences",
+        "value": 1
+      }
+    },
+    {
+      "id": "q143",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Extract every date and deadline from this message:\n\nHi team, a few reminders for the product launch. Final copy is due to legal by March 3. The press kit goes out on March 10, and embargoed briefings run March 11 through 13. The launch event is March 18 at 10 a.m. Pacific. Please submit travel requests by February 24 so we can book hotels, and send your demo scripts to Mei no later than March 6.",
+      "constraint": null
+    },
+    {
+      "id": "q144",
+      "category": "summarize",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "tldr pls\n\nStarting May 1, Northline Transit will retire paper monthly passes. Riders will need to load passes onto a Northline card or the mobile app instead. Paper passes bought in April will still be accepted through May 15. Customers without a smartphone can pick up a free Northline card at any station kiosk or at the downtown service center, which will stay open until 8 p.m. during the first two weeks of May to help with the switch.",
+      "constraint": null
+    },
+    {
+      "id": "q145",
+      "category": "summarize",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Summarize this for a school newsletter:\n\nThe Amazon River, which flows for more than 9,000 kilometers across South America, carries more water than any other river on Earth. It begins in the Andes mountains of Peru and empties into the Atlantic Ocean in Brazil. The surrounding rainforest is home to roughly one in ten known species. Scientists warn that deforestation and drought are putting the river system under growing stress, and several countries have pledged to cut forest loss by 2030.",
+      "constraint": null
+    },
+    {
+      "id": "q146",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "What are the action items here?\n\nNotes from the PTA call: The book fair raised $2,300, about $400 short of the goal. Carla will ask the publisher about extending the fair online for another week. The spring picnic needs six more volunteers; Devon will post a sign-up sheet in the school newsletter. Parents asked about crossing guards on Elm Street, and Mr. Patel agreed to raise it with the city at next month's council meeting. The next PTA meeting moves to the library.",
+      "constraint": null
+    },
+    {
+      "id": "q147",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Is this review positive, negative, or mixed? Then explain why in one sentence.\n\n\"The headphones sound amazing and the noise cancelling is the best I've tried. But the ear cushions started peeling after two months, and customer support took three weeks to answer my email. I'd still buy them again, just with an extended warranty.\"",
+      "constraint": null
+    },
+    {
+      "id": "q148",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Give me 3 bullet points summarizing this:\n\nA year-long study of 2,400 office workers found that people who took a short walk after lunch reported better afternoon focus than those who stayed at their desks. The effect was strongest on days with long meetings. Walkers also took fewer sick days, though the researchers note that healthier people may simply be more likely to walk. The authors recommend that employers protect a 15-minute break after lunch rather than scheduling meetings through it.",
+      "constraint": {
+        "type": "exact_items",
+        "value": 3
+      }
+    },
+    {
+      "id": "q149",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize this for my manager, who only has a minute:\n\nProject Harbor update: the mobile app beta is with 300 testers, and the crash rate has dropped from 4% to under 1% since the last build. The payments integration is blocked because the bank's sandbox has been down for nine days; we have escalated twice. Design finished the onboarding screens, but an accessibility review found contrast problems that will take about a week to fix. We still expect to hit the June 30 launch if the sandbox is back by the end of next week.",
+      "constraint": null
+    },
+    {
+      "id": "q150",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize the pros and cons of this in a table:\n\nElectric scooters are cheap to rent and fun to ride, and they can replace short car trips in crowded cities. They produce no exhaust while riding. On the other hand, riders are often injured, especially without helmets, and scooters left on sidewalks block wheelchair users. Their batteries wear out quickly, so many scooters last only a year or two, and collecting them for charging each night adds emissions from vans.",
+      "constraint": {
+        "type": "table"
+      }
+    },
+    {
+      "id": "q151",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Can you summarize this?\n\nThe night the power went out, Marta found her grandmother's old radio in the hall closet. It still had batteries. For an hour the whole family sat on the kitchen floor listening to a station from three towns over, playing songs none of them knew. When the lights came back on, nobody moved to turn the radio off. Her brother asked if they could do it again next week, on purpose.",
+      "constraint": null
+    },
+    {
+      "id": "q152",
+      "category": "summarize",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Summarize this research abstract in plain language:\n\nWe surveyed 300 hospital nurses about their sleep and job satisfaction. Of the respondents, 180 worked night shifts and 150 worked day shifts. Night-shift nurses reported 52 minutes less sleep per workday on average and lower job satisfaction scores. Nurses who had at least two consecutive days off reported better sleep, regardless of shift. We recommend that hospitals schedule rest days in blocks of two or more to reduce fatigue among night-shift staff.",
+      "constraint": null
+    },
+    {
+      "id": "q153",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "List everyone mentioned and their role:\n\nThe community theater's spring show came together thanks to many people. Director Sam Okoye chose the play and ran rehearsals. Lena Varga designed the costumes with help from volunteer Ruth Kim, who sewed most of them. The set was built by carpenter Jorge Alvarez and his son Mateo. Box office manager Priti Shah handled ticket sales, and local bakery owner Dan Feld donated snacks for every performance.",
+      "constraint": null
+    },
+    {
+      "id": "q154",
+      "category": "summarize",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Summarize this, though honestly I think it's nonsense:\n\nSchool uniforms do more good than harm. They reduce the pressure on families to buy expensive clothes and make it harder to tell which students come from wealthier homes. Teachers in schools that adopted uniforms report fewer arguments about dress codes. Critics say uniforms limit self-expression, but students still express themselves through clubs, art, and how they treat one another. Uniforms are a small rule that removes a daily distraction.",
+      "constraint": null
+    },
+    {
+      "id": "q155",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize this chat and tell me what they decided:\n\nMaya: the venue just called, they double-booked us for the 14th\nLeo: seriously? can they move us to the 21st?\nMaya: they offered the 21st or a smaller room on the 14th\nLeo: how small?\nMaya: 60 people, we have 85 rsvps\nLeo: then the 21st. can you email everyone?\nMaya: yes, and I'll ask the caterer if the 21st works\nLeo: thanks, I'll update the website",
+      "constraint": null
+    },
+    {
+      "id": "q156",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize this in under 30 words:\n\nBeginning next Monday, the building's main entrance on Fifth Street will close for renovations for about six weeks. During this time, please use the side entrance on Maple Avenue, which will be staffed from 7 a.m. to 7 p.m. Deliveries should go to the loading dock behind the building. Badge access will work at all open entrances.",
+      "constraint": {
+        "type": "max_words",
+        "value": 30
+      }
+    },
+    {
+      "id": "q157",
+      "category": "summarize",
+      "tags": [
+        "ERR"
+      ],
+      "prompt": "Summarize this:\n\nHoneybees are remarkable insects. A single worker bee makes about a full jar of honey over its lifetime, which is why a hive can produce so much in one season. Worker bees are all female and live only five to six weeks in summer. They tell each other where flowers are through a 'waggle dance' that signals both direction and distance. Beekeepers usually harvest honey in late summer, leaving enough for the colony to survive the winter.",
+      "constraint": null
+    },
+    {
+      "id": "q158",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "What's the main point of this?\n\nMany people assume that recycling more is the best thing they can do for the environment. But recycling uses energy, and much of what goes into recycling bins is never actually recycled. Reducing what we buy and reusing what we already own saves far more resources. Recycling still matters, but it should be the last step, not the first, in how we think about waste.",
+      "constraint": null
+    },
+    {
+      "id": "q159",
+      "category": "summarize",
+      "tags": [],
+      "prompt": "Summarize this contract clause and tell me if I should worry:\n\n\"The Client agrees that any deliverables not formally rejected in writing within five (5) business days of delivery shall be deemed accepted, and that revisions requested after acceptance will be billed at the Contractor's standard hourly rate.\"",
+      "constraint": null
+    },
+    {
+      "id": "q160",
+      "category": "summarize",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "Summarize\n\nUnpack all parts and check them against the list on page 2. Attach the two side panels to the base using the eight long screws, but do not tighten them fully yet. Slide the back panel into the grooves, then fit the top panel and tighten every screw. Insert the shelf pins at the heights you want and place the shelves on them. Finally, fix the bookcase to the wall with the included bracket so it cannot tip over.",
+      "constraint": null
+    },
+    {
+      "id": "q161",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Give me 10 name ideas for a dog-walking business.",
+      "constraint": {
+        "type": "exact_items",
+        "value": 10
+      }
+    },
+    {
+      "id": "q162",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "What are some cheap things to do with friends on a Friday night?",
+      "constraint": null
+    },
+    {
+      "id": "q163",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Brainstorm gift ideas for my sister, who just got into rock climbing.",
+      "constraint": null
+    },
+    {
+      "id": "q164",
+      "category": "brainstorm",
+      "tags": [
+        "CAS"
+      ],
+      "prompt": "ideas for a work holiday party that people will actually enjoy?",
+      "constraint": null
+    },
+    {
+      "id": "q165",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "I need a theme for my company's annual conference.",
+      "constraint": null
+    },
+    {
+      "id": "q166",
+      "category": "brainstorm",
+      "tags": [
+        "AMB"
+      ],
+      "prompt": "What should I name it?",
+      "constraint": null
+    },
+    {
+      "id": "q167",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Brainstorm ways to make my small apartment feel bigger.",
+      "constraint": null
+    },
+    {
+      "id": "q168",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Give me 5 ideas for a mobile app that helps people save money.",
+      "constraint": {
+        "type": "exact_items",
+        "value": 5
+      }
+    },
+    {
+      "id": "q169",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "What are some memorable ways to announce a pregnancy to family?",
+      "constraint": null
+    },
+    {
+      "id": "q170",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Suggest a name for the detective in my mystery novel. Just one name, nothing else.",
+      "constraint": {
+        "type": "max_words",
+        "value": 4
+      }
+    },
+    {
+      "id": "q171",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Brainstorm slogans for a campaign that encourages people to adopt older shelter dogs.",
+      "constraint": null
+    },
+    {
+      "id": "q172",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Ideas for a high school history project about our town?",
+      "constraint": null
+    },
+    {
+      "id": "q173",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "What can I make for lunch with eggs, tortillas, cheese, and some leftover beans?",
+      "constraint": null
+    },
+    {
+      "id": "q174",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Brainstorm YouTube video ideas for a channel about learning to cook on a budget.",
+      "constraint": null
+    },
+    {
+      "id": "q175",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "I want to get fit but I only have 20 minutes a day. Ideas?",
+      "constraint": null
+    },
+    {
+      "id": "q176",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Give me ideas for a fun family activity on a summer evening.",
+      "constraint": null
+    },
+    {
+      "id": "q177",
+      "category": "brainstorm",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Brainstorm ideas for my coffee shop's loyalty program. I've already decided it has to be an app, since paper punch cards are dead.",
+      "constraint": null
+    },
+    {
+      "id": "q178",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Help me come up with a name for my book club. We mostly read science fiction.",
+      "constraint": null
+    },
+    {
+      "id": "q179",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Things to do in Kyoto for 4 days?",
+      "constraint": null
+    },
+    {
+      "id": "q180",
+      "category": "brainstorm",
+      "tags": [],
+      "prompt": "Ways to reuse glass jars. Just a list, no explanations.",
+      "constraint": {
+        "type": "list_only"
+      }
+    },
+    {
+      "id": "q181",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it better to travel alone or with friends?",
+      "constraint": null
+    },
+    {
+      "id": "q182",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "What do you think about four-day school weeks?",
+      "constraint": null
+    },
+    {
+      "id": "q183",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is cereal a soup?",
+      "constraint": null
+    },
+    {
+      "id": "q184",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Which is the best Pixar movie?",
+      "constraint": null
+    },
+    {
+      "id": "q185",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Should phones be banned in schools?",
+      "constraint": null
+    },
+    {
+      "id": "q186",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Do you think self-driving cars will be common in ten years?",
+      "constraint": null
+    },
+    {
+      "id": "q187",
+      "category": "opinion",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Isn't it obvious that video games are a waste of time?",
+      "constraint": null
+    },
+    {
+      "id": "q188",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it rude to show up to a dinner party without bringing anything?",
+      "constraint": null
+    },
+    {
+      "id": "q189",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Summer or winter? Pick one, one-word answer.",
+      "constraint": {
+        "type": "max_words",
+        "value": 1
+      }
+    },
+    {
+      "id": "q190",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Should college be free?",
+      "constraint": null
+    },
+    {
+      "id": "q191",
+      "category": "opinion",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "I think the Mona Lisa is only famous because it was stolen once. Agree?",
+      "constraint": null
+    },
+    {
+      "id": "q192",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "What's the greatest scientific discovery of all time?",
+      "constraint": null
+    },
+    {
+      "id": "q193",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it still worth learning a foreign language now that translation apps are so good?",
+      "constraint": null
+    },
+    {
+      "id": "q194",
+      "category": "opinion",
+      "tags": [
+        "FP"
+      ],
+      "prompt": "Since cracking your knuckles causes arthritis, is it worth the effort to break the habit?",
+      "constraint": null
+    },
+    {
+      "id": "q195",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it okay to put ketchup on a steak?",
+      "constraint": null
+    },
+    {
+      "id": "q196",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Which matters more for happiness: money or friendships?",
+      "constraint": null
+    },
+    {
+      "id": "q197",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it ever okay to read your partner's messages?",
+      "constraint": null
+    },
+    {
+      "id": "q198",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "What's your favorite movie, and why?",
+      "constraint": null
+    },
+    {
+      "id": "q199",
+      "category": "opinion",
+      "tags": [
+        "OP"
+      ],
+      "prompt": "Rate my plan: a vending machine that sells fresh sourdough loaves. I'm convinced it'll be a goldmine.",
+      "constraint": null
+    },
+    {
+      "id": "q200",
+      "category": "opinion",
+      "tags": [],
+      "prompt": "Is it better to have a few close friends or many acquaintances?",
+      "constraint": null
+    }
+  ]
+}

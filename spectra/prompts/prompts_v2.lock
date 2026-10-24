@@ -1,0 +1,9 @@
+2c45a7f708fa55b991eaa4425730e59315202eedb865100b81e5c66282c29280  prompts_v2.json
+
+SHA-256 of the canonical JSON: json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":")),
+UTF-8. Canonical so that line-ending conversion on checkout does not change it. tests/test_spectra.py pins
+the same value, so an edit to prompts_v2.json fails the tests.
+
+Locked 2026-10-24, in the commit that added this file. prompts_v2.json is the test set: profiles are
+built and tuned on prompts_v1.json only, and v2 is played once, with the frozen profile. Until then,
+do not read v2 answers, codes, analyses, reports or guesses.

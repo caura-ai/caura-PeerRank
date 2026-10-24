@@ -3,6 +3,7 @@ writer locks, provider throttling, and the report's recommendation text.
 
   pytest tests/
 """
+import hashlib
 import json
 import math
 import re
@@ -164,6 +165,27 @@ def test_holdout_halves_split_every_category_evenly():
         got = [halves[p["id"]] for p in prompts if p["category"] == f"c{c}"]
         assert got.count("A") == got.count("B") == 5
     assert holdout_halves(list(reversed(prompts))) == halves  # fixed by the ids, not the order
+
+
+# ----------------------------------------------------------------------------- the locked v2 test set
+V2_SHA256 = "2c45a7f708fa55b991eaa4425730e59315202eedb865100b81e5c66282c29280"
+
+
+def test_v2_prompt_set_is_locked():
+    data = json.loads((SPECTRA_DIR / "prompts" / "prompts_v2.json").read_text(encoding="utf-8"))
+    canon = json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    lock = (SPECTRA_DIR / "prompts" / "prompts_v2.lock").read_text(encoding="utf-8").split()[0]
+    assert hashlib.sha256(canon).hexdigest() == lock == V2_SHA256, "prompts_v2.json is locked; do not edit it"
+
+
+def test_v2_mirrors_the_design_of_v1_with_new_content():
+    v1 = json.loads((SPECTRA_DIR / "prompts" / "prompts_v1.json").read_text(encoding="utf-8"))["prompts"]
+    v2 = json.loads((SPECTRA_DIR / "prompts" / "prompts_v2.json").read_text(encoding="utf-8"))["prompts"]
+    assert len(v2) == len(v1) == 200 and len({p["id"] for p in v2}) == 200
+    for a, b in zip(v1, v2):
+        assert (a["category"], a["tags"], a["constraint"]) == (b["category"], b["tags"], b["constraint"]), b["id"]
+    assert not {p["prompt"] for p in v1} & {p["prompt"] for p in v2}
+    assert not {p["id"] for p in v1} & {p["id"] for p in v2}
 
 
 # ----------------------------------------------------------------------------- guess scoring
