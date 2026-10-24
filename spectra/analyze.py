@@ -450,6 +450,22 @@ def numeric_matrix(df):
     return X.fillna(X.median(numeric_only=True)).fillna(0.0)
 
 
+def match_by_prompt(proba, df, k):
+    """Name every answer to a prompt jointly, each model once, as the guessing game's permutation rule does.
+
+    proba is (answers x models). Within each (prompt, sample) that has one answer from each of the k models,
+    the assignment maximizes the summed log-probability; other rows keep their single best guess.
+    """
+    from scipy.optimize import linear_sum_assignment
+    pred = proba.argmax(axis=1)
+    for _, idx in df.groupby(["prompt_id", "sample"]).indices.items():
+        if len(idx) != k or df.model.iloc[idx].nunique() != k:
+            continue
+        rows, cols = linear_sum_assignment(-np.log(np.clip(proba[idx], 1e-12, None)))
+        pred[idx[rows]] = cols
+    return pred
+
+
 def distinctiveness(df, models):
     try:
         from scipy.sparse import hstack, csr_matrix
@@ -461,32 +477,64 @@ def distinctiveness(df, models):
         return None
     if len(models) < 2 or df.prompt_id.nunique() < 10:
         return None
+    from spectra.guess import holdout_halves  # the guessing game's split, so the held-out scores line up
+    k = len(models)
     y = df.model.map({m: i for i, m in enumerate(models)}).to_numpy()
     groups = df.prompt_id.to_numpy()
     Xn = numeric_matrix(df).to_numpy()
+
+    def out_of_fold(splits):
+        """Class probabilities for every answer from a model that never saw its prompt: (words + style, style only)."""
+        p_full, p_style = np.zeros((len(y), k)), np.zeros((len(y), k))
+        for tr, te in splits:
+            vec = TfidfVectorizer(ngram_range=(1, 2), min_df=3, max_features=40000, sublinear_tf=True)
+            Tt = vec.fit_transform(df.prose.iloc[tr])
+            Te = vec.transform(df.prose.iloc[te])
+            sc = StandardScaler().fit(Xn[tr])
+            Nt, Ne = sc.transform(Xn[tr]), sc.transform(Xn[te])
+            clf = LogisticRegression(max_iter=3000, C=4.0)
+            clf.fit(hstack([Tt, csr_matrix(Nt)]).tocsr(), y[tr])
+            p_full[te] = clf.predict_proba(hstack([Te, csr_matrix(Ne)]).tocsr())
+            clf2 = LogisticRegression(max_iter=3000, C=1.0)
+            clf2.fit(Nt, y[tr])
+            p_style[te] = clf2.predict_proba(Ne)
+        return p_full, p_style
+
+    rng = np.random.default_rng(7)  # its own generator, so the shared RNG's later draws do not move
+    codes, prompt_idx = np.unique(groups, return_inverse=True)
+
+    def prompt_ci(correct, reps=2000):
+        """95% interval resampling prompts, as the guessing game's intervals do."""
+        hits = np.bincount(prompt_idx, weights=correct.astype(float), minlength=len(codes))
+        n = np.bincount(prompt_idx, minlength=len(codes))
+        draw = rng.integers(0, len(codes), size=(reps, len(codes)))
+        boots = hits[draw].sum(axis=1) / n[draw].sum(axis=1)
+        return [float(np.percentile(boots, 2.5)), float(np.percentile(boots, 97.5))]
+
+    def scores(p_full, p_style):
+        out = {}
+        for name, p in (("", p_full), ("style_only_", p_style)):
+            for kind, pred in (("accuracy", p.argmax(axis=1)), ("matched_accuracy", match_by_prompt(p, df, k))):
+                out[name + kind] = float((pred == y).mean())
+                out[name + kind + "_ci"] = prompt_ci(pred == y)
+        return out
+
     folds = GroupKFold(n_splits=min(5, df.prompt_id.nunique()))
-    pred_full = np.zeros_like(y)
-    pred_style = np.zeros_like(y)
-    for tr, te in folds.split(Xn, y, groups):
-        vec = TfidfVectorizer(ngram_range=(1, 2), min_df=3, max_features=40000, sublinear_tf=True)
-        Tt = vec.fit_transform(df.prose.iloc[tr])
-        Te = vec.transform(df.prose.iloc[te])
-        sc = StandardScaler().fit(Xn[tr])
-        Nt, Ne = sc.transform(Xn[tr]), sc.transform(Xn[te])
-        clf = LogisticRegression(max_iter=3000, C=4.0)
-        clf.fit(hstack([Tt, csr_matrix(Nt)]).tocsr(), y[tr])
-        pred_full[te] = clf.predict(hstack([Te, csr_matrix(Ne)]).tocsr())
-        clf2 = LogisticRegression(max_iter=3000, C=1.0)
-        clf2.fit(Nt, y[tr])
-        pred_style[te] = clf2.predict(Ne)
-    k = len(models)
+    p_full, p_style = out_of_fold(folds.split(Xn, y, groups))
+    pred_full = p_full.argmax(axis=1)
+    half = holdout_halves(df[["prompt_id", "category"]].drop_duplicates()
+                          .rename(columns={"prompt_id": "id"}).to_dict("records"))
+    in_a = df.prompt_id.map(half).eq("A").to_numpy()
+    a, b = np.flatnonzero(in_a), np.flatnonzero(~in_a)
     mat = np.zeros((k, k))
-    for a, b in zip(y, pred_full):
-        mat[a, b] += 1
+    for t, p in zip(y, pred_full):
+        mat[t, p] += 1
     mat = mat / np.maximum(mat.sum(axis=1, keepdims=True), 1)
-    return {"accuracy": float((pred_full == y).mean()), "style_only_accuracy": float((pred_style == y).mean()),
-            "chance": 1.0 / k, "labels": models, "matrix": mat.tolist(),
-            "note": "5-fold cross-validation grouped by prompt, so the classifier never sees the test prompts."}
+    return {**scores(p_full, p_style), "chance": 1.0 / k, "labels": models, "matrix": mat.tolist(),
+            "halves": scores(*out_of_fold([(a, b), (b, a)])),
+            "note": "5-fold cross-validation grouped by prompt, so the classifier never sees the test prompts. "
+                    "matched_* names a prompt's answers jointly, each model once, like the guessing game; "
+                    "halves trains on one half of the prompts and tests on the other, the game's held-out split."}
 
 
 def style_map(df, models, max_points=3000):

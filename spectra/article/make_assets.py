@@ -22,7 +22,7 @@ from scipy.stats import pearsonr, spearmanr  # noqa: E402
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from spectra.code_behaviors import CODEBOOK  # noqa: E402
-from spectra.guess import load_jsonl, summarize_all  # noqa: E402
+from spectra.guess import game_key, load_jsonl, prompt_effects, summarize_all  # noqa: E402
 
 MAIN, REPL = "oct-23-26", "oct-14-26"  # the recent run, and the earlier run of the same prompts
 DATA = ROOT / "data" / "spectra"
@@ -244,6 +244,15 @@ for name, analysis in (("", A), ("Repl", A0)):
     d = analysis["distinctiveness"]
     mac("clfFull" + name, pct(d["accuracy"]))
     mac("clfStyle" + name, pct(d["style_only_accuracy"]))
+    mac("clfMatched" + name, pct(d["matched_accuracy"]))
+    mac("clfHalfMatched" + name, pct(d["halves"]["matched_accuracy"]))
+    if not name:
+        mac("clfMatchedCI", ci(d["matched_accuracy_ci"]))
+        mac("clfStyleMatched", pct(d["style_only_matched_accuracy"]))
+        mac("clfHalf", pct(d["halves"]["accuracy"]))
+        mac("clfHalfCI", ci(d["halves"]["accuracy_ci"]))
+        mac("clfHalfMatchedCI", ci(d["halves"]["matched_accuracy_ci"]))
+        mac("clfStyleHalfMatched", pct(d["halves"]["style_only_matched_accuracy"]))
     best = max(((d["labels"][i], d["labels"][j], v) for i, row in enumerate(d["matrix"]) for j, v in enumerate(row) if i != j),
                key=lambda x: x[2])
     mac("confRate" + name, pct(best[2]))
@@ -255,25 +264,71 @@ mac("pcOneVar", pct(A["style_map"]["variance"][0], 0))
 mac("pcTwoVar", pct(A["style_map"]["variance"][1], 0))
 mac("pcOnePos", ", ".join(A["style_map"]["axes"]["pc1"]["pos"]))
 mac("pcOneNeg", ", ".join(A["style_map"]["axes"]["pc1"]["neg"]))
+d = A["distinctiveness"]
+cells = lambda s, key: f"{pct(s[key])} ({ci(s[key + '_ci'])})"  # noqa: E731
+lines = [f"{split} & {feats} & {cells(s, pre + 'accuracy')} & {cells(s, pre + 'matched_accuracy')} \\\\"
+         for split, s in (("Other 4/5 of prompts", d), ("Other half (the game's split)", d["halves"]))
+         for feats, pre in (("Words and style", ""), ("Style only", "style_only_"))]
+(OUT / "tab_classifier.tex").write_text(
+    "\\begin{tabular}{llrr}\n\\toprule\nTrained on & Features & One answer at a time & Six answers jointly \\\\\n\\midrule\n"
+    + "\n".join(lines[:2]) + "\n\\addlinespace\n" + "\n".join(lines[2:]) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 # ---------------------------------------------------------------- guessing game
-games = {g["mode"]: g for g in summarize_all(load_jsonl(DATA / MAIN / "guesses.jsonl"), models, MAIN)}
-blind, same, held = games["blind"], games["briefed"], games["heldout"]
-assert same["research"] == [MAIN] and held["assign"] == "independent" and blind["assign"] == same["assign"] == "permutation"
-for name, g in (("Blind", blind), ("Same", same), ("Held", held)):
+guess_records = load_jsonl(DATA / MAIN / "guesses.jsonl")
+games = {(g["mode"], g["assign"]): g for g in summarize_all(guess_records, models, MAIN)}
+blind, same = games[("blind", "permutation")], games[("briefed", "permutation")]
+held, held_ind = games[("heldout", "permutation")], games[("heldout", "independent")]
+assert same["research"] == [MAIN]
+assert min(g["n_calls"] for g in games.values()) >= 0.98 * len(P) * len(models), "a game is incomplete"
+GAMES = (("Blind", blind), ("Same", same), ("HeldPerm", held), ("HeldInd", held_ind))
+for name, g in GAMES:
     mac("acc" + name, pct(g["accuracy"]))
     mac("ci" + name, ci(g["ci"]))
     mac("vote" + name, pct(g["vote"]["accuracy"]))
     mac("voteCI" + name, ci(g["vote"]["ci"]))
     mac("calls" + name, f"{g['n_calls']:,}".replace(",", "{,}"))
     mac("ties" + name, g["vote"]["ties"])
-mac("callsTotal", f"{blind['n_calls'] + same['n_calls'] + held['n_calls']:,}".replace(",", "{,}"))
-mac("retention", pct((held["accuracy"] - blind["accuracy"]) / (same["accuracy"] - blind["accuracy"]), 0))
-mac("repeatHeld", pct(held["repeat_rate"]))
+mac("callsTotal", f"{sum(g['n_calls'] for _, g in GAMES):,}".replace(",", "{,}"))
+gain = same["accuracy"] - blind["accuracy"]
+mac("retention", pct((held["accuracy"] - blind["accuracy"]) / gain, 0))  # same naming rule as the same-answer game
+mac("retentionInd", pct((held_ind["accuracy"] - blind["accuracy"]) / gain, 0))
+mac("namingRuleGap", f"{100 * abs(held['accuracy'] - held_ind['accuracy']):.1f}")
+mac("repeatHeld", pct(held_ind["repeat_rate"]))
 mac("ownFoundBlind", pct(blind["own_answer_effect"]["found"], 0))
 mac("ownNotBlind", pct(blind["own_answer_effect"]["not_found"], 0))
-mac("ownFoundHeld", pct(held["own_answer_effect"]["found"], 0))
-mac("ownNotHeld", pct(held["own_answer_effect"]["not_found"], 0))
+
+# how much belongs to the prompt, and the own-answer effect with prompt, guesser and author held fixed
+effects = {name: prompt_effects(guess_records, models, (g["mode"], (g["research"] or [None])[0], g["assign"]))
+           for name, g in GAMES}
+for name, e in effects.items():
+    assert e["n_judgments"] == dict(GAMES)[name]["n_judgments"], name
+    mac("iccPrompt" + name, f"{e['icc']['prompt']:.2f}")
+    mac("iccGuesser" + name, f"{e['icc']['guesser']:.2f}")
+    mac("iccAuthor" + name, f"{e['icc']['author']:.2f}")
+    mac("ownRaw" + name, f"{100 * e['own_raw']:.0f}")
+    mac("ownWithin" + name, f"{100 * e['own_within']['effect']:.0f}")
+    lo, hi = e["own_within"]["ci"]
+    mac("ownWithinCI" + name, f"{100 * lo:.0f}--{100 * hi:.0f}")
+labels = {"Blind": "Blind", "Same": "Notes from the same answers", "HeldPerm": "Notes from other prompts",
+          "HeldInd": "Notes from other prompts"}
+lines = [f"{labels[n]} & {dict(GAMES)[n]['assign']} & {e['icc']['prompt']:.2f} & {e['icc']['guesser']:.2f} & "
+         f"{e['icc']['author']:.2f} & {100 * e['own_raw']:+.0f} & {100 * e['own_within']['effect']:+.0f} "
+         f"({100 * e['own_within']['ci'][0]:.0f} to {100 * e['own_within']['ci'][1]:.0f}) \\\\" for n, e in effects.items()]
+(OUT / "tab_difficulty.tex").write_text(
+    "\\begin{tabular}{llrrrrr}\n\\toprule\n& & \\multicolumn{3}{c}{Share of variance (ICC)} & \\multicolumn{2}{c}{Found own answer (points)} \\\\\n"
+    "\\cmidrule(lr){3-5}\\cmidrule(lr){6-7}\nCondition & Naming rule & Prompt & Guesser & Author & Raw & Fixed effects (95\\% CI) \\\\\n"
+    "\\midrule\n" + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+CATS = {"writing": "writing", "editing": "editing", "info": "information", "explain": "explanation", "howto": "how-to",
+        "advice": "advice", "coding": "coding", "summarize": "summarizing", "brainstorm": "brainstorming", "opinion": "opinion"}
+for name in ("Blind", "HeldPerm"):
+    by_cat = effects[name]["by_category"]
+    hard, easy = min(by_cat, key=by_cat.get), max(by_cat, key=by_cat.get)
+    mac("catHard" + name, CATS[hard])
+    mac("catHardAcc" + name, pct(by_cat[hard], 0))
+    mac("catEasy" + name, CATS[easy])
+    mac("catEasyAcc" + name, pct(by_cat[easy], 0))
+    low = [CATS[c] for c in sorted(by_cat, key=by_cat.get)[:3]]
+    mac("catBottom" + name, f"{low[0]}, {low[1]} and {low[2]}")
 mac("bestGuesser", tt(blind["guessers"][0]["model"]))
 mac("bestGuesserAcc", pct(blind["guessers"][0]["accuracy"]))
 mac("mostRecog", tt(blind["recognizable"][0]["model"]))
@@ -285,28 +340,27 @@ mac("selfHi", pct(selfrates[self_hi], 0))
 mac("selfLoModel", tt(self_lo))
 mac("selfLo", pct(selfrates[self_lo], 0))
 costs = collections.defaultdict(float)
-for r in load_jsonl(DATA / MAIN / "guesses.jsonl"):
+for r in guess_records:
     if r.get("cost_usd") is not None:
-        costs[r.get("mode", "blind")] += r["cost_usd"]
-mac("costBlind", f"\\${costs['blind']:.0f}")
-mac("costSame", f"\\${costs['briefed']:.0f}")
-mac("costHeld", f"\\${costs['heldout']:.0f}")
+        costs[game_key(r)[0], game_key(r)[2]] += r["cost_usd"]
+for name, g in GAMES:
+    mac("cost" + name, f"\\${costs[g['mode'], g['assign']]:.0f}")
 
 rows = []
-for label, g in (("Blind", blind), ("Notes from the same answers", same), ("Notes from other prompts", held)):
-    rows.append(f"{label} & {g['assign']} & {pct(g['accuracy'])} ({ci(g['ci'])}) & {pct(g['vote']['accuracy'])} "
+for name, g in GAMES:
+    rows.append(f"{labels[name]} & {g['assign']} & {pct(g['accuracy'])} ({ci(g['ci'])}) & {pct(g['vote']['accuracy'])} "
                 f"({ci(g['vote']['ci'])}) & {g['n_calls']:,} \\\\".replace(",", "{,}"))
 (OUT / "tab_identification.tex").write_text(
     "\\begin{tabular}{llrrr}\n\\toprule\nCondition & Naming rule & One guesser (95\\% CI) & Majority of the other five (95\\% CI) & Calls \\\\\n"
     "\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
-rec = {mode: {r["model"]: r for r in g["recognizable"]} for mode, g in games.items()}
-gue = {mode: {r["model"]: r for r in g["guessers"]} for mode, g in games.items()}
+rec = {name: {r["model"]: r for r in g["recognizable"]} for name, g in GAMES}
+gue = {name: {r["model"]: r for r in g["guessers"]} for name, g in GAMES}
 lines = []
 for m in models:
-    lines.append(f"{tt(m)} & {pct(gue['blind'][m]['accuracy'], 0)} & {pct(gue['heldout'][m]['accuracy'], 0)} & "
-                 f"{pct(rec['blind'][m]['recall'], 0)} & {pct(rec['heldout'][m]['recall'], 0)} & "
-                 f"{pct(gue['blind'][m]['self_rate'], 0)} \\\\")
+    lines.append(f"{tt(m)} & {pct(gue['Blind'][m]['accuracy'], 0)} & {pct(gue['HeldPerm'][m]['accuracy'], 0)} & "
+                 f"{pct(rec['Blind'][m]['recall'], 0)} & {pct(rec['HeldPerm'][m]['recall'], 0)} & "
+                 f"{pct(gue['Blind'][m]['self_rate'], 0)} \\\\")
 (OUT / "tab_recognition.tex").write_text(
     "\\begin{tabular}{lrrrrr}\n\\toprule\n& \\multicolumn{2}{c}{As guesser} & \\multicolumn{2}{c}{As author (named by others)} & Found own \\\\\n"
     "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\nModel & Blind & Held-out notes & Blind & Held-out notes & answer (blind) \\\\\n"
@@ -409,15 +463,18 @@ ax.set_title("Style traits (computed)          |          Behaviors (coded)", fo
 save(fig, "fig_fingerprint")
 
 # identification by condition
-rows = [("Classifier: style features", A["distinctiveness"]["style_only_accuracy"], None, "#BBBBBB"),
-        ("Classifier: words and style", A["distinctiveness"]["accuracy"], None, "#BBBBBB"),
+half = A["distinctiveness"]["halves"]
+rows = [("Classifier, other half: one answer at a time", half["accuracy"], half["accuracy_ci"], "#BBBBBB"),
+        ("Classifier, other half: six answers jointly", half["matched_accuracy"], half["matched_accuracy_ci"], "#BBBBBB"),
         ("One guesser: blind", blind["accuracy"], blind["ci"], "#999999"),
         ("One guesser: notes, same answers", same["accuracy"], same["ci"], "#999999"),
         ("One guesser: notes, other prompts", held["accuracy"], held["ci"], "#0072B2"),
+        ("One guesser: other prompts, names may repeat", held_ind["accuracy"], held_ind["ci"], "#9CC3E0"),
         ("Vote of five: blind", blind["vote"]["accuracy"], blind["vote"]["ci"], "#777777"),
         ("Vote of five: notes, same answers", same["vote"]["accuracy"], same["vote"]["ci"], "#777777"),
-        ("Vote of five: notes, other prompts", held["vote"]["accuracy"], held["vote"]["ci"], "#56B4E9")]
-fig, ax = plt.subplots(figsize=(5.5, 2.6))
+        ("Vote of five: notes, other prompts", held["vote"]["accuracy"], held["vote"]["ci"], "#56B4E9"),
+        ("Vote of five: other prompts, names may repeat", held_ind["vote"]["accuracy"], held_ind["vote"]["ci"], "#BFDDF3")]
+fig, ax = plt.subplots(figsize=(5.5, 3.2))
 y = np.arange(len(rows))[::-1]
 for yi, (label, v, c, color) in zip(y, rows):
     ax.barh(yi, v, color=color, height=0.65)
@@ -430,6 +487,21 @@ ax.set_yticks(y, [r[0] for r in rows])
 ax.set_xlim(0, 1)
 ax.set_xlabel(f"share of answers attributed to the right model (run {MAIN})")
 save(fig, "fig_identification")
+
+# identification by prompt category
+cat_order = sorted(CATS, key=lambda c: effects["HeldPerm"]["by_category"][c])
+fig, ax = plt.subplots(figsize=(4.6, 2.4))
+for i, c in enumerate(cat_order):
+    b, h = effects["Blind"]["by_category"][c], effects["HeldPerm"]["by_category"][c]
+    ax.plot([b, h], [i, i], color="#CCCCCC", lw=1, zorder=1)
+    ax.scatter(b, i, color="#999999", s=24, zorder=2, label="blind" if i == 0 else None)
+    ax.scatter(h, i, color="#0072B2", s=24, zorder=3, label="notes from other prompts" if i == 0 else None)
+ax.axvline(1 / len(models), color="black", ls="--", lw=0.8)
+ax.set_yticks(range(len(cat_order)), [CATS[c] for c in cat_order])
+ax.set_xlim(0, 1)
+ax.set_xlabel("one guesser: share of the others' answers named correctly")
+ax.legend(frameon=False, fontsize=7, loc="center left", bbox_to_anchor=(1.0, 0.5))
+save(fig, "fig_category")
 
 # length across runs
 order = sorted(models, key=lambda m: val(T["length"], m))

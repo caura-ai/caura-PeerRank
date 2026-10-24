@@ -12,10 +12,12 @@ import sys
 import pandas as pd
 import pytest
 
+import numpy as np
+
 from spectra import SPECTRA_DIR, providers, writer_lock
-from spectra.analyze import check_constraint, coded_value, prompt_outcomes
-from spectra.guess import (build_message, heldout_briefs, holdout_halves, parse_assignment, resolve_name,
-                           summarize_all, summarize_guesses)
+from spectra.analyze import check_constraint, coded_value, match_by_prompt, prompt_outcomes
+from spectra.guess import (build_message, heldout_briefs, holdout_halves, parse_assignment, prompt_effects,
+                           resolve_name, summarize_all, summarize_guesses)
 from spectra.report import build_recommendations
 from spectra.run import select_prompts
 
@@ -244,6 +246,28 @@ def test_intervals_and_the_own_answer_effect():
     assert "when they found their own answer" in s["note"]
 
 
+def test_prompt_effects_tell_easy_prompts_from_finding_your_own():
+    # Correctness depends only on the prompt; guessers just find their own answer more often on easy prompts.
+    records = []
+    for i in range(40):
+        easy = i % 2 == 0
+        for j, g in enumerate(GUESSERS):
+            found = j < (2 if easy else 1)
+            guesses = {}
+            for letter, author in LABELS.items():
+                right = found if author == g else easy
+                guesses[letter] = author if right else next(m for m in GUESSERS if m != author)
+            records.append({"guesser": g, "prompt_id": f"p{i}", "sample": 0, "labels": LABELS,
+                            "guesses": guesses, "category": "c"})
+    e = prompt_effects(records, GUESSERS, reps=50)
+    assert e["n_judgments"] == 40 * 3 * 2 and e["n_prompts"] == 40
+    assert e["own_raw"] == pytest.approx(1 / 3)  # looks like finding your own answer helps...
+    assert e["own_within"]["effect"] == pytest.approx(0.0, abs=1e-9)  # ...until the prompt is held fixed
+    assert e["icc"]["prompt"] > 0.9 and e["icc"]["guesser"] == 0.0
+    assert e["by_category"] == {"c": 0.5}
+    assert prompt_effects(records, GUESSERS, ("heldout", "x", "permutation")) is None
+
+
 # ----------------------------------------------------------------------------- held-out briefs end to end
 def test_heldout_briefs_never_see_the_prompts_they_brief(tmp_path):
     prompts = json.loads((SPECTRA_DIR / "prompts" / "prompts_v1.json").read_text(encoding="utf-8"))["prompts"]
@@ -266,6 +290,16 @@ def test_heldout_briefs_never_see_the_prompts_they_brief(tmp_path):
     for half in "AB":
         analysis = json.loads((tmp_path / "holdout" / f"half-{half}" / "analysis.json").read_text(encoding="utf-8"))
         assert {p["id"] for p in analysis["viewer"]["prompts"]} <= {pid for pid, h in halves.items() if h == half}
+        dist = analysis["distinctiveness"]
+        assert {"matched_accuracy", "matched_accuracy_ci", "style_only_matched_accuracy"} <= set(dist)
+        assert {"accuracy", "matched_accuracy"} <= set(dist["halves"])
+
+
+def test_matching_names_each_model_once_per_prompt():
+    df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
+    proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])
+    # p1: one guess at a time names "a" twice; jointly it is a, b, c. p2 lacks a model, so it keeps the best guesses.
+    assert list(match_by_prompt(proba, df, 3)) == [0, 1, 2, 1, 1]
 
 
 # ----------------------------------------------------------------------------- coded traits

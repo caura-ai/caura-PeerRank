@@ -34,8 +34,9 @@ The \nPrompts{} everyday prompts hide five kinds of trap (a false premise, an er
 Across \nModels{} frontier models and two runs of the same prompts \daysApart{} days apart, the habits are stable: effect sizes correlate at $r=\stabR$ between runs, and the shortest and longest writers hold their places in every category of both runs.
 We then ask the models to name each other's unsigned answers.
 Blind, a single model names the author of \accBlind{} of the others' answers (chance \chance).
-Given a plain-language summary of each model's habits, measured on the other half of the prompts, it names \accHeld{}; notes measured on the very answers being judged reach \accSame{}, so notes from unseen prompts keep \retention{} of the gain that notes add over guessing blind.
-A majority vote of the other five models names \voteHeld{}.
+Given a plain-language summary of each model's habits, measured on the other half of the prompts, it names \accHeldPerm{}; notes measured on the very answers being judged reach \accSame{}, so notes from unseen prompts keep \retention{} of the gain that notes add over guessing blind.
+A majority vote of the other five models names \voteHeldPerm{}, above an author classifier trained on the same half of the prompts and scored the same way (\clfHalfMatched{}).
+With notes, which prompt is being answered explains several times more of the variance in success than which model is guessing.
 Writing habits are therefore stable, nameable, and transferable: a short written description identifies a model on prompts it was never measured on.
 We release the pipeline, answers, labels and guesses.
 \end{abstract}
@@ -64,7 +65,7 @@ The decisive condition uses notes measured on one half of the prompts to name au
 \begin{enumerate}
 \item \textbf{Judge-free measurement.} \nStyleTraits{} computed style traits, \nBehaviorTraits{} coded behaviors with per-label agreement, traps embedded in everyday prompts, program-checked limits, and effect sizes against the panel with confidence intervals that resample prompts (Section~\ref{sec:method}).
 \item \textbf{Replication.} Two runs of the same \nPrompts{} prompts, \daysApart{} days apart, show that the profiles are stable (Section~\ref{sec:stability}).
-\item \textbf{A peer identification game} in three conditions, with independent naming, a measured repeat rate, own answers scored apart, and a majority vote of the other models. Notes from unseen prompts identify \accHeld{} of answers against \accBlind{} blind (Section~\ref{sec:game}).
+\item \textbf{A peer identification game} in three note conditions and two naming rules, with own answers scored apart, a majority vote of the other models, a classifier scored the same way, and a fixed-effects analysis of prompts, guessers and authors. Notes from unseen prompts identify \accHeldPerm{} of answers against \accBlind{} blind (Section~\ref{sec:game}).
 \item \textbf{A reliability analysis of model coders} showing that no conclusion depends on which coder one trusts, including a case of the kappa paradox (Section~\ref{sec:reliability}).
 \item \textbf{An open release} of the pipeline, the answers, the coder labels and the guesses.
 \end{enumerate}
@@ -149,7 +150,10 @@ Signature words are the words and bigrams a model uses more than the rest of the
 \subsection{Author classifier}
 As a reference point for the guessing game, a logistic-regression classifier \citep{pedregosa2011sklearn} predicts the author of each answer from TF-IDF word unigrams and bigrams together with 16 standardized style features.
 A second classifier uses the style features alone.
-Both are evaluated by five-fold cross-validation grouped by prompt, so the classifier never sees a test prompt during training.
+Both are trained only on prompts they are not tested on: by five-fold cross-validation grouped by prompt, and, to match the guessing game's held-out condition exactly, by training on one half of the prompts and testing on the other (the same halves as the game).
+We score them two ways.
+\emph{One answer at a time} takes the most probable author of each answer.
+\emph{Six answers jointly} sees, like a guesser, all of a prompt's answers at once and assigns each model to exactly one of them, choosing the assignment with the highest total log-probability.
 
 \subsection{The guessing game}
 \label{sec:game-method}
@@ -169,7 +173,8 @@ The prompts are split into two halves, stratified by category with a fixed hash 
 \paragraph{Naming rules.}
 Under a \emph{permutation} rule the guesser must use each name once, so placing one answer narrows the rest.
 Under the \emph{independent} rule each answer is named on its own and repeats are allowed; we report how often a call actually repeated a name.
-The blind and same-answer games used the permutation rule; the held-out game used the independent rule.
+The blind and same-answer games use the permutation rule.
+Notes from other prompts were played under both rules, so that the comparison with the same-answer notes changes only the notes.
 
 \paragraph{Scoring.}
 Headline accuracy excludes a guesser's own answer, so it measures knowledge of others; chance is $1/\nModels$, or \chance.
@@ -178,12 +183,18 @@ Confidence intervals resample prompts (1{,}000 resamples).
 The \emph{majority vote} gives each answer to the model most of the other five guessers named, never counting the author's own vote; a tie splits the credit evenly, the expected score of a random tie-break.
 The vote measures how identifiable a model is, not what any single guesser knows.
 
+\paragraph{Prompts, guessers and authors.}
+Some prompts leave more room for habits than others, and some guessers are better than others.
+To see how much of the success belongs to each, we compute the share of the variance in correctness that lies between prompts, between guessers and between authors (a one-way intraclass correlation for each, which gives a factor with many levels no credit for its number of levels).
+Guessers that find their own answer also tend to name the others correctly.
+To test whether that is more than easy prompts and strong guessers, we fit a linear probability model of correctness on whether the guesser found its own answer, with fixed effects for prompt, guesser and author, and resample prompts for a 95\% interval (500 resamples).
+
 % =====================================================================
 \section{Setup}
 We collected two runs of the full prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer.
 Collecting a run's answers cost \costRun{} (\costRunRepl{} for the earlier run); coder costs were not recorded \todo{add coding cost}.
 We report the later run, \texttt{oct-23-26}, as the main run and use the earlier one for replication.
-The three guessing games ran on the main run: \callsTotal{} usable calls in total, costing \costBlind{} blind, \costSame{} with notes from the same answers and \costHeld{} with notes from other prompts.
+The four guessing games ran on the main run: \callsTotal{} usable calls in total, costing \costBlind{} blind, \costSame{} with notes from the same answers, and \costHeldPerm{} and \costHeldInd{} with notes from other prompts under the two naming rules.
 
 % =====================================================================
 \section{Results}
@@ -259,8 +270,17 @@ Every model acknowledged the user's feelings on every emotionally framed prompt,
 Models met the stated length or format limit on \limitsLow{} to \limitsHigh{} of the \nLimitPrompts{} constrained prompts.
 
 \subsection{Distinctiveness}
-The classifier names the author of \clfFull{} of answers on unseen prompts (\clfFullRepl{} in the earlier run) and \clfStyle{} from the 16 style features alone (\clfStyleRepl{}), against chance at \chance.
+Judging one answer at a time, the classifier names the author of \clfFull{} of answers on unseen prompts (\clfFullRepl{} in the earlier run) and \clfStyle{} from the 16 style features alone (\clfStyleRepl{}), against chance at \chance.
+Seeing a prompt's six answers together and naming each model once, as a guesser does, it reaches \clfMatched{} (\clfMatchedCI{}; \clfMatchedRepl{} in the earlier run), and \clfStyleMatched{} from style alone (Table~\ref{tab:classifier}).
+Comparison does much of the work: an answer that could belong to two models is settled by the other answers to the same prompt.
 Its most frequent confusion is within a vendor: \confRate{} of \confAuthor{}'s answers are attributed to \confNamed{}.
+
+\begin{table}[t]
+\centering\small
+\caption{The author classifier on prompts it was not trained on, run \texttt{oct-23-26}, with 95\% intervals over prompts. ``Six answers jointly'' names each model once per prompt, like a guesser under the permutation rule. Chance is \chance.}
+\label{tab:classifier}
+\input{generated/tab_classifier.tex}
+\end{table}
 Single answers overlap heavily in style while model averages separate (Figure~\ref{fig:stylemap}); the first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.
 
 \begin{figure}[t]
@@ -284,43 +304,69 @@ Table~\ref{tab:ident} and Figure~\ref{fig:ident} give the results.
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{generated/fig_identification.pdf}
-\caption{Share of answers attributed to the right model. Grey bars: the classifier of Section~\ref{sec:method}, for reference. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
+\caption{Share of answers attributed to the right model. Grey bars: the author classifier, trained on the other half of the prompts (the game's split), scoring one answer at a time or a prompt's six answers jointly. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
 \label{fig:ident}
 \end{figure}
 
 \paragraph{Models know each other a little, blind.}
-A single guesser names \accBlind{} (\ciBlind{}) of the others' answers, well above chance but below the classifier, even though the guesser sees all six answers side by side while the classifier judges one answer at a time.
+A single guesser names \accBlind{} (\ciBlind{}) of the others' answers.
+That is well above chance but far below the classifier scored the same way: trained on the other half of the prompts and naming each model once per prompt, it reaches \clfHalfMatched{} (\clfHalfMatchedCI{}).
 The best blind guesser is \bestGuesser{} at \bestGuesserAcc{}, and the most recognizable author is \mostRecog{}, named correctly \mostRecogAcc{} of the time (Table~\ref{tab:recog}).
 
 \paragraph{Notes transfer to unseen prompts.}
 With notes measured on the same answers, accuracy doubles to \accSame{} (\ciSame{}).
 That figure includes a possible leak, since the notes describe the answers being judged.
-With notes measured only on the other half of the prompts, accuracy is \accHeld{} (\ciHeld{}): the held-out notes keep \retention{} of the gain that notes add over guessing blind.
+With notes measured only on the other half of the prompts, under the same naming rule, accuracy is \accHeldPerm{} (\ciHeldPerm{}): the held-out notes keep \retention{} of the gain that notes add over guessing blind.
 This is our central result.
-A description of a model's habits, short enough to fit in a prompt, identifies its answers on prompts the description never saw.
-It also beats the classifier trained on words and style, with the caveat that the guesser compares six answers to the same prompt while the classifier labels one answer at a time.
+A description of a model's habits, short enough to fit in a prompt, identifies its answers on prompts the description never saw about as well as notes measured on those answers themselves.
+With these notes a single guesser also does at least as well as the classifier trained on the same half of the prompts and scored the same way (\clfHalfMatched{}); the two intervals touch at their edges, so we claim parity or better, not a clear win.
 
 \paragraph{Naming rule.}
-The two note conditions also differ in naming rule: the same-answer game used each model once, while the held-out game named each answer on its own.
-In the held-out game guessers repeated a name in only \repeatHeld{} of calls, so they mostly used each model once of their own accord.
-A held-out game under the permutation rule would separate the two effects fully; we plan it for the next revision.
+Naming each answer on its own, with repeats allowed, changes little: accuracy is \accHeldInd{} (\ciHeldInd{}), \namingRuleGap{} points below the game that uses each model once, and guessers repeated a name in only \repeatHeld{} of calls.
+With notes, guessers barely need elimination.
 
 \paragraph{The vote.}
-A majority of the other five models names \voteBlind{} blind, \voteSame{} with same-answer notes and \voteHeld{} with held-out notes.
-Ties occurred on \tiesBlind{} answers blind but only \tiesHeld{} with held-out notes: notes make the guessers agree as well as improve them.
+A majority of the other five models names \voteBlind{} blind, \voteSame{} with same-answer notes and \voteHeldPerm{} with held-out notes (\voteHeldInd{} when names may repeat), clearly above the classifier.
+Ties occurred on \tiesBlind{} answers blind but only \tiesHeldPerm{} with held-out notes: notes make the guessers agree as well as improve them.
 
 \begin{table}[t]
 \centering\small
-\caption{Per-model results, run \texttt{oct-23-26}. ``As guesser'': share of the other models' answers it named correctly. ``As author'': share of the times other models named it correctly. ``Found own answer'': blind self-recognition.}
+\caption{Per-model results, run \texttt{oct-23-26}. ``As guesser'': share of the other models' answers it named correctly. ``As author'': share of the times other models named it correctly. ``Held-out notes'': notes from other prompts, each model used once. ``Found own answer'': blind self-recognition.}
 \label{tab:recog}
 \input{generated/tab_recognition.tex}
 \end{table}
 
+\subsection{What makes an answer identifiable}
+\label{sec:difficulty}
+\begin{table}[t]
+\centering\small
+\caption{Prompts, guessers and authors in the guessing game, run \texttt{oct-23-26}. Left: share of the variance in correctness between prompts, guessers and authors. Right: how many more of the others' answers a guesser named correctly when it also found its own, raw and with prompt, guesser and author fixed effects (percentage points; interval resamples prompts).}
+\label{tab:difficulty}
+\resizebox{\linewidth}{!}{\input{generated/tab_difficulty.tex}}
+\end{table}
+
+\paragraph{The prompt matters more than the guesser.}
+Blind, prompts and guessers account for similar shares of the variance in correctness (intraclass correlations of \iccPromptBlind{} and \iccGuesserBlind{}; Table~\ref{tab:difficulty}).
+With notes from other prompts the prompt accounts for \iccPromptHeldPerm{}, the guesser \iccGuesserHeldPerm{} and the author \iccAuthorHeldPerm{}.
+Notes make the authors about equally recognizable (the author share falls from \iccAuthorBlind{} to \iccAuthorHeldPerm{}; Table~\ref{tab:recog}), and what stays hard is particular prompts rather than particular guessers.
+
+\paragraph{Some tasks hide authorship.}
+Blind, \catHardBlind{} prompts are the hardest to attribute (\catHardAccBlind{}) and \catEasyBlind{} prompts the easiest (\catEasyAccBlind{}).
+With notes from other prompts the three hardest categories are \catBottomHeldPerm{} (Figure~\ref{fig:category}), tasks tied to a given text or a fixed format, which leave less room for habits; \catEasyHeldPerm{} answers are the easiest (\catEasyAccHeldPerm{}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\linewidth]{generated/fig_category.pdf}
+\caption{Identification by prompt category for a single guesser, blind and with notes from other prompts (each model used once). The dashed line is chance.}
+\label{fig:category}
+\end{figure}
+
 \paragraph{Self-recognition is weak and uneven.}
 Blind, \selfHiModel{} found its own answer \selfHi{} of the time and \selfLoModel{} \selfLo{}.
-Guessers that found their own answer also named the others more often: \ownFoundBlind{} against \ownNotBlind{} blind.
-Under a permutation rule part of this is elimination, but the gap persists in the held-out game, where names were judged independently (\ownFoundHeld{} against \ownNotHeld{}).
-Easy prompts make every answer easier to place, so we read the gap as mostly prompt difficulty, not self-knowledge; a model with prompt, guesser and author effects is planned \todo{mixed-effects model, gap 2 of the plan}.
+Guessers that found their own answer also named the others more often: \ownFoundBlind{} against \ownNotBlind{} blind, a gap of \ownRawBlind{} points.
+Holding prompt, guesser and author fixed shrinks that gap to \ownWithinBlind{} points (\ownWithinCIBlind{}), and with held-out notes and independent naming, where placing one's own answer cannot narrow the rest, from \ownRawHeldInd{} to \ownWithinHeldInd{} points (\ownWithinCIHeldInd{}).
+Easy prompts and strong guessers explain part of the gap but not all of it: within a prompt and a guesser, a call that places the guesser's own answer correctly also places more of the others.
+Our design cannot tell whether that reflects self-knowledge or a guesser reading one particular set of answers well, so we report it as an association.
 
 \subsection{Reliability of the model coders}
 \label{sec:reliability}
@@ -358,13 +404,13 @@ A third coder from another model family would break the ties on the \nDisputed{}
 \paragraph{Relative effect sizes.} $d$ is measured against this panel of \nModels{}; adding or removing a model moves every value.
 \paragraph{Model coders.} Behavior labels come from models, not people. We report agreement per label and test sensitivity to the choice of coder, but have not validated the labels against human judgment.
 \paragraph{Time.} Two runs \daysApart{} days apart show short-term stability, not stability across model versions; providers update models behind fixed names.
-\paragraph{Notes and naming rule.} The held-out condition differs from the same-answer condition in naming rule as well as in notes (Section~\ref{sec:game}).
+\paragraph{One run of the game.} The guessing games were played once, on one run; each condition rests on about \callsHeldPerm{} calls, and the notes were measured on one split of the prompts.
 \paragraph{Ethics.} Identifying the model behind an unsigned answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones, such as de-anonymizing systems. Our notes describe public models' public behavior and add little to what a careful reader of their answers already sees; prior work identifies models with higher accuracy by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. We release the answers and labels so that the findings can be checked.
 
 % =====================================================================
 \section{Conclusion}
 Frontier models have stable, nameable writing habits.
-They can be measured without a judge, they repeat across runs, and a plain description of them identifies each model's answers on prompts it was never measured on: \accHeld{} for a single guesser and \voteHeld{} for a vote of five, against \chance{} by chance.
+They can be measured without a judge, they repeat across runs, and a plain description of them identifies each model's answers on prompts it was never measured on: \accHeldPerm{} for a single guesser and \voteHeldPerm{} for a vote of five, against \chance{} by chance, and nearly as well as notes measured on the answers themselves.
 Spectra turns model fingerprints from a classifier's output into habits that people can name, check and act on.
 
 \paragraph{Code and data.} \todo{repository link and license; answers, labels and guesses for both runs}
@@ -406,6 +452,7 @@ python -m spectra.code_behaviors --revision oct-23-26
 python -m spectra.analyze        --revision oct-23-26
 python -m spectra.guess          --revision oct-23-26                   # blind
 python -m spectra.guess          --revision oct-23-26 --mode briefed    # same-answer notes
+python -m spectra.guess          --revision oct-23-26 --mode heldout    # each model once
 python -m spectra.guess          --revision oct-23-26 --mode heldout --independent
 python spectra/article/make_assets.py
 \end{verbatim}

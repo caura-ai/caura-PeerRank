@@ -48,7 +48,9 @@ Search `main.tex` for `\todo` and `references.bib` for `TODO`:
 
 - author list and order; repository link and license
 - coder costs (not recorded by the pipeline)
-- mixed-effects model of prompt difficulty in the guessing game (plan gap 2)
 - third-coder tie-break on the disputed labels (plan gap 1, next step)
-- a held-out game under the permutation rule, to separate notes from naming rule
 - bibliography entries cited from memory or with incomplete titles and author lists
+
+Done since the first draft: the classifier is also scored jointly per prompt and on the game's
+halves (`analyze.distinctiveness`), the held-out game was played with each model used once, and a
+fixed-effects analysis separates prompts, guessers and authors (`guess.prompt_effects`).

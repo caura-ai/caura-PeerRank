@@ -585,6 +585,8 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     if (!D) { box.innerHTML = "<p class='nochart'>Not enough data to test distinctiveness.</p>"; return; }
     box.innerHTML = "<div>" + Math.round(D.accuracy * 100) + "%<small>named correctly from words and style together</small></div>" +
       "<div>" + Math.round(D.style_only_accuracy * 100) + "%<small>named correctly from style features alone</small></div>" +
+      (D.matched_accuracy == null ? "" : "<div>" + Math.round(D.matched_accuracy * 100) +
+        "%<small>when it sees all of a prompt's answers and names each model once, as a guesser does</small></div>") +
       "<div>" + Math.round(D.chance * 100) + "%<small>expected by chance with " + models.length + " models</small></div>";
     const data = [];
     D.matrix.forEach((row, i) => row.forEach((v, j) => data.push([j, i, v])));

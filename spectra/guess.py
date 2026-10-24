@@ -564,6 +564,104 @@ def summarize_all(records: list[dict], models: list[str], answer_revision: str |
     return [s for s in (summarize_guesses(records, models, key, answer_revision) for key in order) if s]
 
 
+def prompt_effects(records: list[dict], models: list[str], key: tuple = ("blind", None, "permutation"),
+                   reps: int = 500, seed: int = 7) -> dict | None:
+    """How much of guessing success belongs to the prompt, and does finding its own answer help a guesser
+    with the others once the prompt is held fixed?
+
+    One row per judgment of another model's answer. Returns:
+      icc: share of the variance in correctness that lies between prompts, between guessers and between
+        authors (one-way intraclass correlation for each, so a factor with many levels gets no free credit);
+      own_raw: correct rate on others when the guesser found its own answer minus when it did not;
+      own_within: the same difference from a linear probability model with prompt, guesser and author fixed
+        effects, so easy prompts and strong guessers no longer count for it, with a 95% interval that
+        resamples prompts;
+      by_category: accuracy per prompt category.
+    """
+    import numpy as np  # only for this analysis; the game itself needs no numpy
+
+    latest = {}
+    for r in records:
+        if isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict) and game_key(r) == key:
+            latest[(r["guesser"], r["prompt_id"], r.get("sample", 0))] = r
+    rows = []
+    for rec in latest.values():
+        guesser = rec["guesser"]
+        if guesser not in models:
+            continue
+        own_letter = next((L for L, a in rec["labels"].items() if a == guesser), None)
+        found = own_letter is not None and rec["guesses"].get(own_letter) == guesser
+        for letter, author in rec["labels"].items():
+            if author in models and author != guesser:
+                rows.append(((rec["prompt_id"], rec.get("sample", 0)), guesser, author, found,
+                             rec["guesses"].get(letter) == author, rec.get("category")))
+    if not rows:
+        return None
+    prompt_ids = sorted({r[0] for r in rows})
+    position = {p: i for i, p in enumerate(prompt_ids)}
+    p_idx = np.array([position[r[0]] for r in rows])
+    g_idx = np.array([models.index(r[1]) for r in rows])
+    a_idx = np.array([models.index(r[2]) for r in rows])
+    found = np.array([r[3] for r in rows], dtype=float)
+    y = np.array([r[4] for r in rows], dtype=float)
+
+    def icc(groups):
+        levels, inv = np.unique(groups, return_inverse=True)
+        n_g = np.bincount(inv).astype(float)
+        if len(levels) < 2 or len(y) <= len(levels):
+            return None
+        means = np.bincount(inv, weights=y) / n_g
+        msb = float((n_g * (means - y.mean()) ** 2).sum() / (len(levels) - 1))
+        msw = float(((y - means[inv]) ** 2).sum() / (len(y) - len(levels)))
+        n0 = (len(y) - (n_g ** 2).sum() / len(y)) / (len(levels) - 1)
+        denom = msb + (n0 - 1) * msw
+        return max(0.0, float((msb - msw) / denom)) if denom > 0 else None
+
+    def within(take, cluster):
+        """Coefficient on `found` with prompt, guesser and author fixed effects.
+
+        The prompt dummies are absorbed by subtracting each cluster's means (Frisch-Waugh-Lovell), which gives
+        the same coefficient as the full dummy regression at a fraction of the cost.
+        """
+        X = np.hstack([found[take][:, None],
+                       (g_idx[take][:, None] == np.arange(1, len(models))[None, :]).astype(float),
+                       (a_idx[take][:, None] == np.arange(1, len(models))[None, :]).astype(float),
+                       y[take][:, None]])
+        _, inv = np.unique(cluster, return_inverse=True)
+        n = np.bincount(inv).astype(float)
+        sums = np.stack([np.bincount(inv, weights=X[:, j]) for j in range(X.shape[1])], axis=1)
+        X = X - (sums / n[:, None])[inv]
+        if not X[:, 0].any():
+            return None
+        coef, *_ = np.linalg.lstsq(X[:, :-1], X[:, -1], rcond=None)
+        return float(coef[0])
+
+    effect = within(np.arange(len(y)), p_idx)
+    by_prompt = [np.flatnonzero(p_idx == i) for i in range(len(prompt_ids))]
+    rng = np.random.default_rng(seed)
+    draws = []
+    for _ in range(reps if effect is not None else 0):
+        picks = rng.integers(0, len(prompt_ids), size=len(prompt_ids))
+        take = np.concatenate([by_prompt[i] for i in picks])
+        cluster = np.concatenate([np.full(len(by_prompt[i]), j) for j, i in enumerate(picks)])
+        b = within(take, cluster)
+        if b is not None:
+            draws.append(b)
+    found_rate = lambda f: float(y[found == f].mean()) if (found == f).any() else None  # noqa: E731
+    raw = (found_rate(1.0) - found_rate(0.0)) if None not in (found_rate(1.0), found_rate(0.0)) else None
+    cats = sorted({r[5] for r in rows if r[5]})
+    return {
+        "key": list(key),
+        "n_judgments": len(rows),
+        "n_prompts": len(prompt_ids),
+        "icc": {"prompt": icc(p_idx), "guesser": icc(g_idx), "author": icc(a_idx)},
+        "own_raw": raw,
+        "own_within": {"effect": effect,
+                       "ci": [float(np.percentile(draws, 2.5)), float(np.percentile(draws, 97.5))] if draws else None},
+        "by_category": {c: float(np.mean([r[4] for r in rows if r[5] == c])) for c in cats},
+    }
+
+
 def print_summary(summary: dict):
     if not summary:
         print("No parsed guesses to score.")
