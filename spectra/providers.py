@@ -97,6 +97,19 @@ def max_concurrency(entry: dict, default: int) -> int:
     return max(1, min(default, config.PROVIDER_CONCURRENCY.get(e["provider"], default)))
 
 
+def token_cost(entry: dict, input_tokens: float, output_tokens: float = 0) -> float | None:
+    """Price of these tokens for a PeerRank model; None for LiteLLM entries, which PeerRank does not price."""
+    e = resolve(entry)
+    if e["backend"] != "peerrank":
+        return None
+    config, _, _ = _peerrank()
+    return config.calculate_cost(e["model_id"], int(input_tokens), int(output_tokens))
+
+
+def input_cost(entry: dict, tokens: float) -> float | None:
+    return token_cost(entry, tokens, 0)
+
+
 def semaphores(entries: list[dict], cap: int) -> dict:
     """{entry name: semaphore}, one semaphore per provider, shared by every entry that calls it.
 

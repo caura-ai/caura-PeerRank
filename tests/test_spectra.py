@@ -17,8 +17,9 @@ import numpy as np
 
 from spectra import SPECTRA_DIR, providers, writer_lock
 from spectra.analyze import check_constraint, coded_value, match_by_prompt, prompt_outcomes
-from spectra.guess import (build_message, heldout_briefs, holdout_halves, parse_assignment, prompt_effects,
-                           resolve_name, summarize_all, summarize_guesses)
+from spectra.guess import (build_message, heldout_briefs, heldout_profiles, holdout_halves, parse_assignment,
+                           prompt_effects, resolve_name, summarize_all, summarize_guesses)
+from spectra.profile import parse_profile
 from spectra.report import build_recommendations
 from spectra.run import select_prompts
 
@@ -331,6 +332,74 @@ def test_heldout_briefs_never_see_the_prompts_they_brief(tmp_path):
         dist = analysis["distinctiveness"]
         assert {"matched_accuracy", "matched_accuracy_ci", "style_only_matched_accuracy"} <= set(dist)
         assert {"accuracy", "matched_accuracy"} <= set(dist["halves"])
+
+
+def _two_half_run(tmp_path):
+    """40 v1 prompts (4 per category) answered by three models whose text carries the prompt's index."""
+    prompts = json.loads((SPECTRA_DIR / "prompts" / "prompts_v1.json").read_text(encoding="utf-8"))["prompts"]
+    picked = [p for c in sorted({p["category"] for p in prompts})
+              for p in [q for q in prompts if q["category"] == c][:4]]
+    styles = {"alpha-1": lambda i: f"Short answer {i}. " + "Plain words here. " * 12,
+              "beta-1": lambda i: f"## Plan {i}\n" + "".join(f"- **step {j}** do the thing carefully\n" for j in range(8)),
+              "gamma-1": lambda i: f"Honestly, it depends {i} — you might perhaps try this. " * 10}
+    rows = [{"model": m, "prompt_id": p["id"], "category": p["category"], "sample": 0, "text": f(i)}
+            for i, p in enumerate(picked) for m, f in styles.items()]
+    (tmp_path / "responses.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(json.dumps({"revision": "t", "prompts": str(SPECTRA_DIR / "prompts" / "prompts_v1.json"),
+                                  "models": list(styles)}), encoding="utf-8")  # JSON is valid YAML
+    return str(config), picked, list(styles), holdout_halves(prompts)
+
+
+def test_profile_names_are_canonical():
+    assert parse_profile(None) == parse_profile("base") == "base"
+    assert parse_profile("category,portrait") == parse_profile("portrait+category") == "portrait+category"
+    assert parse_profile("all") == "portrait+pairs+examples+category"
+    with pytest.raises(ValueError):
+        parse_profile("examples,vibes")
+
+
+def test_each_profile_is_its_own_game():
+    records = [guess("alpha-1", "alpha-1", "beta-1", "gamma-1", mode="heldout", research="r"),
+               guess("alpha-1", "alpha-1", "gamma-1", "beta-1", mode="heldout", research="r", profile="examples")]
+    games = summarize_all(records, GUESSERS, "r")
+    assert [(g["profile"], g["accuracy"]) for g in games] == [("base", 1.0), ("examples", 0.0)]
+    assert games[1]["title"].endswith("profile with examples")
+    assert summarize_guesses(records, GUESSERS, ("heldout", "r", "permutation"))["accuracy"] == 1.0  # old keys = base
+
+
+def test_profile_parts_come_only_from_the_half_that_built_them(tmp_path):
+    config, picked, models, halves = _two_half_run(tmp_path)
+    plain = heldout_briefs(config, tmp_path, "t", models, halves)
+    full = heldout_profiles(config, tmp_path, "t", models, halves, parse_profile("all"))
+    for half, other in (("A", "B"), ("B", "A")):
+        cat = next(p["category"] for p in picked if halves[p["id"]] == half)  # a prompt this half's profile is used on
+        text = full[half].text(cat)
+        assert full[half].base == plain[half] and text.startswith("Portraits, one per model")
+        assert text.index("Portraits") < text.index("Measured habits") < text.index("How to tell apart")
+        assert "Typical openings and closings" in text and f"In {cat} prompts specifically" in text
+        quoted = {int(n) for n in re.findall(r"(?:answer|Plan|depends) (\d+)", full[half].examples)}
+        assert quoted, full[half].examples
+        assert all(halves[picked[i]["id"]] == other for i in quoted), "an example came from a prompt being guessed"
+    assert heldout_profiles(config, tmp_path, "t", models, halves)["A"].text("writing") == plain["A"]
+
+
+def test_tiebreak_takes_the_majority_of_three_on_disputed_labels_only():
+    from spectra.tiebreak import disputed, latest_codes, summarize
+
+    rows = []
+    for i in range(4):  # coder x and y agree on m1; on m2 they split twice, the third coder sides with y once, x once
+        for coder in ("x", "y"):
+            m1, m2 = "yes", ("yes" if coder == "x" else "no") if i < 2 else "no"
+            rows += [{"coder": coder, "model": "m1", "prompt_id": f"p{i}", "sample": 0, "codes": {"answer_first": m1}},
+                     {"coder": coder, "model": "m2", "prompt_id": f"p{i}", "sample": 0, "codes": {"answer_first": m2}}]
+    codes = latest_codes(rows)
+    split = disputed(codes, ["x", "y"], ["answer_first"])
+    assert split == {("m2", "p0", 0): ["answer_first"], ("m2", "p1", 0): ["answer_first"]}
+    ties = {("m2", "p0", 0): {"answer_first": "no"}, ("m2", "p1", 0): {"answer_first": "yes"}}
+    s = summarize(codes, ties, ["x", "y"], "z", ["answer_first"], ["m1", "m2"], {"answer_first": {"yes"}})["labels"]["answer_first"]
+    assert s["disputed"] == 2 and s["sided_with"] == {"y": 1, "x": 1}
+    assert s["rates"]["majority"] == {"m1": 1.0, "m2": 0.25} and s["rates"]["x"]["m2"] == 0.5 and s["rates"]["y"]["m2"] == 0.0
 
 
 def test_matching_names_each_model_once_per_prompt():

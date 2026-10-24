@@ -275,7 +275,7 @@ lines = [f"{split} & {feats} & {cells(s, pre + 'accuracy')} & {cells(s, pre + 'm
 
 # ---------------------------------------------------------------- guessing game
 guess_records = load_jsonl(DATA / MAIN / "guesses.jsonl")
-games = {(g["mode"], g["assign"]): g for g in summarize_all(guess_records, models, MAIN)}
+games = {(g["mode"], g["assign"]): g for g in summarize_all(guess_records, models, MAIN) if g["profile"] == "base"}
 blind, same = games[("blind", "permutation")], games[("briefed", "permutation")]
 held, held_ind = games[("heldout", "permutation")], games[("heldout", "independent")]
 assert same["research"] == [MAIN]

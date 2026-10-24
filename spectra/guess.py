@@ -40,6 +40,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from spectra import DATA_ROOT, add_run_args, load_config, providers, run_dir as revision_dir, writer_lock
+from spectra.profile import PARTS, Profile, parse_profile
 from spectra.run import select_prompts
 
 ANSWER_CHAR_CAP = 20000
@@ -248,15 +249,24 @@ def load_research(revision: str, models: list[str]) -> tuple[str, str]:
     return revision, research_brief(analysis, models)
 
 
-def heldout_briefs(config_path: str, run_dir: Path, revision: str, models: list[str],
-                   halves: dict[str, str]) -> dict[str, str]:
-    """{half: brief} where each half's brief is measured on the other half's prompts only.
+def research_profile(revision: str, models: list[str], profile: str = "base") -> Profile:
+    """The profile measured on a whole revision (briefed mode)."""
+    load_research(revision, models)  # fails with the fix when analysis.json is missing
+    source = DATA_ROOT / revision
+    analysis = json.loads((source / "analysis.json").read_text(encoding="utf-8"))
+    return Profile(source, models, profile, research_brief(analysis, models))
 
-    Writes the filtered answers and codes to <run_dir>/holdout/half-<X>/ and runs spectra.analyze there.
+
+def heldout_profiles(config_path: str, run_dir: Path, revision: str, models: list[str],
+                     halves: dict[str, str], profile: str = "base") -> dict[str, Profile]:
+    """{half: profile} where each half's profile is built from the other half's prompts only.
+
+    Writes the filtered answers and codes to <run_dir>/holdout/half-<X>/ and runs spectra.analyze there;
+    every part of the profile (examples and confused pairs included) reads that folder and nothing else.
     """
     from spectra import analyze  # numpy/pandas only when this mode runs
 
-    briefs = {}
+    profiles = {}
     for half, other in (("A", "B"), ("B", "A")):
         keep = {pid for pid, h in halves.items() if h == other}
         out = run_dir / "holdout" / f"half-{other}"
@@ -266,8 +276,15 @@ def heldout_briefs(config_path: str, run_dir: Path, revision: str, models: list[
             (out / name).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
         print(f"Measuring half {other} ({len(keep)} prompts) for the guesses on half {half}")
         analyze.main(["--config", config_path, "--run-dir", str(out), "--revision", f"{revision}-half-{other}"])
-        briefs[half] = research_brief(json.loads((out / "analysis.json").read_text(encoding="utf-8")), models)
-    return briefs
+        analysis = json.loads((out / "analysis.json").read_text(encoding="utf-8"))
+        profiles[half] = Profile(out, models, profile, research_brief(analysis, models))
+    return profiles
+
+
+def heldout_briefs(config_path: str, run_dir: Path, revision: str, models: list[str],
+                   halves: dict[str, str]) -> dict[str, str]:
+    """{half: plain brief} measured on the other half's prompts only."""
+    return {h: p.text() for h, p in heldout_profiles(config_path, run_dir, revision, models, halves).items()}
 
 
 def build_message(user_prompt: str, order: list[str], texts: dict[str, str], roster: list[str],
@@ -341,20 +358,27 @@ def panel_answers(responses: list[dict], models: list[str]) -> dict[tuple, dict[
     return full
 
 
-def game_key(rec: dict) -> tuple[str, str | None, str]:
-    """(mode, research, assignment). Records written before a field existed count as blind or permutation."""
+def game_key(rec: dict) -> tuple[str, str | None, str, str]:
+    """(mode, research, assignment, profile). Records written before a field existed count as blind,
+    permutation or the plain profile."""
     mode = rec.get("mode") if rec.get("mode") in MODES else "blind"
     research = rec.get("research") if mode != "blind" else None
     assign = rec.get("assign") if rec.get("assign") in ASSIGN else "permutation"
-    return mode, research, assign
+    return mode, research, assign, rec.get("profile") or "base"
+
+
+def _full_key(key: tuple) -> tuple:
+    """A (mode, research, assignment) key from before profiles existed means the plain profile."""
+    return tuple(key) + ("base",) if len(key) == 3 else tuple(key)
 
 
 def game_title(key: tuple) -> str:
-    mode, research, assign = key
+    mode, research, assign, profile = _full_key(key)
     title = {"blind": "Just guess",
              "briefed": f"Guess from the research ({research} notes)",
              "heldout": "Guess from held-out research (notes from the other half of the prompts)"}[mode]
-    return title + (", each answer judged on its own" if assign == "independent" else "")
+    title += ", each answer judged on its own" if assign == "independent" else ""
+    return title + (f", profile with {profile.replace('+', ', ')}" if profile != "base" else "")
 
 
 def _bootstrap(rounds: list[dict], reps: int = 1000, seed: int = 7) -> dict:
@@ -432,6 +456,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
     Intervals resample prompts. Under a permutation, placing one answer narrows the rest, so the
     summary also reports how guessers did on the others when they did and did not find their own answer.
     """
+    key = _full_key(key)
     latest = {}
     for r in records:
         if isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict) and game_key(r) == key:
@@ -439,7 +464,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
     usable = list(latest.values())
     if not usable or len(models) < 2:
         return None
-    mode, research, assign = key
+    mode, research, assign, profile = key
     k = len(models)
     idx = {m: i for i, m in enumerate(models)}
     other_correct = {m: 0 for m in models}
@@ -602,6 +627,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "mode": mode,
         "research": [research] if research else [],
         "assign": assign,
+        "profile": profile,
         "title": game_title(key),
         "k": k,
         "chance": 1.0 / k,
@@ -629,7 +655,7 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
 def summarize_all(records: list[dict], models: list[str], answer_revision: str | None = None) -> list[dict]:
     """One summary per game in the file: blind, briefed per research source, held-out, each by assignment style."""
     keys = {game_key(r) for r in records if isinstance(r.get("guesses"), dict)}
-    order = sorted(keys, key=lambda k: (MODES.index(k[0]), k[1] or "", ASSIGN.index(k[2])))
+    order = sorted(keys, key=lambda k: (MODES.index(k[0]), k[1] or "", ASSIGN.index(k[2]), k[3] != "base", k[3]))
     return [s for s in (summarize_guesses(records, models, key, answer_revision) for key in order) if s]
 
 
@@ -649,6 +675,7 @@ def prompt_effects(records: list[dict], models: list[str], key: tuple = ("blind"
     """
     import numpy as np  # only for this analysis; the game itself needs no numpy
 
+    key = _full_key(key)
     latest = {}
     for r in records:
         if isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict) and game_key(r) == key:
@@ -766,6 +793,33 @@ def print_summary(summary: dict):
         print(f"  {i}. {row['model']:22} {pct(row['recall']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})")
 
 
+def estimate_cost(jobs: list[tuple], mode: str, extra_chars: dict) -> str:
+    """Cost of these calls from earlier calls of the same kind in any revision, plus the input cost of extra profile.
+
+    Earlier plain-profile (or blind) calls give each guesser's mean cost; extra_chars {(guesser, prompt, sample):
+    characters beyond the plain profile} adds that text at each guesser's input price, about 4 characters a token.
+    """
+    profiled = mode in ("briefed", "heldout")
+    costs = {}
+    for path in sorted(DATA_ROOT.glob("*/guesses.jsonl")):
+        for r in load_jsonl(path):
+            k = game_key(r)
+            if r.get("cost_usd") is not None and (k[0] != "blind") == profiled and k[3] == "base":
+                costs.setdefault(r["guesser"], []).append(r["cost_usd"])
+    pooled = [c for v in costs.values() for c in v]
+    if not pooled:
+        return "No earlier calls of this kind in any revision to estimate the cost from."
+    mean = lambda g: sum(costs[g]) / len(costs[g]) if costs.get(g) else sum(pooled) / len(pooled)  # noqa: E731
+    base = sum(mean(job[0]) for job in jobs)
+    add = sum(providers.input_cost({"name": g}, n / 4) or 0.0 for (g, _, _), n in extra_chars.items() if n > 0)
+    line = (f"Estimated cost ${base + add:.2f}: each guesser's mean over {len(pooled)} earlier "
+            f"{'plain-profile' if profiled else 'blind'} calls")
+    if extra_chars:
+        line += (f", plus ${add:.2f} for about {sum(extra_chars.values()) / len(extra_chars):,.0f} more characters "
+                 "of profile per message")
+    return line
+
+
 async def main():
     ap = argparse.ArgumentParser(description="Author-matching game across the Spectra roster")
     add_run_args(ap)
@@ -779,11 +833,20 @@ async def main():
                     help="revision whose analysis.json briefs the guessers (briefed mode; default: this revision)")
     ap.add_argument("--independent", action="store_true",
                     help="name each answer on its own, repeats allowed, instead of using each model once")
+    ap.add_argument("--profile", default="base",
+                    help=f"briefed/heldout: parts added to the plain brief, comma-separated from {', '.join(PARTS)}, "
+                         "or all. Each profile is scored as its own game")
     ap.add_argument("--dry-run", action="store_true",
                     help="build the messages and estimate the cost without calling any model")
     args = ap.parse_args()
     if args.mode != "briefed" and args.research:
         raise SystemExit("--research is only used with --mode briefed")
+    try:
+        profile = parse_profile(args.profile)
+    except ValueError as e:
+        raise SystemExit(str(e))
+    if args.mode == "blind" and profile != "base":
+        raise SystemExit("--profile needs --mode briefed or heldout; the blind game has no profile")
 
     cfg = load_config(args.config)
     run_dir = revision_dir(cfg, args.revision)
@@ -800,19 +863,21 @@ async def main():
     rounds = {k: v for k, v in panel_answers(responses, models).items() if k[0] in chosen}
     assign = "independent" if args.independent else "permutation"
     research_rev = {"blind": None, "briefed": args.research or cfg["revision"], "heldout": cfg["revision"]}[args.mode]
-    key = (args.mode, research_rev, assign)
+    key = (args.mode, research_rev, assign, profile)
     out_path = run_dir / "guesses.jsonl"
     halves = holdout_halves(all_prompts)  # over the full set, so a --limit run keeps the same halves
 
     def prepare():
-        """(briefs by half or None, jobs still to do, records so far)."""
+        """(profiles by half or None, jobs still to do, records so far)."""
         if args.mode == "briefed":
-            _, brief = load_research(research_rev, models)
-            print(f"Research brief from {research_rev} ({len(brief)} characters)")
-            briefs = {"A": brief, "B": brief}
+            shared = research_profile(research_rev, models, profile)
+            print(f"Research profile '{profile}' from {research_rev} ({len(shared.text())} characters before any "
+                  "category section)")
+            briefs = {"A": shared, "B": shared}
         elif args.mode == "heldout":
-            briefs = heldout_briefs(args.config, run_dir, cfg["revision"], models, halves)
-            print("Held-out briefs: " + ", ".join(f"half {h} {len(b)} characters" for h, b in briefs.items()))
+            briefs = heldout_profiles(args.config, run_dir, cfg["revision"], models, halves, profile)
+            print(f"Held-out profiles '{profile}': " + ", ".join(f"half {h} {len(p.text())} characters before any "
+                                                                 "category section" for h, p in briefs.items()))
         else:
             briefs = None
         records = load_jsonl(out_path)
@@ -827,25 +892,31 @@ async def main():
               f"on {len(rounds)} complete prompts -> {out_path}")
         return briefs, jobs, records
 
-    def message_for(guesser, pid, sample, round_, briefs):
+    def message_for(guesser, pid, sample, round_, briefs, plain=False):
         order = shuffle_models(pid, sample, guesser, models)
-        brief = briefs[halves[pid]] if briefs else None
+        brief = None
+        if briefs:
+            p = briefs[halves[pid]]
+            brief = p.base if plain else p.text(prompts[pid]["category"])
         return order, build_message(prompts[pid]["prompt"], order, round_["texts"], models,
                                     brief=brief, independent=args.independent)
 
     if args.dry_run:
         briefs, jobs, records = prepare()
         if jobs:
-            _, text = message_for(*jobs[0], briefs)
+            first = jobs[0]
+            _, text = message_for(*first, briefs)
             preview = run_dir / "guess_preview.txt"
             preview.write_text(text, encoding="utf-8")
             sizes = [len(message_for(*job, briefs)[1]) for job in jobs]
             print(f"Messages: {len(jobs)}, median {sorted(sizes)[len(sizes) // 2]:,} characters. First one: {preview}")
-            basis = "briefed" if args.mode == "heldout" else args.mode  # held-out messages are briefed-sized
-            similar = [r["cost_usd"] for r in records if r.get("cost_usd") is not None and game_key(r)[0] == basis]
-            if similar:
-                print(f"Estimated cost ${len(jobs) * sum(similar) / len(similar):.2f} "
-                      f"(mean of {len(similar)} earlier {basis} calls)")
+            if briefs:
+                shown = run_dir / f"profile_preview-{profile}.txt"
+                shown.write_text(briefs[halves[first[1]]].text(prompts[first[1]]["category"]), encoding="utf-8")
+                print(f"Profile for the first message (half {halves[first[1]]}, {prompts[first[1]]['category']}): {shown}")
+            extra = {job[:3]: len(message_for(*job, briefs)[1]) - len(message_for(*job, briefs, plain=True)[1])
+                     for job in jobs} if briefs and profile != "base" else {}
+            print(estimate_cost(jobs, args.mode, extra))
         print("Dry run: no model was called.")
         return
 
@@ -870,6 +941,8 @@ async def main():
                    "timestamp": datetime.now(timezone.utc).isoformat()}
             if research_rev:
                 rec["research"] = research_rev
+            if profile != "base":
+                rec["profile"] = profile
             if args.mode == "heldout":
                 rec["half"] = halves[pid]
             async with sems[guesser]:

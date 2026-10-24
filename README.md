@@ -238,7 +238,7 @@ python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/
 
 `prompts_v2.json` is a second set of 200 prompts with the same design slot for slot (category, trap tags, stated limit) and new content. It is the locked test set: profiles are built and tuned on v1 only, and v2 is played once, with the frozen profile. Its hash is in `prompts_v2.lock` and pinned by a test, so an edit fails `pytest`. Until that test, do not read v2 answers, codes, analyses, reports or guesses.
 
-`code_behaviors` is optional. Two coder models apply fixed yes/no labels (answer first, flag a pasted error, accept a false premise, and similar). They sit outside the profiled panel. Hand-check 100–200 of their labels before relying on those traits. Style traits and limit checks are computed from the text itself.
+`code_behaviors` is optional. Two coder models apply fixed labels (answer first, flag a pasted error, accept a false premise, and similar), each picked from a fixed list. They sit outside the profiled panel, and agreement is reported per label. `python -m spectra.tiebreak --revision <rev> --coder <model>` has a third coder from another family label only the answers the two disagree on (answer first and moral commentary by default) and writes `tiebreak.jsonl` and `tiebreak.json` with the majority of three; `codes.jsonl` and the traits are not changed. Style traits and limit checks are computed from the text itself.
 
 ### Report
 
@@ -267,13 +267,16 @@ Three modes share `guesses.jsonl`. Each combination of mode, research source and
 
 By default every model must be used once, so placing one answer narrows the rest. `--independent` asks for a name per answer, judged on its own, with repeats allowed. Guessers can still choose to use each model once, so the report shows how often a call actually repeated a name, and how guessers did on the others when they did and did not find their own answer.
 
+`--profile` adds parts to the plain brief, comma-separated or `all`: `portrait` (a paragraph per model before the trait table), `pairs` (how to tell apart the pairs an author classifier trained on the same source confuses most), `examples` (typical opening and closing lines per model, from different categories) and `category` (each model's habits in the category of the prompt being guessed). Every part is built from the same source as the brief, a held-out half or another revision, never from the answers being guessed or from guessing results. Each profile is scored as its own game, and `--dry-run` writes the profile to `profile_preview-<profile>.txt` and estimates the cost from earlier calls in any revision.
+
 ```bash
 python -m spectra.guess --revision oct-23-26 --limit 5              # blind smoke test
 python -m spectra.guess --revision oct-23-26                        # no extra context
 python -m spectra.guess --revision oct-23-26 --mode briefed         # profile from this same revision
 python -m spectra.guess --revision oct-23-26 --mode briefed --research oct-14-26
-python -m spectra.guess --revision oct-23-26 --mode heldout --independent --dry-run   # messages + cost estimate, no calls
-python -m spectra.guess --revision oct-23-26 --mode heldout --independent             # the clean test
+python -m spectra.guess --revision oct-23-26 --mode heldout --dry-run   # messages + cost estimate, no calls
+python -m spectra.guess --revision oct-23-26 --mode heldout             # the clean test
+python -m spectra.guess --revision oct-14-26 --mode heldout --limit 100 --profile examples,pairs --dry-run
 python -m spectra.report --revision oct-23-26                       # one section per game
 ```
 
