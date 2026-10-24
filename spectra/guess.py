@@ -32,6 +32,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import random
 import string
 from collections import Counter
@@ -382,6 +383,48 @@ def _bootstrap(rounds: list[dict], reps: int = 1000, seed: int = 7) -> dict:
     return out
 
 
+def _skill_weighted_vote(ballots: list[tuple], models: list[str], halves: dict[str, str]) -> dict | None:
+    """{(prompt, sample): [answers placed correctly, answers]} for votes weighted by skill, each model named once per prompt.
+
+    A guesser's vote on one half of the prompts weighs log((k-1)p/(1-p)), where p is its accuracy on the other half,
+    so no answer helps set the weight of the vote cast on it and a guesser at chance weighs nothing (below chance
+    counts as nothing too). Each prompt's answers then go to models one-to-one, maximizing the summed weight.
+    None when the prompts do not split in two or scipy is missing.
+    """
+    try:
+        import numpy as np
+        from scipy.optimize import linear_sum_assignment
+    except ImportError:
+        return None
+    if len({halves.get(r[0][0]) for r in ballots} - {None}) < 2:
+        return None
+    k, idx = len(models), {m: i for i, m in enumerate(models)}
+    hits: dict[tuple, list] = {}
+    for rnd, author, guesser, named in ballots:
+        cell = hits.setdefault((guesser, halves[rnd[0]]), [0, 0])
+        cell[0] += named == author
+        cell[1] += 1
+
+    def weight(guesser, half):
+        c, n = hits.get((guesser, "B" if half == "A" else "A"), [0, 0])
+        p = (c + 0.5) / (n + 1.0)
+        return max(0.0, math.log((k - 1) * p / (1 - p)))
+
+    scores, authors = {}, {}
+    for rnd, author, guesser, named in ballots:
+        authors.setdefault(rnd, set()).add(idx[author])
+        if named in idx:
+            scores.setdefault(rnd, np.zeros((k, k)))[idx[author], idx[named]] += weight(guesser, halves[rnd[0]])
+    rng = np.random.default_rng(7)  # breaks exact ties at random, reproducibly
+    out = {}
+    for rnd, present in authors.items():
+        board = scores.get(rnd, np.zeros((k, k)))
+        rows, cols = linear_sum_assignment(-(board + 1e-9 * rng.random(board.shape)))
+        placed = dict(zip(rows.tolist(), cols.tolist()))
+        out[rnd] = [sum(placed.get(a) == a for a in present), len(present)]
+    return out
+
+
 def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("blind", None, "permutation"),
                       answer_revision: str | None = None) -> dict | None:
     """Recognizability and guessing skill for one game. Own answers are excluded from both headlines.
@@ -411,6 +454,9 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
     own = {True: [0, 0], False: [0, 0]}  # found own answer -> [others correct, others judged]
     repeats = 0
     votes: dict[tuple, list] = {}  # (prompt, sample, author) -> what each other guesser named
+    ballots = []  # ((prompt, sample), author, guesser, named) for the skill-weighted vote
+    by_cat: dict[str, list] = {}
+    prompt_cat, prompt_half = {}, {}
 
     for rec in usable:
         guesser = rec["guesser"]
@@ -420,7 +466,11 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         repeats += len(named) != len(set(named))
         own_letter = next((L for L, a in rec["labels"].items() if a == guesser), None)
         found = own_letter is not None and rec["guesses"].get(own_letter) == guesser
-        tally = rounds.setdefault((rec["prompt_id"], rec.get("sample", 0)), {})
+        rnd = (rec["prompt_id"], rec.get("sample", 0))
+        prompt_cat[rec["prompt_id"]] = rec.get("category") or "all"
+        if rec.get("half") in ("A", "B"):
+            prompt_half[rec["prompt_id"]] = rec["half"]
+        tally = rounds.setdefault(rnd, {})
         for letter, author in rec["labels"].items():
             if author not in idx:
                 continue
@@ -433,6 +483,10 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
             other_n[guesser] += 1
             other_correct[guesser] += int(correct)
             votes.setdefault((rec["prompt_id"], rec.get("sample", 0), author), []).append(guess)
+            ballots.append((rnd, author, guesser, guess))
+            cat_cell = by_cat.setdefault(prompt_cat[rec["prompt_id"]], [0, 0])
+            cat_cell[0] += int(correct)
+            cat_cell[1] += 1
             recognized_n[author] += 1
             recognized[author] += int(correct)
             own[found][0] += int(correct)
@@ -459,6 +513,12 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         cell = rounds.setdefault((pid, sample), {}).setdefault("vote", [0, 0])
         cell[0] += credit
         cell[1] += 1
+    # The same votes weighted by each guesser's skill on the other half of the prompts, each model named once per prompt.
+    halves = prompt_half if len(prompt_half) == len(prompt_cat) else holdout_halves(
+        [{"id": pid, "category": c} for pid, c in prompt_cat.items()])
+    weighted = _skill_weighted_vote(ballots, models, halves)
+    for rnd, cell in (weighted or {}).items():
+        rounds.setdefault(rnd, {})["wvote"] = cell
 
     def rate(n_ok, n):
         return (n_ok / n) if n else None
@@ -494,6 +554,10 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
 
     n_other = sum(other_n.values())
     n_hit = sum(other_correct.values())
+    misses = n_other - n_hit
+    pairs = sorted(((models[i], models[j], matrix[i][j] + matrix[j][i]) for i in range(k) for j in range(i + 1, k)),
+                   key=lambda p: -p[2])
+    confused = [{"pair": [a, b], "misses": n, "share": n / misses} for a, b, n in pairs[:3] if n and misses]
     own_effect = {"found": rate(*own[True]), "n_found": own[True][1],
                   "not_found": rate(*own[False]), "n_not_found": own[False][1]}
     scoring = (
@@ -549,6 +613,11 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "repeat_rate": repeat_rate,
         "vote": {"accuracy": rate(vote_credit, len(votes)), "ci": ci.get("vote"), "n": len(votes), "ties": vote_ties,
                  "voters": sorted(len(v) for v in votes.values())[len(votes) // 2] if votes else 0},
+        "vote_weighted": None if not weighted else {
+            "accuracy": rate(sum(c for c, _ in weighted.values()), sum(n for _, n in weighted.values())),
+            "ci": ci.get("wvote"), "n": sum(n for _, n in weighted.values())},
+        "confused_pairs": confused,
+        "by_category": {c: rate(*v) for c, v in sorted(by_cat.items())},
         "labels": models,
         "guessers": guessers,
         "recognizable": recognizable,
@@ -682,6 +751,12 @@ def print_summary(summary: dict):
     vote = summary["vote"]
     print(f"Majority of the other guessers: {pct(vote['accuracy'])}{span(vote['ci'])} over {vote['n']} answers "
           f"({vote['ties']} ties split evenly, typically {vote['voters']} voters)")
+    wv = summary.get("vote_weighted")
+    if wv:
+        print(f"Votes weighted by skill on the other half, each model once per prompt: {pct(wv['accuracy'])}{span(wv['ci'])}")
+    if summary.get("confused_pairs"):
+        print("Most confused pairs: " + "; ".join(f"{p['pair'][0]} / {p['pair'][1]} {pct(p['share'])} of misses"
+                                                  for p in summary["confused_pairs"]))
     print("\nBest guessers (other authors named correctly)")
     for i, row in enumerate(summary["guessers"], 1):
         print(f"  {i}. {row['model']:22} {pct(row['accuracy']):7}{span(row['ci']):20}  ({row['correct']}/{row['n']})"
@@ -781,6 +856,9 @@ async def main():
             return
 
         sems = providers.semaphores([{"name": m} for m in models], args.concurrency or cfg["concurrency_per_model"])
+        # Guessers reason at length over six answers and a profile; at the answering budget some Gemini calls
+        # ran out of tokens before writing the JSON.
+        guess_tokens = int(cfg.get("guess_max_tokens", 32768))
         lock = asyncio.Lock()
         counts = {"ok": 0, "err": 0}
 
@@ -796,8 +874,8 @@ async def main():
                 rec["half"] = halves[pid]
             async with sems[guesser]:
                 try:
-                    reply = await providers.complete({"name": guesser, "temperature": 0}, message,
-                                                     timeout=cfg["timeout_seconds"], retries=cfg["retries"])
+                    reply = await providers.complete({"name": guesser, "temperature": 0, "max_tokens": guess_tokens},
+                                                     message, timeout=cfg["timeout_seconds"], retries=cfg["retries"])
                     parsed = parse_assignment(reply.text, list(letters), models)
                     if parsed is None:
                         rec["error"] = "unparseable"

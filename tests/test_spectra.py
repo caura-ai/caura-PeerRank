@@ -233,6 +233,22 @@ def test_majority_vote_splits_ties_and_ignores_own_votes():
     assert (vote["n"], vote["ties"], vote["voters"]) == (3, 1, 2)
 
 
+def test_skill_weighted_vote_trusts_the_guesser_that_is_right_on_the_other_half():
+    # alpha names every other answer correctly; beta and gamma name every other answer wrongly.
+    records = []
+    for i in range(8):
+        records += [guess("alpha-1", "alpha-1", "beta-1", "gamma-1", prompt=f"p{i}", category="c"),
+                    guess("beta-1", "gamma-1", "beta-1", "alpha-1", prompt=f"p{i}", category="c"),
+                    guess("gamma-1", "beta-1", "alpha-1", "gamma-1", prompt=f"p{i}", category="c")]
+    s = summarize_guesses(records, GUESSERS)
+    # plain vote: alpha's answer is a 1-1 tie between two wrong names, the others are ties with the right name
+    assert s["vote"]["accuracy"] == pytest.approx(1 / 3)
+    # weighted: beta and gamma weigh nothing, alpha places two answers and the third follows, each model once
+    assert s["vote_weighted"]["accuracy"] == 1.0 and s["vote_weighted"]["n"] == 8 * 3
+    assert s["by_category"] == {"c": pytest.approx(1 / 3)}
+    assert s["confused_pairs"][0]["share"] > 0
+
+
 def test_intervals_and_the_own_answer_effect():
     records = []
     for i in range(30):

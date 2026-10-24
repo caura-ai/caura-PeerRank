@@ -44,3 +44,4 @@ coders:
 # habits from analysis.json (--research <revision>, default this revision). Run analyze first.
 # --mode heldout briefs each half of the prompts with notes from the other half (the clean test).
 # --independent names each answer on its own instead of using each model once. --dry-run is free.
+guess_max_tokens: 32768          # output budget per guess call, thinking included (answers keep each model's own)

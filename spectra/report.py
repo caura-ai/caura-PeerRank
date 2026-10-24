@@ -600,7 +600,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     const games = (A.guessing && A.guessing.games) || [];
     if (!games.length) {
       box.innerHTML = "<p class='prose muted'>Not run for this revision. python -m spectra.guess --revision " + esc(A.meta.revision) +
-        " (add --mode heldout --independent for the held-out game).</p>";
+        " (add --mode heldout for the held-out game).</p>";
       return;
     }
     const pct = v => v === null || v === undefined ? "n/a" : Math.round(v * 1000) / 10 + "%";
@@ -620,11 +620,19 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
         G.guessers.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.accuracy) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td><td>" + pct(r.self_rate) + "</td></tr>").join("") +
         (G.vote ? "<tr>" + ["<em>Majority of the other models</em>", pct(G.vote.accuracy) + span(G.vote.ci), G.vote.n + " answers, " + G.vote.ties + " ties split", "—"]
           .map(c => "<td style='border-top:2px solid var(--rule)'>" + c + "</td>").join("") + "</tr>" : "") +
+        (G.vote_weighted ? "<tr>" + ["<em>Votes weighted by skill, each model once</em>", pct(G.vote_weighted.accuracy) + span(G.vote_weighted.ci),
+          G.vote_weighted.n + " answers", "—"].map(c => "<td>" + c + "</td>").join("") + "</tr>" : "") +
         "</tbody></table></div><div class='tablewrap'><table class='stats'><thead><tr><th>Most recognizable</th><th>Named by others (95% interval)</th><th>Correct</th></tr></thead><tbody>" +
         G.recognizable.map(r => "<tr>" + name(r.model) + "<td>" + pct(r.recall) + span(r.ci) + "</td><td>" + r.correct + " / " + r.n + "</td></tr>").join("") +
         "</tbody></table></div></div>" +
+        (G.vote_weighted ? "<p class='prose muted'>The weighted row counts each guesser's vote by its accuracy on the other half of the prompts, " +
+          "so no answer sets the weight of a vote on itself, then names each model once per prompt.</p>" : "") +
         "<h3 style='margin-top:28px'>Who they think wrote it</h3>" +
         "<p class='prose muted'>Rows are the model that actually wrote the answer. Columns are the model the others named. A cell is the share of other models' guesses. The diagonal is recognizability.</p>" +
+        ((G.confused_pairs || []).length ? "<p class='prose'>Most confused: " + G.confused_pairs.map(p => esc(p.pair[0]) + " and " + esc(p.pair[1]) +
+          " (" + Math.round(p.share * 100) + "% of misses)").join("; ") + ".</p>" : "") +
+        (G.by_category && Object.keys(G.by_category).length > 1 ? "<p class='prose muted'>By prompt category: " +
+          Object.entries(G.by_category).sort((a, b) => a[1] - b[1]).map(([c, v]) => esc(c) + " " + pct(v)).join(", ") + ".</p>" : "") +
         "<div id='guessheat" + i + "' class='chart tall'></div>";
     }).join("");
     games.forEach((G, i) => {

@@ -286,6 +286,8 @@ A full game is one call per guesser per prompt (1,200 calls for 200 prompts and 
 
 Chance is 1/k, where k is the roster size. A model's own answer is left out of both headlines, and every score has a 95% interval that resamples prompts. Ambiguous short names such as "claude" or "gemini" count as a miss. "opus" and "flash" count when they match one model.
 
+Each game also reports the majority vote of the other guessers, and the same votes weighted by each guesser's accuracy on the other half of the prompts with each model named once per prompt, plus the most confused pairs and accuracy by prompt category. Guess calls get their own output budget, `guess_max_tokens` in `config.yaml`.
+
 ### Output
 
 ```
