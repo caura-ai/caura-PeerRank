@@ -32,11 +32,12 @@
 \begin{abstract}
 Every frontier language model writes with an accent.
 Measuring \nTraits{} habits of \nModels{} models on \nPrompts{} everyday prompts without a judge, we find that which model wrote an answer explains a median \accentMedModel{} of the variation between single answers, against \accentMedPrompt{} for the prompt, yet each model's averages keep their order across tasks, across runs, and on \nPrompts{} new prompts locked before collection.
+With three answers per prompt, a larger part appears: each model reacts to particular prompts in its own repeatable way, about \reactRatio{} times its steady accent, and generic habits such as warm openers barely differ between models overall but appear on different prompts for each.
 The accent lives in punctuation and word choice.
 The models cannot hear it.
 Their descriptions of themselves and each other match the measurements only weakly (rank correlations of \descRankLow{} to \descRankHigh{}) and overstate generic AI habits, such as caveats \descCaveat{}-fold; their self-portraits let a reader recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
 Measurement makes the accent usable: a measured profile moves imitations \imProfile{} of the way, and coaching on measured habits cuts identification to \hideCoached{}.
-Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent.
+Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent; most of that is what the notes say, but with their content held fixed, their voice alone moves answers \swapVoice{} of the way.
 Our later experiments were pre-registered.
 \end{abstract}
 
@@ -58,19 +59,20 @@ Spectra measures \nStyleTraits{} style traits computed from the text and \nBehav
 Per answer, the prompt dominates: it explains a median \accentMedPrompt{} of the variation in a trait, and the model \accentMedModel{}.
 But the model's share is a steady shift, not noise: the order of the models holds in every task category, in a second run, and on \nPrompts{} new prompts that were locked before any answer to them existed.
 A small accent, consistently applied, is enough for a classifier, and for a model given a description, to name the author of most answers.
+Repeated answers show that the steady shift is only part of a model's voice: each model also reacts to particular prompts in its own repeatable way, and with these reactions, which model wrote an answer accounts for a median \vcModelReact{} of a trait's variance in a single answer.
 
 The models do not know their accents.
 They describe themselves and each other with the stereotype of AI writing, not with the habits that distinguish them.
 Portraits they write of themselves barely help a reader; asked to write as another model, they barely move; asked to hide, they stay recognizable.
 Measurement changes that: given a measured profile, a model imitates another far better and hides itself far better, and a profile built on one set of prompts lets models name each other's answers on another.
-Finally, a model that reads another model's earlier answers as notes picks up part of its accent.
+Finally, a model that reads another model's earlier answers as notes picks up part of its accent: mostly through what the notes say, but also, with their content held fixed, through their voice.
 
 \paragraph{Contributions.}
 \begin{enumerate}
-\item \textbf{The accent, measured.} A judge-free instrument and a decomposition of each habit into what the model and the prompt contribute, with consistency across categories, across runs, and on a locked second prompt set (Section~\ref{sec:accent}).
+\item \textbf{The accent, measured.} A judge-free instrument and a decomposition of each habit into what the model and the prompt contribute, with consistency across categories, across runs, and on a locked second prompt set (Section~\ref{sec:accent}); with repeated answers, a model's steady accent separated from its reactions to particular prompts and from noise (Section~\ref{sec:reactions}).
 \item \textbf{Models cannot hear accents.} Four pre-registered tests: describing, recognizing from self-written portraits, imitating from a name, and hiding (Section~\ref{sec:hearing}).
 \item \textbf{Measurement makes accents usable.} Measured profiles transfer to unseen prompts for identification, and make imitation and hiding work (Section~\ref{sec:usable}).
-\item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context (Section~\ref{sec:contagion}).
+\item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context, with a style swap that separates the voice of the notes from their content (Section~\ref{sec:contagion}).
 \item \textbf{Open and pre-registered.} The pipeline, answers, labels and experiments, with pre-registrations committed before their data, including one design flaw we found afterwards (Section~\ref{sec:prereg}).
 \end{enumerate}
 
@@ -115,7 +117,7 @@ Our traps follow dedicated benchmarks for sycophancy \citep{sharma2024sycophancy
 The prompt set has \nPrompts{} prompts, \nPerCategory{} in each of \nCategories{} categories: writing, editing, information, explanation, how-to, advice, coding, summarizing, brainstorming and opinion.
 Of these, \nTrapPrompts{} carry a trap: a false premise (\trap{fp}, \nFP{} prompts), pasted text with an error (\trap{err}, \nErr{}), an underspecified request (\trap{amb}, \nAmb{}), a stated opinion (\trap{op}, \nOp{}), or emotional framing (\trap{emo}, \nEmo{}); \nLimitPrompts{} state a limit that a program checks, of \nLimitKinds{} kinds.
 A second set of \nPrompts{} prompts mirrors the first slot for slot (category, trap and limit) with new content; it was locked by hash before any answer to it was collected.
-We measure \nModels{} models from four providers (Table~\ref{tab:settings}), each answering every prompt once per run, with no system prompt, through an API, with output capped at \maxTokens{} tokens (\maxTokensArgon{} for \longModel{}).
+We measure \nModels{} models from four providers (Table~\ref{tab:settings}), each answering every prompt once per run (three times in one collection, Section~\ref{sec:accent-method}), with no system prompt, through an API, with output capped at \maxTokens{} tokens (\maxTokensArgon{} for \longModel{}).
 
 \begin{table}[t]
 \centering\small
@@ -139,6 +141,10 @@ Signature words come from log-odds with an informative Dirichlet prior \citep{mo
 \subsection{The accent}
 \label{sec:accent-method}
 For each everyday trait (all but the traps and limit adherence) we split the variation between single answers, on prompts every model answered, into the part explained by which model wrote the answer and the part explained by which prompt it answers (two-way main effects); the rest is a model's reaction to a particular prompt plus noise.
+To separate those two, every model answered each prompt of the main run twice more (pre-registered), and a two-way analysis of variance with replication splits each of the \repNTraits{} style traits into the model, the prompt, the model's \emph{reaction} to the prompt (the model-by-prompt interaction) and noise.
+An $F$ test compares the reactions with the noise.
+Since sums of squares hand a third of the noise to the interaction when there are three answers, we also report each part's share of a single answer's variance, estimated from expected mean squares (post hoc).
+A model's \emph{self-consistency} is the share of its own variation that lies between prompts rather than between repeat answers to one prompt.
 Kendall's $W$ measures whether the \nCategories{} categories rank the models alike (0 none, 1 perfect), and a Spearman correlation whether the order of the model means survives into another run or prompt set.
 A model's \emph{accent card} lists its departures of $|d|\ge 0.2$ that hold on the same side of the panel in at least 80\% of categories.
 Distances between models over the everyday traits' effect sizes, joined by average linkage, give a family tree.
@@ -168,7 +174,12 @@ On 50 everyday prompts, each model rewrites its own earlier answer ``so that a r
 \label{sec:contagion-method}
 On 40 everyday prompts, each model answers after reading five earlier answers to other prompts, presented as notes from earlier work: its own five, or the same five prompts answered by one of three models with distinct accents (\conSources), or no notes.
 Nothing asks for imitation.
-Comparing answers after another model's notes with answers after one's own isolates the author of the notes, since framing and content are matched; the shift is projected on the axis from the reader's accent to the source's.
+Comparing answers after another model's notes with answers after one's own holds the framing and the note prompts fixed, though not what the notes say; the shift is projected on the axis from the reader's accent to the source's.
+\paragraph{The style swap.}
+To separate the voice of the notes from their content (pre-registered), each set of notes is first rewritten ``in your own words and your own usual style, keeping all of its content and facts'', either by its author or by the other model.
+This crosses whose content the notes carry, the reader's or the source's, with whose voice they are in, and every note set has passed through the same rewriting step.
+The \emph{voice effect} is the shift toward the source when the notes are in its voice rather than the reader's, with content held fixed and averaged over both contents; the \emph{content effect} is the converse.
+A manipulation check asks whether a classifier names the rewriter of a rewritten note more often than its original author.
 
 \subsection{Pre-registration}
 \label{sec:prereg}
@@ -179,7 +190,7 @@ The second prompt set was locked by SHA-256 (\texttt{\vTwoHash}\dots) before col
 \section{Setup}
 We collected two runs of the first prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer, and one run of the locked second set; answers cost \costRun{} per run (\costRunRepl{} for the earlier run, \costVTwo{} for the second set), and coding costs were not recorded \todo{add coding cost}.
 The guessing games on the main run took \callsTotal{} calls (\costBlind{} blind, \costSame{} with the same-answers profile, \costHeldPerm{} and \costHeldInd{} with the held-out profile).
-The pre-registered experiments cost \costDescribe{} for descriptions, \costPortraits{} for the portrait games, \costImitate{} for \nImitate{} imitations, \costHide{} for \nHide{} rewrites and \costContagion{} for \nContagion{} contagion answers.
+The pre-registered experiments cost \costDescribe{} for descriptions, \costPortraits{} for the portrait games, \costImitate{} for \nImitate{} imitations, \costHide{} for \nHide{} rewrites, \costContagion{} for \nContagion{} contagion answers, \costSwap{} for the style swap (\nSwapRewrites{} rewritten notes and \nSwap{} answers) and \costReplicates{} for \nReplicates{} repeat answers to the main run's prompts.
 We report \texttt{oct-23-26} as the main run.
 
 % =====================================================================
@@ -234,6 +245,34 @@ The accent sits in the surface of the text.
 A character classifier names the author of \abOriginal{} of single answers on unseen prompts; without markdown it still names \abNoMarkdown{}, without punctuation and symbols \abNoPunct{}, and with case and line breaks also removed \abBare{}.
 Shuffling the remaining words costs only \abShuffleDrop{} more points (\abShuffled{}; \abShuffledMatched{} naming each model once per prompt): beyond punctuation, the accent is vocabulary, not word order.
 
+\subsection{Models differ most in their reactions to prompts}
+\label{sec:reactions}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{generated/fig_reactions.pdf}
+\caption{What one answer is made of, with three answers per prompt (run \texttt{oct-23-26} answered twice more). For each style trait, the share of a single answer's variance that is the model's steady accent, its repeatable reactions to particular prompts, the prompt, and noise, from expected mean squares (Appendix Table~\ref{tab:reactions}).}
+\label{fig:reactions}
+\end{figure}
+
+\paragraph{The steady accent replicates.}
+With three answers to every prompt (pre-registered), the model's median share of the variation is \repModel{}, as with one answer on the same prompts (\repModelOne).
+What one answer could not separate now splits in two: a model's reaction to a particular prompt is significant against the noise between its repeat answers on all \repSig{} of \repNTraits{} style traits, and on all \repSigLater{} with only the two answers collected on the same day.
+
+\paragraph{Reactions outweigh the steady accent.}
+Per answer, the model's steady accent is a median \vcModel{} of a trait's variance, its reactions \vcReact{}, the prompt \vcPrompt{} and noise \vcNoise{} (Figure~\ref{fig:reactions}; the registered sums of squares give \repModel{}, \ssReact{}, \ssPrompt{} and \ssNoise{}).
+The reactions are about \reactRatio{} times the steady accent, and together the two make up a median \vcModelReact{} of a trait's variance: which model wrote an answer shapes not only how much of a habit it has, but on which prompts the habit appears.
+The extremes differ in kind.
+Em dashes carry the largest steady accent: the model alone is \vcDashModel{} of an answer's variance, beside \vcDashReact{} for its reactions.
+Length is set by the task: the prompt is \vcLengthPrompt{} of it and noise \vcLengthNoise.
+The stereotyped habits are reactions: the model accounts for only \stereoModelLow{} to \stereoModelHigh{} of each, its reactions for \stereoReactLow{} to \stereoReactHigh{}; warm openers, for instance, are \vcWarmModel{} model and \vcWarmReact{} reaction.
+Models differ little in how often they open warmly, but each does so on its own prompts.
+This may be one reason the models' descriptions miss (Section~\ref{sec:hearing}): they describe how often a model does something, while models differ more in where they do it.
+
+\paragraph{Some habits are mostly chance.}
+The noisiest traits are \vcNoisiest{}: whether a given answer has them is largely a matter of sampling.
+Models also differ in how much they repeat themselves: \consHighModel{} is the most self-consistent (\consHigh{} of its variation lies between prompts rather than between repeat answers) and \consLowModel{} the least (\consLow).
+
 \subsection{Models cannot hear their accents}
 \label{sec:hearing}
 
@@ -258,6 +297,7 @@ Portraits written by other models give \portraitPeer{} (\portraitVsPeer{} for se
 \paragraph{They cannot imitate from a name.}
 The pre-registered measure of imitation moved \imRegistered{} of the way toward the target, but most of that is not imitation: a fresh answer drifts from the single earlier answer it is measured from toward every other model's answer, and the same model asked to write as itself drifts \imDrift{} of the way.
 Against that control, which we added after seeing the data, an imitation from the name moves \imName{} of the way (\imNameCI) (Figure~\ref{fig:hearing}, middle).
+The drift is regression to the mean: measured from the mean of three answers per prompt instead of one (pre-registered), it falls from \imDrift{} to \repDriftAvg{} (\repDriftAvgCI), about what regression to the mean predicts, and an imitation from the name still moves only \repNameAvg{} (\repNameAvgCI).
 A classifier names the target \imNamedTarget{} of the time (\imNamedBase{} for self-imitations) and the imitator \imNamedImitator.
 On traits an imitator had described on the wrong side, its imitations moved the right way \imIThree{} of the time, and its self-imitations \imIThreeSelf{}: imitation from a name shows no knowledge that the descriptions lack.
 
@@ -299,8 +339,16 @@ Told its own measured habits, a model hides far better: the classifier names \hi
 \end{figure}
 
 After reading five answers by another model as notes, a model's answers moved \conShift{} of the way toward that model's accent (\conShiftCI), against answers after its own notes; the pre-registered test held, and a classifier's probability for the notes' author rose by \conProb{} points (\conProbCI).
-What travels is mostly the accent (Figure~\ref{fig:contagion}): length (\conLength{} standard deviations), exclamations (\conExcl) and em dashes (\conDash) move toward the source, caveats (\conCaveat) and warm openers (\conWarm) do not; averaged, the pre-registered accent traits move \conAccent{} and the stereotyped ones \conStereo, exclamations being the one stereotyped habit that travels.
+Trait by trait, the accent traits move more than the stereotyped ones (Figure~\ref{fig:contagion}): length (\conLength{} standard deviations), exclamations (\conExcl) and em dashes (\conDash) move toward the source, caveats (\conCaveat) and warm openers (\conWarm) do not; averaged, the pre-registered accent traits move \conAccent{} and the stereotyped ones \conStereo, exclamations being the one stereotyped habit that travels.
 Reading its own notes does not amplify a model's accent: measured along the axis from the panel toward the reader's own accent, its answers move \conSelf{} of the way (\conSelfCI), slightly away from its accent.
+
+\paragraph{Mostly content, partly voice.}
+Another model's notes differ from one's own in what they say as well as in how they say it, and the style swap separates the two.
+The rewrites changed the voice: a classifier named the rewriter of a rewritten note \swapRewriter{} of the time and its original author \swapAuthor{}, so the swap was real but partial.
+With content held fixed, notes in the source's voice moved answers \swapVoice{} of the way toward the source (\swapVoiceCI; \swapVoiceNoLen{} with length left out), and the classifier's probability for the source rose \swapProb{} points (\swapProbCI); all three pre-registered tests held.
+With the voice held fixed, the source's content moved answers \swapContent{} of the way (\swapContentCI).
+Most of what spreads, then, is what the notes say and the form that content takes; a smaller part, reliably above zero and probably underestimated given the partial swap, is the voice itself.
+With every note rewritten, the original effect reappears: notes wholly the source's move answers \swapSSOO{} of the way, against notes wholly the reader's.
 
 \subsection{What limits recognition}
 \label{sec:difficulty}
@@ -338,25 +386,27 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 \begin{itemize}
 \item \textbf{Do not ask a model how it writes.} Its account follows the stereotype of AI writing, not its habits; measure them instead.
 \item \textbf{Steer with measured habits, not generic advice.} ``Do not sound like AI'' leaves a model recognizable; a list of its measured habits works, and a measured profile lets one model write in another's voice.
-\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's; in systems where agents share notes or memory, voices will blend unless that is managed.
+\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's, mostly through its content but also through its voice; in systems where agents share notes or memory, voices will blend unless that is managed.
 \item \textbf{Choose and monitor by accent.} The accent is stable enough to choose a model for a voice, and cheap to re-measure (\costRun{} in answers per run) to see whether a model behind a fixed name has changed.
+\item \textbf{Repeat answers to judge a single prompt.} One answer per prompt suffices for a model's steady accent, but how a model handles a particular prompt is a reaction mixed with sampling noise; telling the two apart takes several answers.
 \end{itemize}
 
 % =====================================================================
 \section{Limitations and ethics}
 \label{sec:limits}
-\paragraph{Panel and prompts.} Six models from four providers, synthetic English prompts written by the authors, one answer per prompt per run, and no system prompt; effect sizes are relative to this panel, and habits may change under a product's instructions.
-\paragraph{A confound in the imitation test.} The pre-registered imitation metric measures each imitation from a single earlier answer, which any fresh answer drifts away from; we report the registered values and a control added after seeing the data, and the claims about imitation rest on the control.
+\paragraph{Panel and prompts.} Six models from four providers, synthetic English prompts written by the authors, one answer per prompt per run (three in one collection, for the style traits only), and no system prompt; effect sizes are relative to this panel, and habits may change under a product's instructions.
+\paragraph{A confound in the imitation test.} The pre-registered imitation metric measures each imitation from a single earlier answer, which any fresh answer drifts away from; we report the registered values and a control added after seeing the data, and the claims about imitation rest on the control. A later pre-registered re-measurement from three answers confirmed that the drift is regression to the mean.
+\paragraph{Reactions.} The reactions are estimated on one prompt set and one run, with two of the three answers collected \repDaysLater{} days after the first; whether a model's reaction to a given prompt survives a model update is untested.
 \paragraph{Measurement by machines.} Traits are computed by code and behaviors by two coder models, which can match crowd annotators \citep{gilardi2023chatgpt} but are not validated here against human judgment; recognition and hiding are scored by a classifier and one guesser. Whether people hear the same accents is untested.
-\paragraph{Single exposures.} Contagion was measured after one exposure to five notes; whether it accumulates over many exposures, as in long-running agents with shared memory, is the natural next test.
+\paragraph{Single exposures.} Contagion was measured after one exposure to five notes; whether it accumulates over many exposures, as in long-running agents with shared memory, is the natural next test. The style swap holds content fixed only as well as rewriting does: the rewrites changed the voice partly, so the voice effect is a lower estimate.
 \paragraph{Time.} Two runs \daysApart{} days apart and one locked prompt set show stability over days, not across model versions, and model behavior is known to drift between versions \citep{chen2024behaviorchange} and to vary between identical runs \citep{atil2024stability}.
 \paragraph{Ethics.} Identifying the model behind an answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones; our profiles describe public models' public behavior, and prior work identifies models more accurately by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. The hiding experiment shows that measured habits help a model disguise its output, which bears on detection; we release it because the finding that generic instructions fail matters to anyone relying on them.
 
 % =====================================================================
 \section{Conclusion}
-Frontier models write with accents: small in any single answer, steady across tasks, runs and new prompts, carried by punctuation and word choice.
+Frontier models write with accents: a steady part, small in any single answer but constant across tasks, runs and new prompts and carried by punctuation and word choice, and a larger part made of each model's own reactions to particular prompts.
 The models cannot hear them: they describe the stereotype of AI writing, cannot imitate each other from a name, and cannot hide.
-Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and the accent travels to whoever reads the text.
+Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and part of the accent travels with the text to whoever reads it.
 
 \paragraph{Code and data.} \todo{repository link and license; answers, labels, guesses and experiment records for all runs}
 
@@ -403,6 +453,13 @@ Measurement makes the accent usable, as a description that transfers, a voice to
 \caption{Identification by prompt category for a single guesser, blind and with the profile from other prompts. The dashed line is chance.}
 \label{fig:category}
 \end{figure}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Three answers per prompt, run \texttt{oct-23-26} answered twice more. Each style trait's variance components from expected mean squares (post hoc), the $F$ test of the model's reactions against noise (pre-registered; every $p<10^{\repPExp}$), and the model's registered share of the total sum of squares.}
+\label{tab:reactions}
+\input{generated/tab_reactions.tex}
+\end{table}
 
 \begin{table}[htbp]
 \centering\small
@@ -468,8 +525,11 @@ python -m spectra.attribute --revision $R --train-revision oct-14-26 \
 python -m spectra.describe --revision $R --sample N       # N = 0 to 4
 python -m spectra.guess --revision $R --mode described --portraits self \
     --guessers gemini-4-argon                            # and --portraits peer
-python -m spectra.voice imitate --revision $R             # also: hide, contagion
+python -m spectra.voice imitate --revision $R             # also: hide, contagion, swap
 python -m spectra.run --config spectra/config-v2.yaml --revision v2-oct-25-26
+python -m spectra.extend --from $R --to $R-s3              # three answers per prompt
+python -m spectra.run --config spectra/config-s3.yaml --revision $R-s3
+python -m spectra.replicates --config spectra/config-s3.yaml --revision $R-s3
 python -m spectra.voice score --revision $R
 python spectra/article/make_assets.py
 \end{verbatim}

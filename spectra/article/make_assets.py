@@ -861,6 +861,108 @@ ax.scatter([], [], color="#D55E00", label="stereotype traits")
 ax.legend(frameon=False, fontsize=7, loc="lower right")
 save(fig, "fig_contagion")
 
+# ================================================================ the style swap and three answers per prompt
+# style swap (2026-10-25-contagion-swap.md): the notes' content crossed with their voice
+SW = VO["swap"]
+mac("swapVoice", way(SW["voice"]["mean"], 1))
+mac("swapVoiceCI", wayspan(SW["voice"]["ci"]))
+mac("swapVoiceNoLen", way(SW["voice_without_length"]["mean"], 1))
+mac("swapContent", way(SW["content"]["mean"], 1))
+mac("swapContentCI", wayspan(SW["content"]["ci"]))
+mac("swapSSOO", way(SW["ss_minus_oo"]["mean"], 1))
+mac("swapProb", half_up(100 * SW["classifier_voice"]["mean"], 1))
+mac("swapProbCI", f"{half_up(100 * SW['classifier_voice']['ci'][0], 1)}--{half_up(100 * SW['classifier_voice']['ci'][1], 1)}")
+mc = SW["manipulation_check"]
+assert mc["passed"]
+mac("swapRewriter", pct(mc["named_rewriter"]))
+mac("swapAuthor", pct(mc["named_author"]))
+mac("nSwap", f"{sum(1 for r in voice_rows if r['experiment'] == 'swap' and r.get('text')):,}".replace(",", "{,}"))
+mac("nSwapRewrites", sum(1 for r in voice_rows if r["experiment"] == "swap-notes" and r.get("text")))
+mac("costSwap", f"\\${vcost['swap'] + vcost['swap-notes']:.0f}")
+
+# three answers per prompt (2026-10-25-replicates.md, python -m spectra.replicates)
+S3 = "oct-23-26-s3"
+RP = json.loads((DATA / S3 / "replicates.json").read_text(encoding="utf-8"))
+assert RP["samples"] == 3
+rp_traits, vc = RP["traits"], RP["median_components"]
+mac("repNTraits", RP["n_traits"])
+mac("repModel", pct(RP["median_shares"]["model"]))
+mac("repModelOne", pct(RP["median_one_answer"]["model"]))
+mac("repSig", RP["interaction_significant"])
+mac("repSigLater", RP["interaction_significant_later"])
+mac("repPExp", int(np.floor(np.log10(max(t["p"] for t in RP["traits"].values())))) + 1)  # every p < 10^this
+mac("ssPrompt", pct(RP["median_shares"]["prompt"], 0))
+mac("ssReact", pct(RP["median_shares"]["model_x_prompt"], 0))
+mac("ssNoise", pct(RP["median_shares"]["noise"], 0))
+mac("vcModel", pct(vc["model"]))
+mac("vcPrompt", pct(vc["prompt"], 0))
+mac("vcReact", pct(vc["model_x_prompt"], 0))
+mac("vcNoise", pct(vc["noise"], 0))
+mac("vcModelReact", pct(statistics.median(t["components"]["model"] + t["components"]["model_x_prompt"]
+                                          for t in rp_traits.values()), 0))
+mac("reactRatio", ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][
+    round(vc["model_x_prompt"] / vc["model"])])
+comp = lambda k, part: rp_traits[k]["components"][part]  # noqa: E731
+st_model = [comp(k, "model") for k in STEREO_KEYS]
+st_react = [comp(k, "model_x_prompt") for k in STEREO_KEYS]
+mac("stereoModelLow", pct(min(st_model)))
+mac("stereoModelHigh", pct(max(st_model)))
+mac("stereoReactLow", pct(min(st_react), 0))
+mac("stereoReactHigh", pct(max(st_react), 0))
+mac("vcWarmModel", pct(comp("warm_open", "model")))
+mac("vcWarmReact", pct(comp("warm_open", "model_x_prompt"), 0))
+mac("vcDashModel", pct(comp("emdash", "model"), 0))
+mac("vcDashReact", pct(comp("emdash", "model_x_prompt"), 0))
+mac("vcLengthPrompt", pct(comp("length", "prompt"), 0))
+mac("vcLengthNoise", pct(comp("length", "noise")))
+noisiest = sorted(rp_traits, key=lambda k: -comp(k, "noise"))[:3]
+mac("vcNoisiest", ", ".join(f"{label_of[k].lower()} ({pct(comp(k, 'noise'), 0)})" for k in noisiest))
+cons = RP["consistency"]
+hi_c, lo_c = max(cons, key=cons.get), min(cons, key=cons.get)
+mac("consHighModel", tt(hi_c))
+mac("consHigh", num(cons[hi_c]))
+mac("consLowModel", tt(lo_c))
+mac("consLow", num(cons[lo_c]))
+imr = RP["imitation"]
+assert abs(imr["self_drift_single"]["mean"] - ph["self_drift_toward_target"]["mean"]) < 1e-9  # the same E3 baseline
+mac("repDriftAvg", way(imr["self_drift_averaged"]["mean"]))
+mac("repDriftAvgCI", wayspan(imr["self_drift_averaged"]["ci"]))
+mac("repNameAvg", way(imr["name_minus_self_averaged"]["mean"], 1))
+mac("repNameAvgCI", wayspan(imr["name_minus_self_averaged"]["ci"]))
+rep_rows = [r for r in load_jsonl(DATA / S3 / "responses.jsonl") if int(r.get("sample", 0)) > 0]
+day = lambda rows: statistics.median(datetime.fromisoformat(r["timestamp"]).date().toordinal() for r in rows)  # noqa: E731
+rep_gap = round(day(rep_rows) - day([r for r in load_jsonl(DATA / S3 / "responses.jsonl") if int(r.get("sample", 0)) == 0]))
+mac("repDaysLater", ["no", "one", "two", "three", "four", "five", "six", "seven"][rep_gap])
+mac("nReplicates", f"{sum(1 for r in rep_rows if r.get('text') and not r.get('error')):,}".replace(",", "{,}"))
+mac("costReplicates", f"\\${sum(r.get('cost_usd') or 0 for r in rep_rows):.0f}")
+
+# table (appendix): each trait's variance components, and the interaction test
+order_r = sorted(rp_traits, key=lambda k: -comp(k, "model"))
+lines = [f"{label_of[k]} & {pct(comp(k, 'model'))} & {pct(comp(k, 'model_x_prompt'))} & {pct(comp(k, 'noise'))} & "
+         f"{pct(comp(k, 'prompt'))} & {num(rp_traits[k]['F'])} & {pct(rp_traits[k]['model'])} \\\\" for k in order_r]
+lines.append(f"\\midrule\nMedian & {pct(vc['model'])} & {pct(vc['model_x_prompt'])} & {pct(vc['noise'])} & {pct(vc['prompt'])} "
+             f"& & {pct(RP['median_shares']['model'])} \\\\")
+(OUT / "tab_reactions.tex").write_text(
+    "\\begin{tabular}{lrrrrrr}\n\\toprule\n& \\multicolumn{4}{c}{Share of one answer's variance} & & Model share \\\\\n"
+    "\\cmidrule(lr){2-5}\nTrait & Model & Reactions & Noise & Prompt & $F$ & (sum of squares) \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+
+# figure: what one answer is made of, trait by trait
+fig, ax = plt.subplots(figsize=(5.2, 3.2))
+tr = order_r[::-1]
+yy = np.arange(len(tr))
+left = np.zeros(len(tr))
+for part, col, lab in (("model", "#0072B2", "the model's steady accent"), ("model_x_prompt", "#56B4E9", "its reactions to the prompt"),
+                       ("prompt", "#E3E7EE", "the prompt"), ("noise", "#BBBBBB", "noise")):
+    w = np.array([comp(k, part) for k in tr])
+    ax.barh(yy, w, left=left, color=col, height=0.7, label=lab, hatch="///" if part == "noise" else None, edgecolor="white", lw=0)
+    left += w
+ax.set_yticks(yy, [label_of[k] for k in tr])
+ax.set_xlim(0, 1)
+ax.set_xlabel("share of one answer's variance")
+ax.legend(frameon=False, fontsize=6.5, loc="upper center", bbox_to_anchor=(0.45, -0.2), ncol=2)
+save(fig, "fig_reactions")
+
 # ---------------------------------------------------------------- write the macros
 header = (f"% Generated by spectra/article/make_assets.py from runs {MAIN} (main) and {REPL} (replication).\n"
           "% Do not edit by hand: rerun the script.\n")
