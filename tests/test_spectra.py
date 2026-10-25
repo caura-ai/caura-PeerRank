@@ -755,6 +755,10 @@ def test_replicates_split_the_reaction_from_the_noise(tmp_path):
     reacting = decompose(model + prompt + rng.normal(0, 2, (M, P, 1)) + noise)
     assert reacting["p"] < 1e-6 and reacting["model_x_prompt"] > flat["model_x_prompt"]
     assert decompose((model + prompt + noise)[:, :, :1])["noise"] == 0.0  # one answer: noise hides in the residual
+    from spectra.replicates import components
+    c = components(model + prompt + noise)
+    assert sum(c.values()) == pytest.approx(1.0) and c["model_x_prompt"] < 0.02  # no reaction planted, none estimated
+    assert c["model_x_prompt"] < flat["model_x_prompt"]  # the sum of squares hands it a third of the noise
     assert consistency(np.repeat(rng.normal(0, 1, (P, 1)), S, axis=1)) == pytest.approx(1.0)
 
     # end to end: b writes longer than a; each prompt sets a length; a's second and third answers wander

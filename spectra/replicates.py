@@ -42,6 +42,21 @@ def decompose(y: np.ndarray) -> dict:
     return out | {"F": F, "p": float(fdist.sf(F, df_i, df_e)) if F is not None else None, "prompts": P}
 
 
+def components(y: np.ndarray) -> dict:
+    """Post hoc: each part's share of one answer's variance, from expected mean squares (random effects, negative
+    estimates set to zero). Sum-of-squares shares hand 1/S of the noise to model x prompt; these do not."""
+    M, P, S = y.shape
+    d = decompose(y)
+    total = ((y - y.mean()) ** 2).sum()
+    ms = {"model": d["model"] * total / (M - 1), "prompt": d["prompt"] * total / (P - 1),
+          "model_x_prompt": d["model_x_prompt"] * total / ((M - 1) * (P - 1)), "noise": d["noise"] * total / (M * P * (S - 1))}
+    var = {"noise": ms["noise"], "model_x_prompt": max(0.0, (ms["model_x_prompt"] - ms["noise"]) / S),
+           "model": max(0.0, (ms["model"] - ms["model_x_prompt"]) / (P * S)),
+           "prompt": max(0.0, (ms["prompt"] - ms["model_x_prompt"]) / (M * S))}
+    whole = sum(var.values())
+    return {k: float(var[k] / whole) for k in PARTS}
+
+
 def consistency(y: np.ndarray) -> float | None:
     """One model's prompts x samples: the share of its variance that lies between prompts (1 = fully repeatable)."""
     total = y.var()
@@ -114,12 +129,14 @@ def analyse(run_dir: Path, prompts: dict, models: list[str], samples: int, imita
             later = decompose(y[:, :, 1:])
             d["later_answers"] = {p: later[p] for p in PARTS + ("p",)}
         d["consistency"] = {m: consistency(y[j]) for j, m in enumerate(models)}
+        d["components"] = components(y)
         traits[k] = d
     if not traits:
         raise SystemExit(f"No trait has {samples} answers per model on 10 prompts or more in {run_dir}")
     med = lambda f: float(np.median([f(t) for t in traits.values()]))  # noqa: E731
     out = {"samples": samples, "n_traits": len(traits), "traits": traits,
            "median_shares": {p: med(lambda t: t[p]) for p in PARTS},
+           "median_components": {p: med(lambda t: t["components"][p]) for p in PARTS},
            "median_one_answer": {p: med(lambda t: t["one_answer"][p]) for p in ("model", "prompt")},
            "median_model_with_reactions": med(lambda t: t["model"] + t["model_x_prompt"]),
            "median_reaction_share_of_rest": med(lambda t: t["model_x_prompt"] / (t["model_x_prompt"] + t["noise"])),
@@ -154,6 +171,8 @@ def main(argv=None):
     print(f"Median shares over {res['n_traits']} style traits, {res['samples']} answers per prompt: "
           + ", ".join(f"{p} {pc(sh[p])}" for p in PARTS))
     print(f"  the same cells from first answers alone: model {pc(one['model'])}, prompt {pc(one['prompt'])}")
+    print("  post hoc, shares of one answer's variance (expected mean squares): "
+          + ", ".join(f"{p} {pc(res['median_components'][p])}" for p in PARTS))
     print(f"  model plus its reactions {pc(res['median_model_with_reactions'])}; reactions are "
           f"{pc(res['median_reaction_share_of_rest'])} of what is neither model nor prompt; model x prompt significant "
           f"on {res['interaction_significant']} of {res['n_traits']} traits")
