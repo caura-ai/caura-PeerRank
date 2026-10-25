@@ -1,0 +1,8 @@
+# Three answers per prompt (spectra/prereg/2026-10-25-replicates.md): config.yaml with samples 2 and 3 collected, at a
+# lower concurrency so it can run beside other jobs without crowding provider rate limits. Use only on its own revision:
+#   python -m spectra.extend --from oct-23-26 --to oct-23-26-s3
+#   python -m spectra.run --config spectra/config-s3.yaml --revision oct-23-26-s3
+extends: config.yaml
+revision: null  # pass --revision explicitly
+samples: 3
+concurrency_per_model: 6

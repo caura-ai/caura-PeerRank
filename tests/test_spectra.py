@@ -741,6 +741,45 @@ def test_extend_copies_answers_and_the_kept_coder_only(tmp_path, monkeypatch):
     assert not {c["name"] for c in eight["coders"]} & {m["name"] for m in eight["models"]}
 
 
+def test_replicates_split_the_reaction_from_the_noise(tmp_path):
+    from spectra import load_config
+    from spectra.replicates import analyse, consistency, decompose
+
+    rng = np.random.default_rng(0)
+    M, P, S = 3, 40, 3
+    model, prompt = rng.normal(0, 1, (M, 1, 1)), rng.normal(0, 3, (1, P, 1))
+    noise = rng.normal(0, 1, (M, P, S))
+    flat = decompose(model + prompt + noise)
+    assert sum(flat[k] for k in ("model", "prompt", "model_x_prompt", "noise")) == pytest.approx(1.0)
+    assert flat["p"] > 0.01  # no reaction planted
+    reacting = decompose(model + prompt + rng.normal(0, 2, (M, P, 1)) + noise)
+    assert reacting["p"] < 1e-6 and reacting["model_x_prompt"] > flat["model_x_prompt"]
+    assert decompose((model + prompt + noise)[:, :, :1])["noise"] == 0.0  # one answer: noise hides in the residual
+    assert consistency(np.repeat(rng.normal(0, 1, (P, 1)), S, axis=1)) == pytest.approx(1.0)
+
+    # end to end: b writes longer than a; each prompt sets a length; a's second and third answers wander
+    prompts = {f"q{i}": {"id": f"q{i}", "category": "explain"} for i in range(12)}
+    rows = []
+    for i in range(12):
+        for m, extra, wander in (("a", 0, (0, 9, -15)), ("b", 40, (0, 1, -1))):
+            rows += [{"model": m, "prompt_id": f"q{i}", "sample": s, "text": words(30 + 5 * i + extra + w)}
+                     for s, w in enumerate(wander)]
+    (tmp_path / "responses.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    imitate = [{"experiment": "imitate", "condition": c, "writer": "a", "other": "b", "prompt_id": f"q{i}",
+                "category": "explain", "text": words(30 + 5 * i)} for i in range(12) for c in ("SELF", "NAME")]
+    out = analyse(tmp_path, prompts, ["a", "b"], S, imitate)
+    length = out["traits"]["length"]
+    assert length["model"] > 0.3 and length["one_answer"]["model"] > 0.3 and "noise" in length["later_answers"]
+    assert out["consistency"]["b"] > out["consistency"]["a"]  # b repeats itself; a does not
+    im = out["imitation"]
+    assert im["self_drift_single"]["mean"] == pytest.approx(0.0)  # SELF repeats a's first answer exactly
+    assert im["self_drift_averaged"]["mean"] > 0  # a's average is shorter, so the same answer now sits toward b
+    assert im["drift_shrink"]["mean"] == pytest.approx(-im["self_drift_averaged"]["mean"])
+    three = load_config(SPECTRA_DIR / "config-s3.yaml")
+    assert three["samples"] == 3 and three["concurrency_per_model"] == 6 and three["revision"] is None
+    assert len(three["models"]) == 6
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])
