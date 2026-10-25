@@ -176,7 +176,7 @@ validate_truthfulqa.py   # TruthfulQA validation
 validate_gsm8k.py        # GSM8K math validation
 validate_mmlu.py         # MMLU benchmark validation
 spectra/                 # Behavioral profiles (style, habits, guessing game)
-  config.yaml            # Roster, revision, coders
+  config.yaml            # Roster, revision, coders (config-v2.yaml: the same with the locked v2 prompts)
   run.py                 # Collect answers
   code_behaviors.py      # Optional behavior labels from two coder models
   tiebreak.py            # A third coder on the labels the two disagree on
@@ -184,6 +184,7 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   profile.py             # The guessers' profile and its optional parts (--profile)
   describe.py            # Self-knowledge probe: models describe their own and each other's habits
   attribute.py           # Author classifiers on the text (words, character n-grams), the guessers' reference
+  voice.py               # Phase 2: impressions, hiding one's voice, accent contagion (runners, scorers, budget)
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash
@@ -334,6 +335,23 @@ python -m spectra.attribute --revision oct-23-26 --what ablations curve
 python -m spectra.describe --revision oct-23-26 --dry-run
 python -m spectra.describe --revision oct-23-26 --sample 1
 python -m spectra.describe --revision oct-23-26 --sample 1 --measured oct-14-26
+```
+
+### Voice experiments
+
+`spectra.voice` runs the phase 2 experiments on everyday v1 prompts, chosen by fixed hash so every model gets the same ones. Calls use the panel's answering settings.
+
+- **`imitate`:** each model answers the way another model would, from its name alone and then with that model's measured portrait.
+- **`hide`:** each model rewrites its own answers so a reader couldn't tell which model wrote them, with and without coaching on its habits.
+- **`contagion`:** each model answers after reading five of its own answers, or of another model's, as notes from earlier work.
+
+`--dry-run` writes one message per condition and estimates the cost from this run's measured prices. `budget` prints every phase 2 cost. `score` measures whatever has been collected against the run's real answers and the character classifier, and writes `voice.json`. In the guessing game, `--mode described --portraits self|peer` uses the portraits from `spectra.describe` in place of measured notes.
+
+```bash
+python -m spectra.voice budget --revision oct-23-26
+python -m spectra.voice imitate --revision oct-23-26 --dry-run
+python -m spectra.voice score --revision oct-23-26
+python -m spectra.guess --revision oct-23-26 --mode described --portraits self --guessers gemini-4-argon --dry-run
 ```
 
 ### Pre-registration

@@ -44,7 +44,11 @@ def _entry(m) -> dict:
 def load_config(path=None) -> dict:
     import yaml  # here so --help works without it
 
-    cfg = yaml.safe_load(Path(path or DEFAULT_CONFIG).read_text(encoding="utf-8"))
+    path = Path(path or DEFAULT_CONFIG)
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if cfg.get("extends"):  # a variant config: the named config, with these keys replacing its own
+        base = yaml.safe_load((path.parent / cfg.pop("extends")).read_text(encoding="utf-8"))
+        cfg = {**base, **cfg}
     cfg.setdefault("samples", 1)
     cfg.setdefault("concurrency_per_model", 4)
     cfg.setdefault("timeout_seconds", 180)

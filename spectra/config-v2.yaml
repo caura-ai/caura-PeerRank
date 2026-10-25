@@ -1,0 +1,6 @@
+# The locked v2 test (spectra/prompts/prompts_v2.json, hash in prompts_v2.lock): config.yaml with the v2 prompts.
+# Use it only for the pre-registered v2 test, with a revision tag of its own:
+#   python -m spectra.run --config spectra/config-v2.yaml --revision <tag>
+extends: config.yaml
+prompts: prompts/prompts_v2.json
+revision: null  # pass --revision explicitly, so v2 answers never land in a v1 revision's folder

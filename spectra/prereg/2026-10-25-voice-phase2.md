@@ -1,11 +1,23 @@
-# DRAFT pre-registration: describe, recognize, imitate, and accent contagion
+# Pre-registration: describe, recognize, imitate, and accent contagion
 
-**Status: draft.** It is not yet registered. It becomes binding once three things have happened, in this order:
-1. The code it names exists and is tested.
-2. Both are committed and pushed together, under a dated file name.
-3. All of that comes before any phase 2 call.
+**Registered 2026-10-25.**
+- **The registration:** the commit that adds this file under this name, together with the code it names, pushed
+  before any phase 2 call. The draft was `DRAFT-voice-phase2.md`.
+- **What runs:** E1–E6, approved by the user with a budget of about $144. The optional E7 was not approved and is
+  not run.
+- **Changes from here on:** no hypothesis, metric, prompt list or message changes once data exist. Any deviation is
+  appended at the end with its reason.
 
-Nothing below has been run, and no phase 2 money is spent until the user approves the budget.
+**Exact messages.** Every message is fixed by the code: `spectra/voice.py` (`imitate_message`, `hide_message`,
+`contagion_message`), `spectra/guess.py` (`Portraits`, and `build_message` with `brief_kind="portraits"`) and
+`spectra/describe.py`. The dry runs write one example of each condition to
+`data/spectra/oct-23-26/voice_preview-<experiment>.txt`.
+
+**Prompt lists.** These are fixed by salted hashes in `voice.pick_prompts`:
+- `imitate`: 3 per category.
+- `hide`: 5 per category.
+- `contagion`: 4 per category, excluding the notes.
+- `notes`: one prompt from each of five categories.
 
 ## Thesis
 
@@ -29,8 +41,12 @@ The literature review (`spectra/article/literature-review.md`) gives the evidenc
 - **Answers:** calls use the panel's answering settings (`run_config.json` of oct-23-26), with no system prompt.
 - **Measurement:** everyday traits come from `spectra.analyze.features`. Distances are in units of each trait's
   pooled within-model SD in oct-23-26.
-- **Classifier:** the character classifier (`spectra.attribute`, character 2–5-grams, settings fixed) is trained on
-  the real answers of oct-14-26 and oct-23-26 to the prompts not used in that experiment.
+- **Classifier:** the character classifier (`spectra.attribute.reference_classifier`, character 2–5-grams, settings
+  fixed) is trained on the real answers of oct-14-26 and oct-23-26 to the prompts not used in that experiment.
+- **Portraits and coaching:** these come from oct-14-26's analysis (`--portraits-from`). It is a different run from
+  the oct-23-26 answers being imitated, rewritten or read as notes.
+- **Scoring:** `python -m spectra.voice score --revision oct-23-26` scores everything collected and writes
+  `voice.json`.
 - **Intervals:** 95%, from 2,000 resamples of prompts, seed 7.
   - A directional hypothesis is confirmed when its interval lies entirely on the predicted side of zero.
   - Each experiment has one primary hypothesis. The rest are secondary and reported whatever the outcome; no
@@ -40,9 +56,12 @@ The literature review (`spectra/article/literature-review.md`) gives the evidenc
   - **STEREOTYPE:** model share of 2% or less: caveats (0.4%), warm openers (0.9%), stock phrases (1.4%),
     self-reference (1.5%), exclamations (1.7%).
   - Traits in between, such as plain wording (4.9%) and follow-up hooks (3.3%), are in neither set.
-- **Costs:** each estimate uses the measured cost per answer in oct-23-26 (astra $0.013, fable $0.031, opus $0.014,
-  argon $0.017, flash $0.005, muse $0.023; mean $0.017), argon's measured cost per guessing call ($0.079), and $1.04
-  per 36 descriptions. Input text added to a call is priced at each model's input rate.
+- **Costs:** `python -m spectra.voice budget` gives each one from measured prices:
+  - the cost per answer in oct-23-26 (astra $0.013, fable $0.031, opus $0.014, argon $0.017, flash $0.005, muse $0.023);
+  - argon's mean cost per profiled guessing call ($0.082);
+  - $1.04 per sample of 36 descriptions.
+  
+  Text added to a call is priced at the writer's input rate.
 
 ## E1. Describe: more samples (explicit knowledge)
 
@@ -50,30 +69,35 @@ The literature review (`spectra/article/literature-review.md`) gives the evidenc
 - **Purpose:** steadier per-trait descriptions for E3's trait-level test. The pooled side for each (describer,
   target, trait) is the majority over samples 1–4.
 - **Hypotheses:** none new. H1–H5 of the 2026-10-25 pre-registration are reported for each sample.
-- **Cost:** about $3.
+- **Command:** `python -m spectra.describe --revision oct-23-26 --sample N`, for N = 2, 3, 4.
+- **Cost:** $3.13.
 
 ## E2. Recognize from written portraits (does a portrait carry the voice?)
 
 - **Design:** gemini-4-argon plays the guessing game, each model named once, all 200 prompts. Its brief is replaced
   by written portraits taken from the descriptions of sample 1:
   - **SELF:** each model's portrait of itself.
-  - **PEER:** each model's portrait as written by the next model in roster order, skipping argon.
+  - **PEER:** each model's portrait as written by the next model in roster order. The model itself and the guesser,
+    argon, are skipped, so argon never reads its own words.
 - **Leakage:** none. The portraits never saw an answer.
 - **Comparisons:** argon's existing games, with the measured plain profile (held-out, 91.0%) and blind (44.9%).
 - **R1 (primary):** SELF portraits recognize less than the measured profile. The paired difference (SELF minus
   measured, on shared prompts) has an interval below zero.
 - **R2:** SELF portraits beat blind; the interval lies above zero.
 - **R3 (exploratory):** SELF against PEER.
-- **Code needed:** a profile source in `guess.py` built from `descriptions.jsonl`, scored as its own game key.
-- **Cost:** 2 games × 200 calls × about $0.08, about $32.
+- **Scoring:** `guess.game_contrast`, paired on shared prompts, 1,000 resamples, seed 7.
+- **Command:** `python -m spectra.guess --revision oct-23-26 --mode described --portraits self|peer --guessers gemini-4-argon`.
+- **Cost:** $32.84. The dry run estimates $15.57 per game.
 
 ## E3. Imitate: the impression contest (implicit knowledge, production)
 
 - **Prompts:** 30 everyday v1 prompts, 3 per category.
 - **NAME condition:** each model writes the answer "the way <target> would answer it", for each of the five other
   models.
-- **PROFILE condition:** the same, with the target's measured portrait from the plain profile appended.
-- **SELF condition:** "the way you yourself would answer it", as a control for the instruction itself.
+- **PROFILE condition:** the same, with the target's measured portrait appended (its line from the plain profile's
+  portraits, from oct-14-26).
+- **SELF condition:** the same NAME message with the imitator's own name as the target. It controls for the
+  instruction itself.
 - **Movement metric:** for each imitation, how far its trait vector moves from the imitator's own oct-23-26 answer
   to the same prompt toward the target's.
   - Measured as the projection on the imitator-to-target axis, over the everyday style traits.
@@ -86,22 +110,32 @@ The literature review (`spectra/article/literature-review.md`) gives the evidenc
   - **Measure:** the share of those cells where NAME imitations move the trait toward the target.
   - **Hypothesis:** the share is above 0.5, with the interval resampling prompts. That would mean imitation uses
     knowledge the description lacks.
+  - **Ties:** prompts where the trait did not change are left out.
+  - **Range:** the dry check below found 359 described sides from sample 1 alone. With those, a perfect impression
+    (the target's own answer) scores 0.93, and chance is 0.5.
 - **I4 (exploratory):** how often the classifier attributes imitations to the target rather than to the imitator.
-- **Code needed:** the experiment runner and scorer in a new `spectra/voice.py`.
-- **Cost:** 6 × 5 × 30 × 2 calls plus 6 × 30, about 1,980 calls at $0.017, plus portrait input: about $36.
+  On perfect impressions it names the target 80% of the time.
+- **Dry check on real answers, no calls:** imitations replaced by the target's own answer score I1 = 1.0, and by
+  the imitator's own answer I1 = 0.0.
+- **Command:** `python -m spectra.voice imitate --revision oct-23-26`.
+- **Cost:** 1,980 calls (NAME $15.71, PROFILE $16.06, SELF $3.14): $34.92.
 
 ## E4. Hide your own voice (steerability)
 
 - **Prompts:** 50 everyday v1 prompts. Each model rewrites its own oct-23-26 answer to each.
-- **UNCOACHED:** "Rewrite this answer so that a reader could not tell which AI model wrote it. Keep the content."
-- **COACHED:** the same, plus the model's accent card and its three largest measured departures, as habits to drop.
+- **UNCOACHED:** "Rewrite your answer so that a reader could not tell which AI model wrote it. Keep the content
+  and the facts."
+- **COACHED:** the same, plus the model's accent card and its three largest everyday departures (from oct-14-26),
+  given as habits that give it away.
 - **Scores:** the classifier's accuracy at naming the true author, and the change in each trait in SD units.
 - **H1 (primary):** UNCOACHED rewrites still give their author away. Classifier accuracy has an interval above
   chance (1/6).
 - **H2:** UNCOACHED rewrites change STEREOTYPE traits more than ACCENT traits. Paired by model and prompt, mean |Δ|
   of STEREOTYPE minus ACCENT has an interval above zero.
 - **H3:** COACHED rewrites hide better. The paired drop in classifier accuracy has an interval above zero.
-- **Cost:** 600 calls at $0.017, plus the answers as input: about $15.
+- **Reference:** the classifier's accuracy on the original answers to the same prompts, which it never trained on.
+- **Command:** `python -m spectra.voice hide --revision oct-23-26`.
+- **Cost:** 600 calls: $11.84.
 
 ## E5. Accent contagion (shared context)
 
@@ -123,48 +157,54 @@ The literature review (`spectra/article/literature-review.md`) gives the evidenc
   - which traits move, ACCENT against STEREOTYPE;
   - whether SELF notes amplify a model's accent against NONE (amplification);
   - whether larger models converge less (Blevins et al.).
-- **Cost:** 21 conditions with notes plus 6 with none, × 40 prompts: 1,080 calls at about $0.022 including the notes
-  as input. About $24.
+- **Command:** `python -m spectra.voice contagion --revision oct-23-26`.
+- **Cost:** 21 conditions with notes plus 6 with none, × 40 prompts: 1,080 calls (NONE $4.11, SELF $6.35,
+  SOURCE $16.34). Total $26.80.
 
 ## E6. The accent on the locked v2 set (replication)
 
 - **Design:** collect v2 answers from the same six models, code them with the same two coders, and run
   `spectra.analyze --previous oct-23-26`. This is the planned v2 test; the plain profile carried by Part B of the
   2026-10-25 pre-registration is used in any v2 guessing game.
-- **V1 (primary):** on the ACCENT traits, the v2 model order agrees with oct-23-26 (Spearman of at least 0.8) on at
-  least 4 of 5 traits.
-- **V2:** the median model share on v2 lies between 1% and 10%, a small accent again.
+- **Commands:**
+  - `python -m spectra.run --config spectra/config-v2.yaml --revision v2-oct-25-26`
+  - `python -m spectra.code_behaviors --config spectra/config-v2.yaml --revision v2-oct-25-26`
+  - `python -m spectra.analyze --config spectra/config-v2.yaml --revision v2-oct-25-26 --previous oct-23-26`
+  
+  `config-v2.yaml` is `config.yaml` with the v2 prompts and no default revision.
+- **V1 (primary):** on the four ACCENT traits, the v2 model order agrees with oct-23-26 (Spearman of at least 0.8)
+  on at least 3 of the 4. Read from `run_to_run` in the v2 `analysis.json` → `accent`.
+- **V2:** the median model share on v2 lies between 1% and 10%, a small accent again. Read from
+  `median_model_share`.
 - **V3 (exploratory):**
   - whether the closest pair in the family tree (fable and muse in oct-23-26) stays closest;
   - the accent cards.
-- **Cost:** 1,200 answers (about $21) plus coding (about $0.012 per answer, $15): about $36.
+- **Cost:** 1,200 answers ($20.56 in oct-23-26) plus coding (about $0.006 per answer per coder, $14.40): $34.96.
 
-## Optional E7. Two more answers per v1 prompt
+## Optional E7. Two more answers per v1 prompt: not approved, not run
 
 - **Design:** 2 × 1,200 answers, style traits only.
 - **Purpose:** separates a model's consistent reaction to a prompt from randomness, and gives each model's
   self-consistency. Descriptive only, no hypothesis.
-- **Cost:** about $41.
+- **Cost:** $41.13.
 
 ## Budget
 
+These figures come from `python -m spectra.voice budget --revision oct-23-26`.
+
 | Experiment | Cost |
 |---|---|
-| E1 Describe, three more samples | $3 |
-| E2 Recognize from portraits | $32 |
-| E3 Impression contest | $36 |
-| E4 Hide your own voice | $15 |
-| E5 Accent contagion | $24 |
-| E6 v2 replication | $36 |
-| **Subtotal** | **$146** |
-| Optional E7, two more samples | $41 |
-| **Total with E7** | **$187** |
+| E1 Describe, three more samples | $3.13 |
+| E2 Recognize from portraits | $32.84 |
+| E3 Impression contest | $34.92 |
+| E4 Hide your own voice | $11.84 |
+| E5 Accent contagion | $26.80 |
+| E6 v2 replication | $34.96 |
+| **Approved total** | **$144.49** |
+| Optional E7, two more samples (not approved) | $41.13 |
 
 Estimates assume no retries. The 2026-10-25 run overshot its estimate by about 6%.
 
-## Before this becomes binding
+## Deviations
 
-1. Write `spectra/voice.py` (E3–E5 runners and scorers), the portrait source for `guess.py` (E2), and a classifier
-   entry point in `spectra.attribute` that trains on real answers and scores new texts. Test each.
-2. Run every experiment as a dry run, to fix prompt lists and exact message texts and confirm the costs.
-3. Rename this file to a dated pre-registration, record its commit, push it, and only then make the first call.
+None so far.

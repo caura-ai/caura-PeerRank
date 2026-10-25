@@ -243,6 +243,42 @@ def learning_curve(df: pd.DataFrame, models: list[str], sizes=CURVE_SIZES, repea
     return out
 
 
+class CharClassifier:
+    """The character classifier as a reusable reference: fit on real answers, then score any new text.
+
+    Phase 2 trains it on the real answers of one or more runs to prompts an experiment does not use, and asks it who
+    wrote an imitation, a rewrite or an answer given another model's notes.
+    """
+
+    def __init__(self, models: list[str]):
+        self.models = list(models)
+
+    def fit(self, df: pd.DataFrame) -> "CharClassifier":
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.linear_model import LogisticRegression
+
+        df = df[df.model.isin(self.models)]
+        self.vec = TfidfVectorizer(analyzer="char", ngram_range=(2, 5), min_df=3, max_features=200000, sublinear_tf=True)
+        X = self.vec.fit_transform(df.prose)
+        self.clf = LogisticRegression(max_iter=3000, C=4.0).fit(X, df.model.map(self.models.index).to_numpy())
+        return self
+
+    def predict_proba(self, texts) -> np.ndarray:
+        """(texts x models) probabilities. Texts are raw answers; code blocks are removed as in training."""
+        from spectra.analyze import split_code
+
+        proba = np.zeros((len(texts), len(self.models)))
+        proba[:, self.clf.classes_] = self.clf.predict_proba(self.vec.transform([split_code(t or "")[0] for t in texts]))
+        return proba
+
+
+def reference_classifier(revisions: list[str], prompts: dict, models: list[str], exclude=()) -> CharClassifier:
+    """A CharClassifier trained on the real answers of these revisions, leaving out the prompts in `exclude`."""
+    frames = [load_answers(DATA_ROOT / rev, prompts) for rev in revisions]
+    df = pd.concat(frames, ignore_index=True)
+    return CharClassifier(models).fit(df[~df.prompt_id.isin(set(exclude))])
+
+
 def print_attribution(res: dict):
     pct = lambda v: f"{100 * v:.1f}%"  # noqa: E731
     span = lambda ci: f"[{100 * ci[0]:.1f}, {100 * ci[1]:.1f}]"  # noqa: E731

@@ -570,6 +570,126 @@ def test_accent_separates_the_model_from_the_prompt():
     assert [c["text"] for c in out["cards"]["c"]][:1] == ["More emdash"] and out["cards"]["c"][0]["categories"] == [2, 2]
 
 
+def test_portraits_brief_self_or_peer_and_never_the_guessers_words():
+    from spectra.guess import Portraits
+
+    models = ["a", "b", "c", "d"]
+    records = [{"describer": d, "target": t, "profile": f"{d} on {t}", "sample": 1} for d in models for t in models]
+    records.append({"describer": "a", "target": "a", "profile": "sample zero", "sample": 0})
+    own = Portraits(records, models, "self")
+    assert own.authors == {m: m for m in models} and "- a: a on a" in own.text("any") and "sample zero" not in own.base
+    peer = Portraits(records, models, "peer", skip=("b",))  # b guesses, so it never wrote a portrait it reads
+    assert peer.authors == {"a": "c", "b": "c", "c": "d", "d": "a"}
+    with pytest.raises(ValueError):
+        Portraits(records, models, "self", sample=2)
+    plain = build_message("q", ["a", "b"], {"a": "x", "b": "y"}, ["a", "b"], brief="notes")
+    told = build_message("q", ["a", "b"], {"a": "x", "b": "y"}, ["a", "b"], brief="notes", brief_kind="portraits")
+    assert "<research>" in plain and "<portraits>" in told and "not measurements" in told
+    assert plain == build_message("q", ["a", "b"], {"a": "x", "b": "y"}, ["a", "b"], brief="notes", brief_kind="research")
+
+
+def test_game_contrast_pairs_any_two_games_on_shared_prompts():
+    from spectra.guess import game_contrast
+
+    def rec(pid, mode, right, research=None):
+        return {"guesser": "a", "prompt_id": pid, "mode": mode, "research": research, "assign": "permutation",
+                "labels": {"A": "a", "B": "b", "C": "c"},
+                "guesses": {"A": "a", "B": "b" if right else "c", "C": "c" if right else "b"}}
+
+    records = ([rec(f"q{i}", "described", True, "self, sample 1") for i in range(8)]
+               + [rec(f"q{i}", "blind", i < 2) for i in range(10)])
+    out = game_contrast(records, ["a", "b", "c"], "a", ("described", "self, sample 1", "permutation"),
+                        ("blind", None, "permutation"))
+    assert out["prompts"] == 8 and out["accuracy_a"] == 1.0 and out["accuracy_b"] == 0.25 and out["ci"][0] > 0
+    assert game_contrast(records, ["a", "b", "c"], "a", ("heldout", "x", "permutation"), ("blind", None, "permutation")) is None
+
+
+def test_config_variant_extends_the_main_config(tmp_path):
+    from spectra import load_config
+
+    (tmp_path / "base.yaml").write_text("revision: r1\nprompts: p1.json\nmodels: [m1, m2]\nsamples: 3\n", encoding="utf-8")
+    (tmp_path / "v2.yaml").write_text("extends: base.yaml\nprompts: p2.json\nrevision: null\n", encoding="utf-8")
+    cfg = load_config(tmp_path / "v2.yaml")
+    assert cfg["prompts"].endswith("p2.json") and cfg["revision"] is None and cfg["samples"] == 3
+    assert [m["name"] for m in cfg["models"]] == ["m1", "m2"]
+    real = load_config(SPECTRA_DIR / "config-v2.yaml")
+    assert real["prompts"].endswith("prompts_v2.json") and real["models"] == load_config()["models"]
+
+
+def _voice_fixture():
+    """Six prompts per category over two categories, three models with distinct, steady habits."""
+    from spectra import voice
+
+    models = ["a", "b", "c"]
+    prompts = [{"id": f"{c}{i}", "category": c, "prompt": f"Explain thing {c}{i}.", "tags": [], "constraint": None}
+               for c in ("explain", "advice") for i in range(8)]
+    prompts.append({"id": "trap", "category": "explain", "prompt": "Trap?", "tags": ["FP"], "constraint": None})
+    style = {"a": lambda i: "Short answer here. " * 3,
+             "b": lambda i: ("A longer answer — with dashes — that goes on and on. " * 8),
+             "c": lambda i: "## Heading\n\n- point one\n- point two\n- point three\n\n**Bold** ending."}
+    texts = {(m, p["id"]): style[m](i) + f" item {i}" for m in models for i, p in enumerate(prompts)}
+    traits = [{"key": "length", "label": "Length", "high": "Writes long answers", "low": "Keeps answers short",
+               "per_model": {"a": {"value": 10, "d": -1.0}, "b": {"value": 80, "d": 1.0}, "c": {"value": 20, "d": 0.1}}}]
+    analysis = {"traits": traits, "cards": {}, "signature": {}, "accent": {"cards": {"a": [{"text": "Keeps answers short"}]}},
+                "runstats": {m: {"total_cost_usd": 1.0, "responses": 100} for m in models}}
+    return voice, models, prompts, texts, analysis
+
+
+def test_voice_jobs_use_the_same_everyday_prompts_for_every_model(monkeypatch):
+    voice, models, prompts, texts, analysis = _voice_fixture()
+    picked = voice.pick_prompts(prompts, 3, "imitate")
+    assert len(picked) == 6 and "trap" not in {p["id"] for p in picked}
+    assert picked == voice.pick_prompts(prompts, 3, "imitate") != voice.pick_prompts(prompts, 3, "hide")
+    monkeypatch.setattr(voice, "SOURCES", ("b",))  # the module's sources are real panel names
+    monkeypatch.setattr(voice.providers, "input_cost", lambda entry, tokens: tokens * 1e-6)
+    jobs = {e: voice.jobs_for(e, models, prompts, texts, analysis) for e in voice.EXPERIMENTS}
+    n_imitate = 3 * 2 * len(models) * (1 + 2 * (len(models) - 1))
+    assert len(jobs["imitate"]) == n_imitate and len(jobs["hide"]) == 5 * 2 * len(models) * 2
+    profile_msgs = [j["message"] for j in jobs["imitate"] if j["condition"] == "PROFILE"]
+    assert all("Measured habits of" in m for m in profile_msgs)
+    assert all("way you" not in j["message"] for j in jobs["imitate"])
+    coached = next(j for j in jobs["hide"] if j["condition"] == "COACHED" and j["writer"] == "a")["message"]
+    assert "keeps answers short" in coached and texts[("a", next(j for j in jobs["hide"] if j["writer"] == "a")["prompt_id"])] in coached
+    notes = {p["id"] for p in voice.note_prompts(prompts)}
+    con = jobs["contagion"]
+    assert not notes & {j["prompt_id"] for j in con}
+    assert {j["condition"] for j in con} == {"NONE", "SELF", "SOURCE"}
+    assert all("imitat" not in j["message"] and "style" not in j["message"] for j in con)
+    source = next(j for j in con if j["condition"] == "SOURCE" and j["writer"] == "a")
+    assert source["other"] == "b" and texts[("b", sorted(notes)[0])] in source["message"]
+    cost, by = voice.estimate(jobs["hide"], analysis, {p["id"]: p for p in prompts})
+    assert cost >= 0.01 * len(jobs["hide"]) and set(by) == {"UNCOACHED", "COACHED"}
+
+
+def test_voice_scores_move_toward_the_target_and_the_source():
+    voice, models, prompts, texts, analysis = _voice_fixture()
+    P = {p["id"]: p for p in prompts}
+    base = voice.Baseline(texts, P, models)
+    assert voice.project(np.array([1.0, 1.0]), np.zeros(2), np.array([2.0, 2.0])) == 0.5
+    assert voice.project(np.ones(2), np.ones(2), np.ones(2)) is None
+    ci = voice.prompt_ci({"p1": [1.0, 0.0], "p2": [1.0]})
+    assert ci["mean"] == pytest.approx(2 / 3) and ci["prompts"] == 2
+    # a perfect impression: a writes b's own answer, so it lands on b
+    rows = [{"experiment": "imitate", "condition": "NAME", "writer": "a", "other": "b", "prompt_id": pid,
+             "category": P[pid]["category"], "text": texts[("b", pid)]} for pid in ("explain0", "advice0")]
+    out = voice.score_imitate(rows, base, None, sides={("a", "b", "length"): -1})
+    assert out["I1_name_moves_toward_target"]["mean"] == pytest.approx(1.0)
+    assert out["I3_moves_right_where_described_wrong"]["mean"] == 1.0  # it moved length the right way anyway
+    # after b's notes, a answers like b; after its own, like itself
+    con = []
+    for pid in ("explain1", "advice1"):
+        con.append({"experiment": "contagion", "condition": "SELF", "writer": "a", "other": "a", "prompt_id": pid,
+                    "category": P[pid]["category"], "text": texts[("a", pid)]})
+        con.append({"experiment": "contagion", "condition": "SOURCE", "writer": "a", "other": "b", "prompt_id": pid,
+                    "category": P[pid]["category"], "text": texts[("b", pid)]})
+    c = voice.score_contagion(con, base, None)
+    assert c["C1_moves_toward_source"]["mean"] > 0.5
+    sides = voice.described_sides([{"describer": "a", "target": "b", "sample": s, "estimates": {"words": 50}} for s in (1, 2)]
+                                  + [{"describer": "a", "target": "a", "sample": s, "estimates": {"words": 300}} for s in (1, 2)],
+                                  models)
+    assert sides[("a", "b", "length")] == -1  # a thinks b writes shorter than itself
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

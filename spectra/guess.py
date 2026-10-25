@@ -44,7 +44,8 @@ from spectra.profile import PARTS, Profile, parse_profile
 from spectra.run import select_prompts
 
 ANSWER_CHAR_CAP = 20000
-MODES = ("blind", "briefed", "heldout")
+MODES = ("blind", "briefed", "heldout", "described")
+PORTRAITS = ("self", "peer")
 ASSIGN = ("permutation", "independent")
 
 
@@ -287,8 +288,37 @@ def heldout_briefs(config_path: str, run_dir: Path, revision: str, models: list[
     return {h: p.text() for h, p in heldout_profiles(config_path, run_dir, revision, models, halves).items()}
 
 
+class Portraits:
+    """Written portraits from spectra.describe as a guessing brief: the same text for every prompt.
+
+    self: each model's description of its own writing. peer: each model as described by the next model in roster
+    order, skipping the model itself and any model in `skip` (the guessers, so a guesser never reads its own words).
+    The descriptions were written before their authors saw any answer, so nothing leaks into the game.
+    """
+
+    def __init__(self, records: list[dict], models: list[str], kind: str, sample: int = 1, skip=()):
+        got = {(r["describer"], r["target"]): r["profile"] for r in records
+               if r.get("profile") and int(r.get("sample", 0)) == sample}
+        self.authors = {}
+        for i, t in enumerate(models):
+            if kind == "self":
+                self.authors[t] = t
+            else:
+                ring = models[i + 1:] + models[:i]
+                self.authors[t] = next((m for m in ring if m not in set(skip)), None)
+        missing = [t for t, a in self.authors.items() if a is None or (a, t) not in got]
+        if missing:
+            raise ValueError(f"no sample-{sample} {kind} portrait for {', '.join(missing)}; run spectra.describe first")
+        intro = ("Each model's description of its own writing" if kind == "self"
+                 else "Each model as described by another model on the panel")
+        self.base = intro + ":\n\n" + "\n\n".join(f"- {t}: {' '.join(got[(self.authors[t], t)].split())}" for t in models)
+
+    def text(self, category: str | None = None) -> str:
+        return self.base
+
+
 def build_message(user_prompt: str, order: list[str], texts: dict[str, str], roster: list[str],
-                  brief: str | None = None, independent: bool = False) -> str:
+                  brief: str | None = None, independent: bool = False, brief_kind: str = "research") -> str:
     letters = string.ascii_uppercase[: len(order)]
     blocks = []
     for letter, model in zip(letters, order):
@@ -298,7 +328,15 @@ def build_message(user_prompt: str, order: list[str], texts: dict[str, str], ros
     letter_list = ", ".join(letters)
     example = ", ".join(f'"{L}": "<model>"' for L in letters)
     research = ""
-    if brief:
+    if brief and brief_kind == "portraits":
+        research = (
+            "Portraits of these same models are included below. Language models wrote them from what they "
+            "believe about each model, without seeing these answers; they are not measurements. "
+            "They are not labels for these answers, and they do not say which letter is which. "
+            "Use the portraits together with the writing in front of you.\n\n"
+            f"<portraits>\n{brief.strip()}\n</portraits>\n\n"
+        )
+    elif brief:
         research = (
             "Research notes from a measurement of these same models are included below. "
             "The notes describe how each model usually writes across many prompts. "
@@ -306,6 +344,7 @@ def build_message(user_prompt: str, order: list[str], texts: dict[str, str], ros
             "Use the notes together with the writing in front of you.\n\n"
             f"<research>\n{brief.strip()}\n</research>\n\n"
         )
+    if brief:
         how = (
             "The answers are labeled with letters. Those letters were shuffled and carry no information "
             "about the author. The answers are not signed. One of them may be your own, but you are not "
@@ -376,7 +415,8 @@ def game_title(key: tuple) -> str:
     mode, research, assign, profile = _full_key(key)
     title = {"blind": "Just guess",
              "briefed": f"Guess from the research ({research} notes)",
-             "heldout": "Guess from held-out research (notes from the other half of the prompts)"}[mode]
+             "heldout": "Guess from held-out research (notes from the other half of the prompts)",
+             "described": f"Guess from portraits the models wrote ({research})"}[mode]
     title += ", each answer judged on its own" if assign == "independent" else ""
     return title + (f", profile with {profile.replace('+', ', ')}" if profile != "base" else "")
 
@@ -849,6 +889,44 @@ def profile_contrasts(records: list[dict], models: list[str], guesser: str, mode
     return out
 
 
+def game_contrast(records: list[dict], models: list[str], guesser: str, key_a: tuple, key_b: tuple,
+                  reps: int = 1000, seed: int = 7) -> dict | None:
+    """One guesser's accuracy in game A minus game B, on the prompts both share, own answers left out.
+
+    Any two games, of any mode (profile_contrasts stays as pre-registered for profile variants). The interval
+    resamples the shared prompts, so it is paired.
+    """
+    key_a, key_b = _full_key(key_a), _full_key(key_b)
+    tables = {key_a: {}, key_b: {}}
+    for r in records:
+        if r.get("guesser") == guesser and isinstance(r.get("guesses"), dict) and isinstance(r.get("labels"), dict):
+            k = game_key(r)
+            if k in tables:
+                cell = [0, 0]
+                for letter, author in r["labels"].items():
+                    if author in models and author != guesser:
+                        cell[0] += int(r["guesses"].get(letter) == author)
+                        cell[1] += 1
+                tables[k][(r["prompt_id"], r.get("sample", 0))] = cell  # a retried call replaces the earlier one
+    a, b = tables[key_a], tables[key_b]
+    shared = sorted(set(a) & set(b))
+    if not shared:
+        return None
+
+    def acc(prompts, table):
+        n = sum(table[p][1] for p in prompts)
+        return sum(table[p][0] for p in prompts) / n if n else 0.0
+
+    rng = random.Random(seed)
+    diffs = []
+    for _ in range(reps):
+        pick = [shared[rng.randrange(len(shared))] for _ in shared]
+        diffs.append(acc(pick, a) - acc(pick, b))
+    diffs.sort()
+    return {"prompts": len(shared), "accuracy_a": acc(shared, a), "accuracy_b": acc(shared, b),
+            "gain": acc(shared, a) - acc(shared, b), "ci": [diffs[int(0.025 * reps)], diffs[int(0.975 * reps) - 1]]}
+
+
 def print_contrasts(guesser: str, rows: list[dict]):
     if not rows:
         print(f"{guesser}: no profile variant shares prompts with a plain-profile game yet.")
@@ -871,7 +949,7 @@ def estimate_cost(jobs: list[tuple], mode: str, extra_chars: dict) -> str:
     Earlier plain-profile (or blind) calls give each guesser's mean cost; extra_chars {(guesser, prompt, sample):
     characters beyond the plain profile} adds that text at each guesser's input price, about 4 characters a token.
     """
-    profiled = mode in ("briefed", "heldout")
+    profiled = mode != "blind"
     costs = {}
     for path in sorted(DATA_ROOT.glob("*/guesses.jsonl")):
         for r in load_jsonl(path):
@@ -900,7 +978,12 @@ async def main():
                     help="in-flight calls per provider (default: config), capped by PeerRank's PROVIDER_CONCURRENCY")
     ap.add_argument("--mode", choices=MODES, default="blind",
                     help="blind: prompt and answers only. briefed: also a Spectra research profile. "
-                         "heldout: briefed with notes from the other half of this run's prompts")
+                         "heldout: briefed with notes from the other half of this run's prompts. "
+                         "described: portraits the models wrote with spectra.describe instead of measured notes")
+    ap.add_argument("--portraits", choices=PORTRAITS, default=None,
+                    help="described: each model's portrait of itself (self) or of it by another model (peer)")
+    ap.add_argument("--describe-sample", type=int, default=1,
+                    help="described: which sample of descriptions.jsonl the portraits come from")
     ap.add_argument("--research", default=None,
                     help="revision whose analysis.json briefs the guessers (briefed mode; default: this revision)")
     ap.add_argument("--independent", action="store_true",
@@ -925,6 +1008,10 @@ async def main():
         raise SystemExit(str(e))
     if args.mode == "blind" and profile != "base":
         raise SystemExit("--profile needs --mode briefed or heldout; the blind game has no profile")
+    if (args.mode == "described") != bool(args.portraits):
+        raise SystemExit("--mode described needs --portraits self|peer, and --portraits needs --mode described")
+    if args.mode == "described" and profile != "base":
+        raise SystemExit("--profile parts come from measurements; --mode described uses portraits only")
 
     cfg = load_config(args.config)
     run_dir = revision_dir(cfg, args.revision)
@@ -944,7 +1031,8 @@ async def main():
     responses = load_jsonl(run_dir / "responses.jsonl")
     rounds = {k: v for k, v in panel_answers(responses, models).items() if k[0] in chosen}
     assign = "independent" if args.independent else "permutation"
-    research_rev = {"blind": None, "briefed": args.research or cfg["revision"], "heldout": cfg["revision"]}[args.mode]
+    research_rev = {"blind": None, "briefed": args.research or cfg["revision"], "heldout": cfg["revision"],
+                    "described": f"{args.portraits}, sample {args.describe_sample}"}[args.mode]
     key = (args.mode, research_rev, assign, profile)
     out_path = run_dir / "guesses.jsonl"
     halves = holdout_halves(all_prompts)  # over the full set, so a --limit run keeps the same halves
@@ -967,6 +1055,16 @@ async def main():
             briefs = heldout_profiles(args.config, run_dir, cfg["revision"], models, halves, profile)
             print(f"Held-out profiles '{profile}': " + ", ".join(f"half {h} {len(p.text())} characters before any "
                                                                  "category section" for h, p in briefs.items()))
+        elif args.mode == "described":
+            skip = guessers if len(guessers) < len(models) else ()
+            try:
+                shared = Portraits(load_jsonl(run_dir / "descriptions.jsonl"), models, args.portraits,
+                                   args.describe_sample, skip)
+            except ValueError as e:
+                raise SystemExit(str(e))
+            print(f"Portraits ({research_rev}): " + ", ".join(f"{t} by {a}" for t, a in shared.authors.items())
+                  + f"; {len(shared.base)} characters")
+            briefs = {"A": shared, "B": shared}
         else:
             briefs = None
         records = load_jsonl(out_path)
@@ -988,7 +1086,8 @@ async def main():
             p = briefs[halves[pid]]
             brief = p.base if plain else p.text(prompts[pid]["category"])
         return order, build_message(prompts[pid]["prompt"], order, round_["texts"], models,
-                                    brief=brief, independent=args.independent)
+                                    brief=brief, independent=args.independent,
+                                    brief_kind="portraits" if args.mode == "described" else "research")
 
     if args.dry_run:
         briefs, jobs, records = prepare()
