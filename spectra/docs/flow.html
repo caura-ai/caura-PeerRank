@@ -73,13 +73,19 @@
   .join .line { height: 1px; background: var(--line); }
   .join span { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
+  .modes.four { grid-template-columns: repeat(4, 1fr); }
+  .prereg { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .prereg li { counter-increment: s; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: var(--muted); }
+  .prereg li::before { content: counter(s); display: block; font: 500 20px/1 Georgia, serif; color: var(--amber); margin-bottom: 6px; }
+  .prereg li b { color: var(--ink); }
+  .prereg code, .box code, .out code, .note code { font-family: Consolas, "Cascadia Mono", ui-monospace, monospace; font-size: 12px; }
   .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .report-grid div { background: var(--green-soft); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
   .report-grid b { display: block; margin-bottom: 2px; }
 
   footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
   @media (max-width: 800px) {
-    .sources, .modes, .report-grid, .step { grid-template-columns: 1fr; }
+    .sources, .modes, .modes.four, .report-grid, .step, .prereg { grid-template-columns: 1fr; }
     h1 { font-size: 32px; }
   }
 </style>
@@ -87,7 +93,7 @@
 <body>
 <main>
   <h1>Spectra</h1>
-  <p class="lede">How a revision is built. Spectra profiles how the PeerRank roster writes. It does not score answer quality. Every model gets the same prompts with no system prompt, through PeerRank’s providers.</p>
+  <p class="lede">How a revision is built, and the experiments that run on it. Spectra measures how frontier models write: their accents. It does not score answer quality. Every model gets the same prompts with no system prompt, through the provider layer it shares with PeerRank. Paid experiments run only after a pre-registration is committed.</p>
   <div class="legend">
     <span><i class="p"></i>Process</span>
     <span><i class="f"></i>File</span>
@@ -99,7 +105,7 @@
     <article class="box">
       <span class="kicker">Config</span>
       <h3>spectra/config.yaml</h3>
-      <p>Revision tag, roster, coders, concurrency, and the empty system prompt.</p>
+      <p>Revision tag, roster, coders, concurrency, and the empty system prompt. Variants change only what differs, through <code>extends:</code>: <code>config-v2</code> (the second prompt set), <code>config-s3</code> (three answers per prompt, fewer calls at once), <code>config-8</code> and <code>config-8-v2</code> (eight models).</p>
     </article>
     <article class="box">
       <span class="kicker">Prompts</span>
@@ -109,7 +115,7 @@
     <article class="box">
       <span class="kicker">Models</span>
       <h3>Six profiled models</h3>
-      <p>Astra, Fable, Opus, Argon, Flash, Muse. Calls go through <code>spectra/providers.py</code>.</p>
+      <p>Astra, Fable, Opus, Argon, Flash, Muse. The eight-model test adds grok-4.7 and kimi-k3. Calls go through <code>spectra/providers.py</code>.</p>
     </article>
   </div>
 
@@ -140,7 +146,7 @@
       <div class="chips">
         <span>answers first</span><span>false premise</span><span>pasted error</span><span>vague request</span><span>user’s opinion</span><span>warmth</span><span>does extra</span>
       </div>
-      <p style="margin-top:8px">Coders: grok-4.7 and deepseek-v4-pro. Style traits do not need this step.</p>
+      <p style="margin-top:8px">Coders: grok-4.7 and deepseek-v4-pro on the six-model runs; deepseek-v4-pro and mistral-large on the eight-model revisions, where grok-4.7 is in the panel and no model may label its own answers. Style traits do not need this step.</p>
       <p style="margin-top:8px"><code>python -m spectra.tiebreak --coder &lt;model&gt;</code>: a third coder from another family labels only the answers the two disagree on and writes <strong>tiebreak.json</strong> with the majority of three. <code>codes.jsonl</code> is not changed.</p>
     </div>
   </section>
@@ -151,20 +157,21 @@
     <div class="proc">
       <h3>3. Measure</h3>
       <p>Style is computed from the text. Behavior comes from the codes when they exist. Nothing here is a quality score.</p>
-      <div class="cmd">python -m spectra.analyze</div>
+      <div class="cmd">python -m spectra.analyze --previous &lt;revision&gt;</div>
     </div>
     <div class="out">
       <strong>analysis.json</strong> and <strong>features.csv</strong>
       <div class="chips">
         <span>trait profiles</span><span>signature words</span><span>limits met</span><span>style map</span><span>author classifier</span><span>run cost and latency</span>
       </div>
+      <p style="margin-top:8px"><b>The accent:</b> for each everyday trait, how much of the variation between answers the model explains and how much the prompt; whether the categories rank the models alike (Kendall’s W); whether the order holds in the <code>--previous</code> revision; a family tree of the voices; and each model’s accent card.</p>
     </div>
   </section>
 
   <h2>The guessing game</h2>
   <p class="sub">A second operation on the same answers. Each model sees every reply with the author names removed and matches them to the roster. It is not told which model it is. Letters are shuffled separately for each guesser. Its own answer is left out of the headline scores.</p>
 
-  <div class="modes">
+  <div class="modes four">
     <article class="mode">
       <h3>Blind</h3>
       <p>The prompt, the answers, and the roster names. No measured profile.</p>
@@ -179,6 +186,11 @@
       <h3>Held out</h3>
       <p>Prompts split in half by category. Each half is guessed with notes measured only on the other half, so the answer in front of the model did not write its own brief.</p>
       <p style="margin-top:8px"><code>--mode heldout</code></p>
+    </article>
+    <article class="mode">
+      <h3>Portraits</h3>
+      <p>The brief is replaced by the portraits the models wrote of themselves, or of each other, in the self-knowledge probe.</p>
+      <p style="margin-top:8px"><code>--mode described --portraits self|peer</code></p>
     </article>
   </div>
   <p class="note"><b>Assignment.</b> The default asks for each model once, so naming one answer narrows the rest. <code>--independent</code> asks for a name per answer, with repeats allowed. <code>--dry-run</code> builds the messages and estimates cost without calling a model. Held-out notes are written under <code>holdout/half-A</code> and <code>holdout/half-B</code>.</p>
@@ -231,8 +243,8 @@
     <div><b>Usage</b>Which model fits a need, and how to drive each one.</div>
   </div>
 
-  <h2>Add-ons that read the same files</h2>
-  <p class="sub">Neither is needed for a report. Each writes its own file next to the others.</p>
+  <h2>Experiments and add-ons that read the same files</h2>
+  <p class="sub">None is needed for a report. Each writes its own file next to the others. The paid ones run only after a pre-registration, below.</p>
 
   <section class="step">
     <div class="proc optional">
@@ -243,7 +255,7 @@
     <div class="out">
       <strong>attribution.json</strong>
       <div class="chips">
-        <span>words + style</span><span>character n-grams</span><span>across runs</span><span>text ablations</span><span>learning curve</span>
+        <span>words + style</span><span>character n-grams</span><span>across runs</span><span>text ablations</span><span>learning curve</span><span>recall per model</span>
       </div>
     </div>
   </section>
@@ -253,7 +265,7 @@
   <section class="step">
     <div class="proc optional">
       <h3>Self-knowledge probe</h3>
-      <p>Paid, 36 calls. Each model describes its own writing and every other model's, with numeric estimates of the measured traits. The estimates are scored against a run's analysis.</p>
+      <p>Paid, one call per describer and target: 36 with six models, 64 with eight. Each model describes its own writing and every other model's, with numeric estimates of the measured traits. The estimates are scored against a run's analysis.</p>
       <div class="cmd">python -m spectra.describe [--sample N] [--measured &lt;revision&gt;]</div>
     </div>
     <div class="out">
@@ -264,6 +276,78 @@
       <p style="margin-top:8px">Pre-registrations live in <code>spectra/prereg/</code> and are committed before the data they cover.</p>
     </div>
   </section>
+
+  <div class="down"></div>
+
+  <section class="step">
+    <div class="proc optional">
+      <h3>Voice experiments</h3>
+      <p>Paid. Each model writes as another model, hides its own voice, or answers after reading notes: its own, another model’s, or (the style swap) notes rewritten to cross whose content they carry with whose voice they are in.</p>
+      <div class="cmd">python -m spectra.voice imitate|hide|contagion|swap [--dry-run]</div>
+      <div class="cmd">python -m spectra.voice budget | score</div>
+    </div>
+    <div class="out">
+      <strong>voice.jsonl</strong> and <strong>voice.json</strong>
+      <div class="chips">
+        <span>imitation, beyond self-imitation</span><span>hiding, plain and coached</span><span>contagion</span><span>style swap: voice and content</span><span>content check on the rewrites</span>
+      </div>
+      <p style="margin-top:8px">The swap runs in two stages and refuses to collect answers until every rewrite exists. <code>budget</code> prices every experiment from the run’s measured cost per answer before anything is called.</p>
+    </div>
+  </section>
+
+  <div class="down"></div>
+
+  <section class="step">
+    <div class="proc optional">
+      <h3>Three answers per prompt</h3>
+      <p>Paid answers, free scoring. A copy of a revision collects two more answers per prompt, so a model’s steady accent, its reactions to particular prompts, and noise can be told apart.</p>
+      <div class="cmd">python -m spectra.extend --from &lt;rev&gt; --to &lt;rev&gt;-s3</div>
+      <div class="cmd">python -m spectra.run --config spectra/config-s3.yaml</div>
+      <div class="cmd">python -m spectra.replicates --config spectra/config-s3.yaml</div>
+    </div>
+    <div class="out">
+      <strong>replicates.json</strong>
+      <div class="chips">
+        <span>model, prompt, reaction, noise</span><span>F test of reactions</span><span>variance components with intervals</span><span>robustness checks</span><span>self-consistency</span>
+      </div>
+      <p style="margin-top:8px">The first answers are copied unchanged, so the published revision is never touched.</p>
+    </div>
+  </section>
+
+  <div class="down"></div>
+
+  <section class="step">
+    <div class="proc optional">
+      <h3>A larger panel</h3>
+      <p>Paid. A copy of a revision adds models: their answers are collected, coders relabel what they must, and the analysis, descriptions and contagion run again on the larger panel.</p>
+      <div class="cmd">python -m spectra.extend --from &lt;rev&gt; --to &lt;rev&gt;-p8 --keep-coder deepseek-v4-pro</div>
+      <div class="cmd">python -m spectra.run --config spectra/config-8.yaml</div>
+      <div class="cmd">python -m spectra.generalize</div>
+    </div>
+    <div class="out">
+      <strong>extend.json</strong> and <strong>panel8.json</strong>
+      <div class="chips">
+        <span>accent order on new prompts</span><span>new models’ accent cards</span><span>descriptions, 8 × 8</span><span>contagion with new readers</span><span>readers compared</span><span>both coder pairs</span>
+      </div>
+      <p style="margin-top:8px"><code>extend</code> copies the answers, the kept coder’s labels and the contagion records, and refuses a revision that already has answers. <code>extend.json</code> records which models were there before.</p>
+    </div>
+  </section>
+
+  <h2>Pre-registration, step by step</h2>
+  <p class="sub">Every paid experiment after the first runs follows the same order. A deviation is appended to the registration; the registration itself is never edited.</p>
+  <ol class="prereg">
+    <li><b>Write it.</b> Hypotheses, metrics, prompt lists, exact messages and the analysis, in <code>spectra/prereg/&lt;date&gt;-&lt;name&gt;.md</code>.</li>
+    <li><b>Price it.</b> Dry runs build every message; <code>--dry-run</code> or <code>voice budget</code> gives the cost from measured prices.</li>
+    <li><b>Approve the budget.</b> No call is made before the cost estimate is approved.</li>
+    <li><b>Register it.</b> Commit and push the file together with its code before the first call. The commit is the timestamp.</li>
+    <li><b>Collect.</b> Run the registered commands; rerun to retry failures.</li>
+    <li><b>Score.</b> Run the registered scoring command, unchanged.</li>
+    <li><b>Report.</b> Write <code>&lt;name&gt;-results.md</code>: each test, its verdict, and every deviation with its reason.</li>
+    <li><b>Check.</b> The paper’s build compares each registration’s commit time with the first record it governs.</li>
+  </ol>
+
+  <h2>The paper and the brochure</h2>
+  <p class="sub"><code>spectra/article/make_assets.py</code> writes every number, table and figure of the paper into <code>spectra/article/generated/</code> from the run files; the text reads numbers only through those macros. The brochure’s newer cards quote the same macros.</p>
 
   <footer>Files for a revision live in data/spectra/&lt;revision&gt;/. The revision name matches a PeerRank revision, so the profile describes the same deployment.</footer>
 </main>

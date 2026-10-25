@@ -883,7 +883,7 @@ def shown(key, v):
     return {"words": f"{v:.0f} words", "per100": f"{per100} per 100 words", "score": f"{v:.0f} reading ease"}.get(unit, pct(v, 0))
 
 
-lines, kept = [], set()
+lines, kept, rec_json = [], set(), []
 for key, end, want, cost in REC_ROWS:
     r = rows_ac[key]
     if r["category_w"] < W_MIN or (r["run_to_run"] or 0) < RT_MIN:
@@ -894,6 +894,10 @@ for key, end, want, cost in REC_ROWS:
     other = (min if end == "high" else max)(vals, key=vals.get)
     lines.append(f"{want} & {tt(pick)} ({shown(key, vals[pick])}) & {tt(other)} ({shown(key, vals[other])}) & "
                  f"{num(r['category_w'])} & {num(r['run_to_run'])} & {cost} \\\\")
+    rec_json.append({"want": want, "pick": pick, "pick_value": shown(key, vals[pick]).replace("\\%", "%"), "other": other,
+                     "other_value": shown(key, vals[other]).replace("\\%", "%"), "w": r["category_w"], "runs": r["run_to_run"],
+                     "tradeoff": cost})
+(OUT / "recommend.json").write_text(json.dumps({"w_min": W_MIN, "rt_min": RT_MIN, "rows": rec_json}, indent=1), encoding="utf-8")  # read by the brochure
 (OUT / "tab_recommend.tex").write_text(
     "\\begin{tabular}{>{\\raggedright\\arraybackslash}p{3.0cm}llrr>{\\raggedright\\arraybackslash}p{4.4cm}}\n\\toprule\n"
     "Preference & Candidate & Other end & $W$ & Runs & Trade-off \\\\\n\\midrule\n"
