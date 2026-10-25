@@ -185,6 +185,7 @@ spectra/                 # Behavioral profiles (style, habits, guessing game)
   describe.py            # Self-knowledge probe: models describe their own and each other's habits
   attribute.py           # Author classifiers on the text (words, character n-grams), the guessers' reference
   voice.py               # Phase 2: impressions, hiding one's voice, accent contagion (runners, scorers, budget)
+  extend.py              # Start a larger panel's revision from an existing one (config-8.yaml: + grok-4.7, kimi-k3)
   analyze.py             # Features, traits, style map
   report.py              # HTML report
   prompts/               # prompts_v1.json (build and tune), prompts_v2.json (locked test set) + its .lock hash

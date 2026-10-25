@@ -891,6 +891,7 @@ python -m spectra.describe --revision <rev> [--sample N] [--measured <rev>]   # 
 python -m spectra.attribute --revision <rev> [--train-revision <rev>] [--what sets ablations curve]   # text classifiers (local)
 python -m spectra.voice imitate|hide|contagion --revision <rev> [--dry-run]   # phase 2 experiments (paid); budget, score: free
 python -m spectra.guess --revision <rev> --mode described --portraits self|peer   # guess from describe.py portraits (paid)
+python -m spectra.extend --from <rev> --to <rev>-p8 --keep-coder deepseek-v4-pro   # start a larger panel's revision (local)
 python -m spectra.report --revision <rev>            # report.html (local, no API calls)
 pytest tests/                                        # constraint checks, guess parsing, report builder
 ```

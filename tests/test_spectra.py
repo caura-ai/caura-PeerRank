@@ -718,6 +718,29 @@ def test_style_swap_crosses_content_with_voice(monkeypatch):
     assert out["content"]["mean"] == pytest.approx(0.0)
 
 
+def test_extend_copies_answers_and_the_kept_coder_only(tmp_path, monkeypatch):
+    from spectra import extend as ext
+    from spectra import load_config
+
+    monkeypatch.setattr(ext, "DATA_ROOT", tmp_path)
+    src = tmp_path / "old"
+    src.mkdir()
+    (src / "responses.jsonl").write_text("".join(json.dumps({"model": m, "prompt_id": "p1", "sample": 0, "text": "x"}) + "\n"
+                                                 for m in ("a", "b")), encoding="utf-8")
+    (src / "codes.jsonl").write_text("".join(json.dumps({"coder": c, "model": "a", "prompt_id": "p1", "sample": 0, "codes": {}})
+                                             + "\n" for c in ("keep", "drop")), encoding="utf-8")
+    (src / "voice.jsonl").write_text("".join(json.dumps({"experiment": e}) + "\n" for e in ("contagion", "imitate")),
+                                     encoding="utf-8")
+    rec = ext.extend("old", "new", "keep")
+    assert rec["copied"] == {"responses": 2, "codes": 1, "voice": 1} and rec["models_before"] == ["a", "b"]
+    with pytest.raises(SystemExit):
+        ext.extend("old", "new", "keep")  # never over a revision that has answers
+    eight = load_config(SPECTRA_DIR / "config-8-v2.yaml")  # extends config-8, which extends config.yaml
+    assert len(eight["models"]) == 8 and eight["prompts"].endswith("prompts_v2.json")
+    assert [c["name"] for c in eight["coders"]] == ["deepseek-v4-pro", "mistral-large"]
+    assert not {c["name"] for c in eight["coders"]} & {m["name"] for m in eight["models"]}
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

@@ -41,14 +41,19 @@ def _entry(m) -> dict:
     return {"name": m} if isinstance(m, str) else dict(m)
 
 
-def load_config(path=None) -> dict:
+def _read_config(path: Path) -> dict:
+    """A config file, with `extends` resolved: the named config (itself possibly extending another), with this
+    file's keys replacing its own."""
     import yaml  # here so --help works without it
 
-    path = Path(path or DEFAULT_CONFIG)
     cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if cfg.get("extends"):  # a variant config: the named config, with these keys replacing its own
-        base = yaml.safe_load((path.parent / cfg.pop("extends")).read_text(encoding="utf-8"))
-        cfg = {**base, **cfg}
+    if cfg.get("extends"):
+        cfg = {**_read_config(path.parent / cfg.pop("extends")), **cfg}
+    return cfg
+
+
+def load_config(path=None) -> dict:
+    cfg = _read_config(Path(path or DEFAULT_CONFIG))
     cfg.setdefault("samples", 1)
     cfg.setdefault("concurrency_per_model", 4)
     cfg.setdefault("timeout_seconds", 180)

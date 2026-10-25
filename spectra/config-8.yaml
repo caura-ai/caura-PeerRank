@@ -1,0 +1,18 @@
+# The 8-model generalization test (spectra/prereg/2026-10-25-panel-8.md): config.yaml with grok-4.7 and kimi-k3 added.
+# grok-4.7 joins the panel, so it can no longer code: mistral-large replaces it, beside deepseek-v4-pro, so no coder
+# shares a vendor with any panel model. Use it only with revisions of its own (spectra.extend starts them):
+#   python -m spectra.run --config spectra/config-8.yaml --revision oct-23-26-p8
+extends: config.yaml
+revision: null  # pass --revision explicitly
+models:
+  - gpt-6-astra
+  - claude-fable-5.1
+  - claude-opus-5.5
+  - gemini-4-argon
+  - gemini-3.8-flash
+  - muse-wonder-1.0
+  - grok-4.7
+  - kimi-k3
+coders:
+  - {name: deepseek-v4-pro, temperature: 0}
+  - {name: mistral-large, temperature: 0}

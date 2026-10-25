@@ -762,6 +762,12 @@ def score(run_dir: Path, revision: str, models: list[str], prompts: dict, texts:
             results[fn] = score_hide(mine, base, clf, texts)
         else:
             results[fn] = score_contagion(mine, base, clf)
+            ext = run_dir / "extend.json"  # a larger panel started by spectra.extend: the new readers alone
+            if ext.exists():
+                new = set(models) - set(json.loads(ext.read_text(encoding="utf-8"))["models_before"])
+                theirs = [r for r in mine if r["writer"] in new]
+                if theirs:
+                    results["E5_new_readers"] = score_contagion(theirs, base, clf) | {"readers": sorted(new)}
     swap_rows = [r for r in rows if r["experiment"] == "swap"]
     if swap_rows:
         used = {r["prompt_id"] for r in swap_rows} | {q["id"] for q in note_prompts(list(prompts.values()))}

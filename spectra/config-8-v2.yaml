@@ -1,0 +1,4 @@
+# The 8-model generalization test on the locked v2 prompts: config-8.yaml with prompts_v2.json.
+#   python -m spectra.run --config spectra/config-8-v2.yaml --revision v2-oct-25-26-p8
+extends: config-8.yaml
+prompts: prompts/prompts_v2.json
