@@ -690,6 +690,34 @@ def test_voice_scores_move_toward_the_target_and_the_source():
     assert sides[("a", "b", "length")] == -1  # a thinks b writes shorter than itself
 
 
+def test_style_swap_crosses_content_with_voice(monkeypatch):
+    voice, models, prompts, texts, analysis = _voice_fixture()
+    monkeypatch.setattr(voice, "SOURCES", ("b",))
+    notes = voice.note_prompts(prompts)
+    rw = voice.swap_rewrite_jobs(models, prompts, texts)
+    pairs = {(j["writer"], j["other"]) for j in rw}
+    assert pairs == {("a", "a"), ("b", "b"), ("c", "c"), ("b", "a"), ("a", "b"), ("b", "c"), ("c", "b")}
+    assert len(rw) == len(pairs) * len(notes) and all("Rewrite the answer" in j["message"] for j in rw)
+    rewrites = {(w, a, q["id"]): f"<{w} voicing {a} on {q['id']}>" for w, a in pairs for q in notes}
+    jobs = voice.swap_answer_jobs(models, prompts, rewrites)
+    assert {j["condition"] for j in jobs} == set(voice.SWAP_CELLS)
+    os_job = next(j for j in jobs if j["condition"] == "OS" and j["writer"] == "a")
+    assert f"<b voicing a on {notes[0]['id']}>" in os_job["message"]  # the reader's content in the source's voice
+    so_job = next(j for j in jobs if j["condition"] == "SO" and j["writer"] == "a")
+    assert f"<a voicing b on {notes[0]['id']}>" in so_job["message"]
+    assert not {j["prompt_id"] for j in jobs} & {q["id"] for q in notes}
+    # a reader that writes like whoever's voice it read, whatever the content: the voice effect is the whole way
+    P = {p["id"]: p for p in prompts}
+    base = voice.Baseline(texts, P, models)
+    rows = []
+    for j in jobs:
+        voiced_by = j["writer"] if j["condition"][1] == "O" else j["other"]
+        rows.append(dict(j, text=texts[(voiced_by, j["prompt_id"])]))
+    out = voice.score_swap(rows, base, None, [], texts)
+    assert out["voice"]["mean"] == pytest.approx(1.0) and out["voice"]["confirmed"]
+    assert out["content"]["mean"] == pytest.approx(0.0)
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])
