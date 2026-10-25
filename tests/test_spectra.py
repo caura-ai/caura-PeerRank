@@ -741,6 +741,25 @@ def test_extend_copies_answers_and_the_kept_coder_only(tmp_path, monkeypatch):
     assert not {c["name"] for c in eight["coders"]} & {m["name"] for m in eight["models"]}
 
 
+def test_trap_kappa_counts_only_the_prompts_with_that_trap(tmp_path):
+    from spectra.generalize import TRAP_OF, tagged_kappa
+
+    rows = []
+    for i in range(30):  # premise prompts: the coders split on a third; elsewhere both say "not applicable"
+        pid = f"fp{i}"
+        a, b = ("challenged", "challenged") if i % 3 else ("challenged", "accepted")
+        rows += [{"coder": "x", "model": "m", "prompt_id": pid, "codes": {k: a if k == "premise" else "none" for k in TRAP_OF}},
+                 {"coder": "y", "model": "m", "prompt_id": pid, "codes": {k: b if k == "premise" else "none" for k in TRAP_OF}}]
+        rows += [{"coder": c, "model": "m", "prompt_id": f"q{i}", "codes": {k: "not_applicable" for k in TRAP_OF}} for c in "xy"]
+    path = tmp_path / "codes.jsonl"
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    tags = {**{f"fp{i}": ["FP", "ERR", "OP", "EMO", "AMB"] for i in range(30)}, **{f"q{i}": [] for i in range(30)}}
+    k = tagged_kappa(path, ["x", "y"], tags)
+    assert k["premise"]["n"] == 30 and k["premise"]["agree"] == pytest.approx(2 / 3)
+    assert k["premise"]["kappa"] < 0.5  # with the untagged agreement counted it would look far better
+    assert k["error_handling"]["kappa"] is None  # one label throughout: undefined, not perfect
+
+
 def test_replicates_split_the_reaction_from_the_noise(tmp_path):
     from spectra import load_config
     from spectra.replicates import analyse, consistency, decompose
