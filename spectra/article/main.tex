@@ -8,12 +8,15 @@
 \usepackage{microtype}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{xcolor}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
 \emergencystretch=3em
+\providecommand{\bibfont}{}
+\renewcommand{\bibfont}{\small\raggedright}  % long titles and arXiv notes break lines instead of overflowing
 
 \input{generated/numbers.tex}
 \newcommand{\todo}[1]{\textcolor{red!70!black}{[TODO: #1]}}
@@ -151,7 +154,7 @@ As references, logistic-regression author classifiers \citep{pedregosa2011sklear
 \subsection{Can models hear accents?}
 \label{sec:hearing-method}
 \paragraph{Describe.}
-Each model describes its own writing and every other model's: a written portrait and numeric estimates of \numexpr 14\relax{} traits we measure, scored by rank against the measurements; every model is described by five others, which controls for describing oneself.
+Each model describes its own writing and every other model's: a written portrait and numeric estimates of \nEstimates{} traits we measure, scored by rank against the measurements; every model is described by five others, which controls for describing oneself.
 Five samples were collected, the later ones with the panel and estimates listed in a shuffled order.
 \paragraph{Recognize from portraits.}
 The strongest guesser, \texttt{gemini-4-argon}, plays the game with its brief replaced by the portraits: each model's portrait of itself, or of it by another model (never argon), and is compared with its own blind and measured-profile games on the same prompts.
@@ -364,7 +367,7 @@ Measurement makes the accent usable, as a description that transfers, a voice to
 \appendix
 
 \section{Label list for the coders}
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{The coders' labels and allowed values. A trap label applies only to prompts with that tag; elsewhere the coder answers ``not applicable''.}
 \label{tab:codebook}
@@ -372,7 +375,7 @@ Measurement makes the accent usable, as a description that transfers, a voice to
 \end{table}
 
 \section{Trait definitions}
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{The \nTraits{} traits. ``Style'' traits are computed from the text; ``behavior'' traits come from the coders' labels.}
 \label{tab:traits}
@@ -380,63 +383,63 @@ Measurement makes the accent usable, as a description that transfers, a voice to
 \end{table}
 
 \section{Additional results}
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.6\linewidth]{generated/fig_family.pdf}
 \caption{Family tree of the panel's voices, run \texttt{oct-23-26}: distances over the everyday traits' effect sizes, average linkage.}
 \label{fig:family}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\linewidth]{generated/fig_identification.pdf}
 \caption{Share of answers attributed to the right model in the guessing game. Grey bars: the word-and-style classifier, trained on the other half of the prompts. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
 \label{fig:ident}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.72\linewidth]{generated/fig_category.pdf}
 \caption{Identification by prompt category for a single guesser, blind and with the profile from other prompts. The dashed line is chance.}
 \label{fig:category}
 \end{figure}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{Profile variants, played by \texttt{gemini-4-argon} with the held-out profile (pre-registered). Accuracy on the prompts both games share; the interval resamples them.}
 \label{tab:variants}
 \input{generated/tab_variants.tex}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{The word-and-style author classifier on prompts it was not trained on, run \texttt{oct-23-26}, with 95\% intervals over prompts. Chance is \chance.}
 \label{tab:classifier}
 \input{generated/tab_classifier.tex}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{Per-model results in the guessing game, run \texttt{oct-23-26}.}
 \label{tab:recog}
 \input{generated/tab_recognition.tex}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{Selected traits, run \texttt{oct-23-26}. Bold marks the panel's highest value and underline its lowest.}
 \label{tab:profile}
 \resizebox{\linewidth}{!}{\input{generated/tab_profile.tex}}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering\small
 \caption{Trap outcomes, run \texttt{oct-23-26}: share of tagged prompts on which the behavior occurred, averaged over the two coders.}
 \label{tab:traps}
 \resizebox{\linewidth}{!}{\input{generated/tab_traps.tex}}
 \end{table}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{generated/fig_stylemap.pdf}
 \caption{Style map of the 16 style features, run \texttt{oct-23-26}. Left: every answer, with model averages as large dots. Right: the averages alone, zoomed. The first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.}
@@ -449,23 +452,28 @@ Prompt \fpPrompt{} asks for a graduation speech that mentions how the Wright bro
 \texttt{gpt-6-astra} and \texttt{claude-opus-5.5} opened with a correction and built the speech around the true figure; \fpModel{} wrote the speech with the false claim intact, and both coders labeled its premise handling ``accepted'', in both runs.
 
 \section{Reproduction}
+{\footnotesize
 \begin{verbatim}
-python -m spectra.run            --revision oct-23-26
-python -m spectra.code_behaviors --revision oct-23-26
-python -m spectra.analyze        --revision oct-23-26 --previous oct-14-26
-python -m spectra.guess          --revision oct-23-26                   # blind
-python -m spectra.guess          --revision oct-23-26 --mode briefed    # same-answers profile
-python -m spectra.guess          --revision oct-23-26 --mode heldout    # each model once
-python -m spectra.guess          --revision oct-23-26 --mode heldout --independent
-python -m spectra.tiebreak       --revision oct-23-26 --coder kimi-k3
-python -m spectra.attribute      --revision oct-23-26 --train-revision oct-14-26 --what sets ablations curve
-python -m spectra.describe       --revision oct-23-26 --sample N        # N = 0..4
-python -m spectra.guess          --revision oct-23-26 --mode described --portraits self --guessers gemini-4-argon
-python -m spectra.voice          imitate|hide|contagion --revision oct-23-26
-python -m spectra.run            --config spectra/config-v2.yaml --revision v2-oct-25-26
-python -m spectra.voice          score --revision oct-23-26
+R=oct-23-26
+python -m spectra.run --revision $R
+python -m spectra.code_behaviors --revision $R
+python -m spectra.analyze --revision $R --previous oct-14-26
+python -m spectra.guess --revision $R                    # blind
+python -m spectra.guess --revision $R --mode briefed     # profile from the same answers
+python -m spectra.guess --revision $R --mode heldout     # profile from other prompts
+python -m spectra.guess --revision $R --mode heldout --independent
+python -m spectra.tiebreak --revision $R --coder kimi-k3
+python -m spectra.attribute --revision $R --train-revision oct-14-26 \
+    --what sets ablations curve
+python -m spectra.describe --revision $R --sample N       # N = 0 to 4
+python -m spectra.guess --revision $R --mode described --portraits self \
+    --guessers gemini-4-argon                            # and --portraits peer
+python -m spectra.voice imitate --revision $R             # also: hide, contagion
+python -m spectra.run --config spectra/config-v2.yaml --revision v2-oct-25-26
+python -m spectra.voice score --revision $R
 python spectra/article/make_assets.py
 \end{verbatim}
+}
 Pre-registrations and results are in \texttt{spectra/prereg/}.
 
 \end{document}

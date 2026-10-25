@@ -454,14 +454,16 @@ when = {"premise": "FP prompts", "error_handling": "ERR prompts", "user_opinion"
 lines = [f"\\texttt{{{k.replace('_', chr(92) + '_')}}} & {', '.join(v).replace('_', chr(92) + '_')} & {when.get(k, 'every answer')} \\\\"
          for k, v in CODEBOOK.items()]
 (OUT / "tab_codebook.tex").write_text(
-    "\\begin{tabular}{lp{0.42\\linewidth}p{0.24\\linewidth}}\n\\toprule\nLabel & Allowed values & Judged on \\\\\n\\midrule\n"
+    "\\begin{tabular}{l>{\\raggedright\\arraybackslash}p{0.42\\linewidth}>{\\raggedright\\arraybackslash}p{0.24\\linewidth}}\n"
+    "\\toprule\nLabel & Allowed values & Judged on \\\\\n\\midrule\n"
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 # ---------------------------------------------------------------- traits table (appendix)
 lines = [f"{t['label']} & {t['group']} & {t['desc'].replace('%', chr(92) + '%').replace('&', chr(92) + '&')} \\\\"
          for t in A["traits"]]
 (OUT / "tab_traits.tex").write_text(
-    "\\begin{tabular}{llp{0.6\\linewidth}}\n\\toprule\nTrait & Layer & Definition \\\\\n\\midrule\n" + "\n".join(lines)
+    "\\begin{tabular}{ll>{\\raggedright\\arraybackslash}p{0.6\\linewidth}}\n\\toprule\nTrait & Layer & Definition \\\\\n\\midrule\n"
+    + "\n".join(lines)
     + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 # ---------------------------------------------------------------- figures
@@ -663,6 +665,8 @@ mac("curveTen", pct(ATT["curve"]["10"]["matched_accuracy"]))
 mac("curveTwenty", pct(ATT["curve"]["20"]["matched_accuracy"]))
 
 # describing: the first pre-registration's samples 0-1 and this one's 2-4
+from spectra.describe import ESTIMATES  # noqa: E402
+mac("nEstimates", len(ESTIMATES))
 desc = {0: json.loads((DATA / MAIN / "descriptions.json").read_text(encoding="utf-8"))}
 for s in (1, 2, 3, 4):
     desc[s] = json.loads((DATA / MAIN / f"descriptions-s{s}.json").read_text(encoding="utf-8"))
