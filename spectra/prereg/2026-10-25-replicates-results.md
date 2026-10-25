@@ -56,6 +56,19 @@ standard estimate from expected mean squares gives each part's share of one answ
 
 The median of model plus reactions is 24.9%. Reactions take a median 53% of what is neither model nor prompt.
 
+**Post hoc: intervals and robustness** (added after a review; `components_ci` and `robustness` in
+`replicates.json`).
+- **Intervals:** 2,000 resamples of prompts, one draw shared by all traits. Median components: model 4.1% (3.1% to
+  5.7%), reactions 19.9% (16.1% to 25.5%), noise 16.7% (14.8% to 21.3%), prompt 54.4% (43.2% to 60.6%).
+- **Robustness:** reactions exceed the steady accent in every check, by 2.3 to 5 times.
+
+| Median over the 12 traits | Model | Reactions | Noise | Prompt |
+|---|---|---|---|---|
+| All three answers | 4.1% | 19.9% | 16.7% | 54.4% |
+| The two same-day answers alone | 4.1% | 20.7% | 15.9% | 56.0% |
+| Everyday prompts only | 5.5% | 20.6% | 17.5% | 50.8% |
+| Ranks instead of values | 7.6% | 17.7% | 23.0% | 46.8% |
+
 ## Self-consistency
 
 Self-consistency is the share of a model's own variation that lies between prompts rather than between repeat
@@ -80,7 +93,8 @@ answers, averaged over traits.
 
 - **The accent's steady part is small and real: 4%.** Fresh answers reproduce it exactly (R2).
 - **Models write differently mostly through their reactions.** Each model reacts to particular prompts in its own
-  repeatable way. Those reactions are about five times the steady accent: 20% of an answer's variance against 4%.
+  repeatable way. Those reactions are about five times the steady accent: 20% of an answer's variance against 4%
+  (2.3 to 5 times across the post-hoc robustness checks).
   Together, which model wrote an answer accounts for about a quarter of each style trait, against a sixth for noise.
 - **The stereotype traits are reactions, not habits.** Warm openers, exclamations and caveats barely differ between
   models overall (0.1–1.5%), yet each model uses them on its own set of prompts (26–42%). Every model has these

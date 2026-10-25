@@ -401,19 +401,44 @@ kappa = A["agreement"]
 names = {"answer_first": "Answers first", "clarification": "Clarification", "premise": "False premise",
          "error_handling": "Pasted error", "user_opinion": "User's opinion", "emotional_ack": "Emotional acknowledgment",
          "unsolicited_advice": "Unasked advice", "moralizing": "Moral commentary", "tone": "Tone", "initiative": "Initiative"}
-lines = []
 agree, split = {}, {}
 for code in CODEBOOK:
     split[code] = sum(1 for d in both if d[coder_a][code] != d[coder_b][code])
     agree[code] = 1 - split[code] / len(both)
-for code in sorted(CODEBOOK, key=lambda c: -(kappa.get(c) or 0)):
-    lines.append(f"{names[code]} & {kappa[code]:.2f} & {pct(agree[code])} \\\\")
+# A trap label is scored only on the prompts carrying its trap: elsewhere both coders answer "not applicable", and
+# counting that agreement would inflate kappa. Clarification is coded everywhere but its trap is the ambiguous prompts.
+from spectra.analyze import cohen_kappa  # noqa: E402
+TRAP_OF = {"premise": "FP", "error_handling": "ERR", "user_opinion": "OP", "emotional_ack": "EMO", "clarification": "AMB"}
+tags_of = {p["id"]: p["tags"] for p in P}
+codes_both = [(pid, d) for (_, pid, _), d in codes.items() if coder_a in d and coder_b in d]
+tagged = {}
+for code, tag in TRAP_OF.items():
+    pairs = [(d[coder_a][code], d[coder_b][code]) for pid, d in codes_both if tag in tags_of[pid]]
+    a_, b_ = zip(*pairs)
+    k = cohen_kappa(a_, b_) if len(set(a_) | set(b_)) > 1 else None  # one label throughout: kappa is undefined
+    tagged[code] = {"kappa": k, "agree": sum(x == y for x, y in pairs) / len(pairs), "n": len(pairs), "tag": tag,
+                    "top": collections.Counter(a_ + b_).most_common(1)[0]}
+lines = []
+for code in sorted(CODEBOOK, key=lambda c: -((tagged[c]["kappa"] if c in tagged else kappa.get(c)) or 0)):
+    if code in tagged:
+        t = tagged[code]
+        k = f"{t['kappa']:.2f}" if t["kappa"] is not None else "--"
+        lines.append(f"{names[code]} & {t['tag']} ({t['n']}) & {k} & {pct(t['agree'])} \\\\")
+    else:
+        lines.append(f"{names[code]} & all ({len(both):,}) & {kappa[code]:.2f} & {pct(agree[code])} \\\\".replace(",", "{,}"))
 (OUT / "tab_kappa.tex").write_text(
-    "\\begin{tabular}{lrr}\n\\toprule\nLabel & Cohen's $\\kappa$ & Raw agreement \\\\\n\\midrule\n" + "\n".join(lines)
-    + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
-mac("kappaFP", f"{kappa['premise']:.2f}")
-mac("kappaERR", f"{kappa['error_handling']:.2f}")
-mac("kappaEMO", f"{kappa['emotional_ack']:.2f}")
+    "\\begin{tabular}{llrr}\n\\toprule\nLabel & Answers scored & Cohen's $\\kappa$ & Raw agreement \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+mac("kappaFP", f"{tagged['premise']['kappa']:.2f}")
+mac("kappaERR", f"{tagged['error_handling']['kappa']:.2f}")
+mac("kappaOP", f"{tagged['user_opinion']['kappa']:.2f}")
+mac("kappaAMB", f"{tagged['clarification']['kappa']:.2f}")
+mac("kappaOPAll", f"{kappa['user_opinion']:.2f}")
+mac("kappaERRAll", f"{kappa['error_handling']:.2f}")
+mac("nFPCoded", tagged["premise"]["n"])
+mac("nFPChallenged", sum(1 for pid, d in codes_both if "FP" in tags_of[pid] and d[coder_a]["premise"] == "challenged"))
+mac("nEMOCoded", tagged["emotional_ack"]["n"])
+assert tagged["emotional_ack"]["kappa"] is None and tagged["emotional_ack"]["agree"] == 1.0
 mac("kappaAF", f"{kappa['answer_first']:.2f}")
 mac("kappaMoral", f"{kappa['moralizing']:.2f}")
 mac("disagreeAF", pct(split["answer_first"] / len(both)))
@@ -878,6 +903,15 @@ mac("swapRewriter", pct(mc["named_rewriter"]))
 mac("swapAuthor", pct(mc["named_author"]))
 mac("nSwap", f"{sum(1 for r in voice_rows if r['experiment'] == 'swap' and r.get('text')):,}".replace(",", "{,}"))
 mac("nSwapRewrites", sum(1 for r in voice_rows if r["experiment"] == "swap-notes" and r.get("text")))
+cc = SW["content_check"]  # post hoc: names and numbers kept, added, and imported from the rewriter's own answer
+mac("ccSelfKept", pct(cc["self"]["kept"]["mean"], 0))
+mac("ccCrossKept", pct(cc["cross"]["kept"]["mean"], 0))
+mac("ccSelfNovel", pct(cc["self"]["novel"]["mean"], 0))
+mac("ccCrossNovel", pct(cc["cross"]["novel"]["mean"], 0))
+mac("ccImported", pct(cc["cross"]["imported"]["mean"]))
+mac("ccControl", pct(cc["cross"]["imported_control"]["mean"]))
+mac("ccExcess", signed(100 * cc["cross"]["imported_excess"]["mean"], 1))
+mac("ccExcessCI", span(cc["cross"]["imported_excess"]["ci"], 1, 100))
 mac("costSwap", f"\\${vcost['swap'] + vcost['swap-notes']:.0f}")
 
 # three answers per prompt (2026-10-25-replicates.md, python -m spectra.replicates)
@@ -900,8 +934,26 @@ mac("vcReact", pct(vc["model_x_prompt"], 0))
 mac("vcNoise", pct(vc["noise"], 0))
 mac("vcModelReact", pct(statistics.median(t["components"]["model"] + t["components"]["model_x_prompt"]
                                           for t in rp_traits.values()), 0))
-mac("reactRatio", ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][
-    round(vc["model_x_prompt"] / vc["model"])])
+words_n = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+mac("reactRatio", words_n[round(vc["model_x_prompt"] / vc["model"])])
+vc_ci, rob = RP["components_ci"]["median"], RP["median_robustness"]
+for part, name in (("model", "Model"), ("model_x_prompt", "React"), ("noise", "Noise"), ("prompt", "Prompt")):
+    mac(f"vc{name}CI", ci(vc_ci[part], 1))
+ratios = [vc["model_x_prompt"] / vc["model"]] + [r["model_x_prompt"] / r["model"] for r in rob.values()]
+mac("reactRatioLow", words_n[int(min(ratios))])  # rounded down, so the stated range covers every check
+mac("robRanksModel", pct(rob["ranks"]["model"]))
+mac("robRanksReact", pct(rob["ranks"]["model_x_prompt"], 0))
+mac("robEverydayModel", pct(rob["everyday_only"]["model"]))
+mac("robLaterReact", pct(rob["later_answers"]["model_x_prompt"], 0))
+mac("bootReps", f"{RP['components_ci']['reps']:,}".replace(",", "{,}"))
+rob_names = {"later_answers": "The two same-day answers alone", "everyday_only": "Everyday prompts only",
+             "ranks": "Ranks instead of values"}
+lines = [f"All three answers (main estimate) & {pct(vc['model'])} & {pct(vc['model_x_prompt'])} & {pct(vc['noise'])} & {pct(vc['prompt'])} \\\\"]
+lines += [f"{rob_names[c]} & {pct(r['model'])} & {pct(r['model_x_prompt'])} & {pct(r['noise'])} & {pct(r['prompt'])} \\\\"
+          for c, r in rob.items()]
+(OUT / "tab_robust.tex").write_text(
+    "\\begin{tabular}{lrrrr}\n\\toprule\nMedian over the style traits & Model & Reactions & Noise & Prompt \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 comp = lambda k, part: rp_traits[k]["components"][part]  # noqa: E731
 st_model = [comp(k, "model") for k in STEREO_KEYS]
 st_react = [comp(k, "model_x_prompt") for k in STEREO_KEYS]
@@ -938,13 +990,17 @@ mac("costReplicates", f"\\${sum(r.get('cost_usd') or 0 for r in rep_rows):.0f}")
 
 # table (appendix): each trait's variance components, and the interaction test
 order_r = sorted(rp_traits, key=lambda k: -comp(k, "model"))
-lines = [f"{label_of[k]} & {pct(comp(k, 'model'))} & {pct(comp(k, 'model_x_prompt'))} & {pct(comp(k, 'noise'))} & "
-         f"{pct(comp(k, 'prompt'))} & {num(rp_traits[k]['F'])} & {pct(rp_traits[k]['model'])} \\\\" for k in order_r]
-lines.append(f"\\midrule\nMedian & {pct(vc['model'])} & {pct(vc['model_x_prompt'])} & {pct(vc['noise'])} & {pct(vc['prompt'])} "
-             f"& & {pct(RP['median_shares']['model'])} \\\\")
+tci = RP["components_ci"]["traits"]
+with_ci = lambda v, band: f"{pct(v)} {{\\scriptsize ({ci(band, 1)})}}"  # noqa: E731
+lines = [f"{label_of[k]} & {with_ci(comp(k, 'model'), tci[k]['model'])} & {with_ci(comp(k, 'model_x_prompt'), tci[k]['model_x_prompt'])} & "
+         f"{pct(comp(k, 'noise'))} & {pct(comp(k, 'prompt'))} & {num(rp_traits[k]['F'])} & {pct(rp_traits[k]['model'])} \\\\"
+         for k in order_r]
+lines.append(f"\\midrule\nMedian & {with_ci(vc['model'], vc_ci['model'])} & {with_ci(vc['model_x_prompt'], vc_ci['model_x_prompt'])} & "
+             f"{pct(vc['noise'])} & {pct(vc['prompt'])} & & {pct(RP['median_shares']['model'])} \\\\")
 (OUT / "tab_reactions.tex").write_text(
-    "\\begin{tabular}{lrrrrrr}\n\\toprule\n& \\multicolumn{4}{c}{Share of one answer's variance} & & Model share \\\\\n"
-    "\\cmidrule(lr){2-5}\nTrait & Model & Reactions & Noise & Prompt & $F$ & (sum of squares) \\\\\n\\midrule\n"
+    "\\begin{tabular}{lrrrrrr}\n\\toprule\n& \\multicolumn{4}{c}{Share of one answer's variance (post hoc)} & "
+    "\\multicolumn{2}{c}{Pre-registered} \\\\\n\\cmidrule(lr){2-5}\\cmidrule(lr){6-7}\n"
+    "Trait & Model & Reactions & Noise & Prompt & $F$ & Model share of SS \\\\\n\\midrule\n"
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 
 # figure: what one answer is made of, trait by trait

@@ -1,15 +1,16 @@
-# Spectra article: *Language Models Cannot Hear Their Own Accents*
+# Spectra article: *Language Models Mishear Their Own Accents*
 
 The Spectra paper for arXiv (cs.CL). Since 2026-10-25 it is built around the accent story:
-- every model has a small, stable accent;
-- the models cannot hear it;
+- every model has a small, stable accent, and larger, repeatable reactions to particular prompts;
+- the models mishear it (they describe the stereotype of AI writing);
 - measurement makes it usable;
-- it is contagious.
+- it is contagious, mostly through content but also through voice.
 
-It draws on three runs:
+It draws on four runs:
 - `oct-23-26`: the main run, with the guessing games and the pre-registered voice experiments.
 - `oct-14-26`: the replication run.
 - `v2-oct-25-26`: the locked second prompt set.
+- `oct-23-26-s3`: the main run's prompts answered twice more (E7), for the reactions.
 
 The paper is standalone; PeerRank appears only as related work.
 

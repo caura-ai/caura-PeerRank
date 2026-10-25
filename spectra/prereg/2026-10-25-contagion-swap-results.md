@@ -17,8 +17,9 @@ and resample prompts.
 On the 120 cross rewrites, where one model voices another's content, the classifier named the rewriter 42.5% of the
 time and the content's author 25.8%. **Passed.** The rewrites changed the voice, so W1–W3 can be read.
 
-The change was partial: a quarter of the rewrites still read as their original author. Since the voice swap is
-incomplete, the voice effect below is probably an underestimate.
+The change was partial: a quarter of the rewrites still read as their original author. (An earlier version said the
+voice effect is therefore probably an underestimate. That does not follow: a partial swap weakens the effect, but
+content that a rewriter adds or drops could bias it either way. See the post-hoc content check below.)
 
 ## Pre-registered tests
 
@@ -44,6 +45,22 @@ incomplete, the voice effect below is probably an underestimate.
   about three times as much as their voice: 18.1% against 6.6%. The E5 effect of 20% is mostly content, with a
   smaller but reliable share of voice.
 - **E5 replicates.** Its effect reappears when every note is a rewrite: 24.8%, against 20.0%.
+
+## Post hoc: did the rewrites keep the content?
+
+Added after a review: the manipulation check shows that the voice changed, not that the content stayed.
+`voice.content_check` (in `voice.json` under `swap.content_check`) compares each rewrite with its original on
+fact-like tokens: numbers, and capitalized words that do not open a line or a sentence. Intervals resample
+rewrites.
+
+| | Self-rewrites (30) | Cross rewrites (120) |
+|---|---|---|
+| The original's names and numbers kept | 92.9% (86.4% to 97.9%) | 89.0% (85.9% to 92.0%) |
+| The rewrite's names and numbers that are new | 4.3% (1.6% to 7.7%) | 6.8% (4.5% to 9.5%) |
+
+The new names and numbers in cross rewrites come from the rewriter's own answer to that prompt 1.6% of the time,
+against 1.3% from another model's answer, a difference of +0.2 points (−0.2 to +0.8). We find no sign that
+rewriters carried their own facts into the notes. The check cannot see emphasis, recommendations or meaning.
 
 ## Deviations
 

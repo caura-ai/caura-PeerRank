@@ -57,6 +57,31 @@ def components(y: np.ndarray) -> dict:
     return {k: float(var[k] / whole) for k in PARTS}
 
 
+def components_ci(arrays: dict, prompt_ids: dict, reps: int = 2000, seed: int = 7) -> dict:
+    """Post hoc: 95% intervals for each trait's variance components and for their medians over traits, resampling
+    prompts (one draw of prompt ids per replicate, shared by every trait, as the traits are measured on the same
+    answers). arrays: {trait: models x prompts x samples}; prompt_ids: {trait: the prompt id of each column}."""
+    rng = np.random.default_rng(seed)
+    pool = sorted({p for ids in prompt_ids.values() for p in ids})
+    where = {k: {p: j for j, p in enumerate(ids)} for k, ids in prompt_ids.items()}
+    per = {k: {p: [] for p in PARTS} for k in arrays}
+    meds = {p: [] for p in PARTS}
+    for _ in range(reps):
+        draw = [pool[j] for j in rng.integers(0, len(pool), len(pool))]
+        got = {}
+        for k, y in arrays.items():
+            cols = [where[k][p] for p in draw if p in where[k]]
+            c = components(y[:, cols, :])
+            got[k] = c
+            for p in PARTS:
+                per[k][p].append(c[p])
+        for p in PARTS:
+            meds[p].append(float(np.median([got[k][p] for k in got])))
+    band = lambda v: [float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))]  # noqa: E731
+    return {"traits": {k: {p: band(v) for p, v in d.items()} for k, d in per.items()},
+            "median": {p: band(v) for p, v in meds.items()}, "reps": reps}
+
+
 def consistency(y: np.ndarray) -> float | None:
     """One model's prompts x samples: the share of its variance that lies between prompts (1 = fully repeatable)."""
     total = y.var()
@@ -110,12 +135,15 @@ def imitation_recheck(rows: list[dict], vecs: dict, base) -> dict:
             "drift_shrink": prompt_ci(shrink), "name_minus_self_averaged": prompt_ci(name_vs_self)}
 
 
-def analyse(run_dir: Path, prompts: dict, models: list[str], samples: int, imitation_rows=None) -> dict:
-    from spectra.voice import Baseline, load_texts, trait_columns
+def analyse(run_dir: Path, prompts: dict, models: list[str], samples: int, imitation_rows=None, reps: int = 2000) -> dict:
+    from scipy.stats import rankdata
+
+    from spectra.voice import Baseline, everyday, load_texts, trait_columns
 
     keys = [k for k, _ in trait_columns()]
     vecs = answer_vectors(run_dir, prompts, models, samples)
-    traits = {}
+    plain = {p["id"] for p in everyday(list(prompts.values()))}
+    traits, arrays, columns = {}, {}, {}
     for i, k in enumerate(keys):
         cells = [pid for pid in prompts if all((m, pid) in vecs and np.isfinite(vecs[(m, pid)][:, i]).all() for m in models)]
         if len(cells) < 10:
@@ -130,7 +158,15 @@ def analyse(run_dir: Path, prompts: dict, models: list[str], samples: int, imita
             d["later_answers"] = {p: later[p] for p in PARTS + ("p",)}
         d["consistency"] = {m: consistency(y[j]) for j, m in enumerate(models)}
         d["components"] = components(y)
-        traits[k] = d
+        # post-hoc robustness: the same-day answers alone, everyday prompts alone, and ranks instead of raw values
+        rob = {"ranks": components(rankdata(y, axis=None).reshape(y.shape))}
+        if samples >= 3:
+            rob["later_answers"] = components(y[:, :, 1:])
+        keep = [j for j, pid in enumerate(cells) if pid in plain]
+        if len(keep) >= 10:
+            rob["everyday_only"] = components(y[:, keep, :])
+        d["robustness"] = rob
+        traits[k], arrays[k], columns[k] = d, y, cells
     if not traits:
         raise SystemExit(f"No trait has {samples} answers per model on 10 prompts or more in {run_dir}")
     med = lambda f: float(np.median([f(t) for t in traits.values()]))  # noqa: E731
@@ -146,6 +182,12 @@ def analyse(run_dir: Path, prompts: dict, models: list[str], samples: int, imita
            "median_noise_later": med(lambda t: t["later_answers"]["noise"]) if samples >= 3 else None,
            "consistency": {m: float(np.mean([t["consistency"][m] for t in traits.values()
                                              if t["consistency"][m] is not None])) for m in models}}
+    if samples >= 2:
+        out["components_ci"] = components_ci(arrays, columns, reps)
+        out["median_robustness"] = {
+            check: {p: float(np.median([t["robustness"][check][p] for t in traits.values() if check in t["robustness"]]))
+                    for p in PARTS}
+            for check in ("later_answers", "everyday_only", "ranks") if any(check in t["robustness"] for t in traits.values())}
     if imitation_rows:
         base = Baseline(load_texts(run_dir), prompts, models)
         out["imitation"] = imitation_recheck(imitation_rows, vecs, base)

@@ -20,6 +20,7 @@ import hashlib
 import json
 import math
 import random
+import re
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -557,6 +558,72 @@ def score_swap(rows: list[dict], base: Baseline, clf, rewrite_rows: list[dict], 
     return out
 
 
+_NOT_NAMES = {"i", "i'm", "i've", "i'd", "i'll", "ai", "ok", "note"}
+
+
+def facts(text: str) -> set:
+    """Fact-like tokens of a text: numbers, and capitalized words that do not open a line or a sentence (names, titles,
+    places). Code blocks and markdown marks are set aside; names are lowercased without a possessive 's."""
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+    t = re.sub(r"```.*?```", " ", text or "", flags=re.S)
+    t = re.sub(r"[*_#>|`~]+", " ", t)
+    out = set()
+    for line in t.splitlines():
+        for sentence in re.split(r"(?<=[.!?:;])\s+|\s+[-–—]\s+", line):
+            words = re.findall(r"[A-Za-z][A-Za-z'\-]*|\d[\d,.:/%]*", sentence.strip())
+            for i, w in enumerate(words):
+                if w[0].isdigit():
+                    out.add(w.rstrip(".,:/").replace(",", ""))
+                elif i > 0 and w[0].isupper():
+                    name = re.sub(r"'s$", "", w.lower())
+                    if name not in _NOT_NAMES and name not in ENGLISH_STOP_WORDS:
+                        out.add(name)
+    return out
+
+
+def content_check(rewrite_rows: list[dict], texts: dict, prompts: dict, models: list[str], reps: int = 2000) -> dict:
+    """Post hoc, for the style swap: did rewriting keep the notes' facts, and did a rewriter slip in its own?
+
+    Per rewrite of an original answer, over fact-like tokens (`facts`): kept = share of the original's facts the
+    rewrite keeps; novel = share of the rewrite's facts that are in neither the original nor the note prompt;
+    imported = share of the rewrite's facts that are novel and appear in the rewriter's own answer to that prompt,
+    against imported_control, the same for each other model's answer (what chance overlap gives). A cross rewrite
+    importing more than chance would put the rewriter's content, not only its voice, into the notes. Intervals
+    resample rewrites (only five note prompts).
+    """
+    rng = np.random.default_rng(SEED)
+    rows = {"self": [], "cross": []}
+    for r in rewrite_rows:
+        w, a, pid = r["writer"], r["other"], r["prompt_id"]
+        orig = texts.get((a, pid))
+        if not orig or not r.get("text"):
+            continue
+        fo, fr, fp = facts(orig), facts(r["text"]), facts(prompts[pid]["prompt"])
+        new = fr - fo - fp
+        row = {"kept": len(fo & fr) / len(fo) if fo else None, "novel": len(new) / len(fr) if fr else None}
+        if w != a and fr and (w, pid) in texts:
+            row["imported"] = len(new & facts(texts[(w, pid)])) / len(fr)
+            others = [facts(texts[(m, pid)]) for m in models if m not in (w, a) and (m, pid) in texts]
+            row["imported_control"] = float(np.mean([len(new & f) / len(fr) for f in others])) if others else None
+        rows["self" if w == a else "cross"].append(row)
+
+    def mean_ci(vals):
+        v = np.array([x for x in vals if x is not None], dtype=float)
+        if not len(v):
+            return {"mean": None, "ci": None, "n": 0}
+        boots = v[rng.integers(0, len(v), size=(reps, len(v)))].mean(axis=1)
+        return {"mean": float(v.mean()), "ci": [float(np.percentile(boots, 2.5)), float(np.percentile(boots, 97.5))],
+                "n": int(len(v))}
+
+    out = {kind: {k: mean_ci([x.get(k) for x in rs]) for k in ("kept", "novel")} for kind, rs in rows.items()}
+    pairs = [x for x in rows["cross"] if x.get("imported") is not None and x.get("imported_control") is not None]
+    out["cross"]["imported"] = mean_ci([x["imported"] for x in pairs])
+    out["cross"]["imported_control"] = mean_ci([x["imported_control"] for x in pairs])
+    out["cross"]["imported_excess"] = mean_ci([x["imported"] - x["imported_control"] for x in pairs])
+    return out
+
+
 def score_portraits(run_dir: Path, models: list[str], revision: str, guesser: str = "gemini-4-argon",
                     sample: int = 1) -> dict | None:
     """E2: the portrait games against the measured profile and blind, for the one guesser that played them."""
@@ -772,7 +839,9 @@ def score(run_dir: Path, revision: str, models: list[str], prompts: dict, texts:
     if swap_rows:
         used = {r["prompt_id"] for r in swap_rows} | {q["id"] for q in note_prompts(list(prompts.values()))}
         clf = reference_classifier(["oct-14-26", revision], prompts, models, exclude=used)
-        results["swap"] = score_swap(swap_rows, base, clf, [r for r in rows if r["experiment"] == "swap-notes"], texts)
+        rewrite_rows = [r for r in rows if r["experiment"] == "swap-notes"]
+        results["swap"] = score_swap(swap_rows, base, clf, rewrite_rows, texts)
+        results["swap"]["content_check"] = content_check(rewrite_rows, texts, prompts, models)  # post hoc
     (run_dir / "voice.json").write_text(json.dumps(results, indent=2, default=float), encoding="utf-8")
     print(json.dumps(results, indent=1, default=lambda x: round(x, 4) if isinstance(x, float) else x)[:6000])
     print(f"-> {run_dir / 'voice.json'}")
