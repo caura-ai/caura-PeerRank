@@ -535,6 +535,41 @@ def test_learning_curve_trains_on_n_prompts_per_model():
     assert curve["32"]["matched_accuracy"] == 1.0
 
 
+def test_accent_separates_the_model_from_the_prompt():
+    from spectra.analyze import accent, kendall_w
+
+    assert kendall_w([[1, 2, 3], [1, 2, 3]]) == 1.0 and kendall_w([[1, 2, 3], [3, 2, 1]]) == 0.0
+    models = ["a", "b", "c"]
+    rng = np.random.default_rng(0)
+    rows = []
+    for i in range(40):
+        base = rng.normal(0, 3)  # each prompt sets most of the level
+        for j, m in enumerate(models):
+            rows.append({"model": m, "prompt_id": f"q{i}", "category": "explain" if i % 2 else "code",
+                         "emdash_per100": base + 0.8 * j + rng.normal(0, 0.1),  # a small, steady accent
+                         "hedges_per100": base + rng.normal(0, 1)})  # no accent at all
+    df = pd.DataFrame(rows)
+
+    def trait(key, col):
+        means = df.groupby("model")[col].mean()
+        sd = df.groupby("model")[col].std().mean()
+        return {"key": key, "label": key, "high": "More " + key, "low": "Less " + key,
+                "per_model": {m: {"value": float(means[m]), "d": float((means[m] - means.mean()) / sd)} for m in models}}
+
+    traits = [trait("emdash", "emdash_per100"), trait("hedging", "hedges_per100"),
+              dict(trait("hedging", "hedges_per100"), key="premise", tag="FP")]  # trap traits are left out
+    previous = {"meta": {"revision": "old"}, "traits": [dict(t) for t in traits]}
+    out = accent(df, models, traits, previous, vendors={"a": "x", "b": "x", "c": "y"})
+    rows_by = {r["key"]: r for r in out["traits"]}
+    assert set(rows_by) == {"emdash", "hedging"} and out["previous"] == "old"
+    em, he = rows_by["emdash"], rows_by["hedging"]
+    assert em["prompt_share"] > em["model_share"] > he["model_share"]  # small next to the prompt, yet far from zero
+    assert em["category_w"] == 1.0 and em["run_to_run"] == 1.0
+    fam = out["family"]
+    assert sorted(fam["order"]) == models and len(fam["merges"]) == 2 and fam["same_vendor"] is not None
+    assert [c["text"] for c in out["cards"]["c"]][:1] == ["More emdash"] and out["cards"]["c"][0]["categories"] == [2, 2]
+
+
 def test_matching_names_each_model_once_per_prompt():
     df = pd.DataFrame({"prompt_id": ["p1"] * 3 + ["p2"] * 2, "sample": [0] * 5, "model": ["a", "b", "c", "a", "b"]})
     proba = np.array([[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2, 0.6], [0.1, 0.8, 0.1], [0.1, 0.8, 0.1]])

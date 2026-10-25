@@ -537,6 +537,109 @@ def distinctiveness(df, models):
                     "halves trains on one half of the prompts and tests on the other, the game's held-out split."}
 
 
+# ----------------------------------------------------------------------------- accent
+def _trait_column(trait):
+    return dict((k, col) for k, col, *_ in STYLE_TRAITS).get(trait["key"], "code_" + trait["key"])
+
+
+def kendall_w(ranks):
+    """Agreement of several rankings of the same items (rows = rankers), 0 to 1, without a tie correction."""
+    R = np.asarray(ranks, dtype=float)
+    m, n = R.shape
+    if m < 2 or n < 2:
+        return None
+    S = ((R.sum(axis=0) - m * (n + 1) / 2) ** 2).sum()
+    return float(12 * S / (m ** 2 * (n ** 3 - n)))
+
+
+def accent(df, models, traits, previous=None, vendors=None):
+    """How much of each everyday trait is a model's own accent, and which models sound alike.
+
+    Everyday traits leave out the trap behaviors, which rest on a few tagged prompts, and limit adherence. Per trait,
+    on prompts every model answered (samples averaged first): the share of the variation between answers that is
+    explained by which model wrote it (model_share) and by which prompt it answers (prompt_share), from a two-way
+    main-effects decomposition; the rest is the model's reaction to that prompt plus noise. category_w is Kendall's W
+    of the model order across categories (1: every category ranks the models the same way). With previous, another
+    revision's analysis, run_to_run is the Spearman agreement of the six model means.
+    family: Euclidean distances between models over the everyday traits' effect sizes, the average-linkage merges
+    (ids below the number of models are models, the rest are earlier merges), and mean distances within and across
+    vendors when vendors are known.
+    cards: per model, its departures of |d| >= 0.2 that sit on the same side of the panel in at least 80% of the
+    categories with data, strongest first: the habits that mark it most reliably.
+    """
+    from scipy.cluster.hierarchy import dendrogram, linkage
+    from scipy.spatial.distance import squareform
+    from scipy.stats import rankdata, spearmanr
+
+    everyday = [t for t in traits if not t.get("tag") and t["key"] != "adherence"]
+    prev = {t["key"]: t for t in (previous or {}).get("traits", [])}
+    rows, same_side = [], {m: {} for m in models}
+    for t in everyday:
+        col = _trait_column(t)
+        if col not in df:
+            continue
+        d = df[df.model.isin(models)][["model", "prompt_id", "category", col]].dropna()
+        cell = d.groupby(["model", "prompt_id"])[col].mean().reset_index()
+        full = cell.groupby("prompt_id").filter(lambda g: g.model.nunique() == len(models))
+        y = full[col].to_numpy(float)
+        sst = float(((y - y.mean()) ** 2).sum()) if len(y) else 0.0
+        if sst == 0:
+            continue
+        mshare = float(((full.groupby("model")[col].transform("mean") - y.mean()) ** 2).sum() / sst)
+        pshare = float(((full.groupby("prompt_id")[col].transform("mean") - y.mean()) ** 2).sum() / sst)
+        bycat = d.groupby(["category", "model"])[col].mean().unstack().reindex(columns=models).dropna()
+        w = kendall_w([rankdata(r) for r in bycat.to_numpy()])
+        for m in models:
+            dm = t["per_model"][m]["d"]
+            if dm and len(bycat):
+                side = np.sign(bycat[m] - bycat.mean(axis=1)) == np.sign(dm)
+                same_side[m][t["key"]] = (int(side.sum()), int(len(bycat)))
+        rt = None
+        if t["key"] in prev:
+            a = [t["per_model"][m]["value"] for m in models]
+            b = [prev[t["key"]]["per_model"].get(m, {}).get("value") for m in models]
+            if None not in a + b and len(set(a)) > 1 and len(set(b)) > 1:
+                rt = float(spearmanr(a, b).statistic)
+        rows.append({"key": t["key"], "label": t.get("short") or t["label"], "model_share": mshare,
+                     "prompt_share": pshare, "category_w": w, "run_to_run": rt,
+                     "n_prompts": int(full.prompt_id.nunique())})
+    rows.sort(key=lambda r: -r["model_share"])
+    out = {"traits": rows, "previous": (previous or {}).get("meta", {}).get("revision"),
+           "median_model_share": float(np.median([r["model_share"] for r in rows])) if rows else None,
+           "median_prompt_share": float(np.median([r["prompt_share"] for r in rows])) if rows else None}
+
+    keys = [r["key"] for r in rows]
+    T = {t["key"]: t for t in everyday}
+    if len(models) >= 2 and keys:
+        X = np.array([[T[k]["per_model"][m]["d"] for k in keys] for m in models])
+        D = np.sqrt(((X[:, None, :] - X[None, :, :]) ** 2).sum(axis=2))
+        Z = linkage(squareform(D, checks=False), "average")
+        fam = {"distance": {a: {b: float(D[i, j]) for j, b in enumerate(models)} for i, a in enumerate(models)},
+               "merges": [[int(a), int(b), float(h)] for a, b, h, _ in Z],
+               "order": [models[i] for i in dendrogram(Z, no_plot=True)["leaves"]]}
+        if vendors:
+            pairs = [(i, j) for i in range(len(models)) for j in range(i + 1, len(models))]
+            same = [D[i, j] for i, j in pairs if vendors.get(models[i]) == vendors.get(models[j])]
+            diff = [D[i, j] for i, j in pairs if vendors.get(models[i]) != vendors.get(models[j])]
+            fam["vendors"] = {m: vendors.get(m) for m in models}
+            fam["same_vendor"] = float(np.mean(same)) if same else None
+            fam["different_vendors"] = float(np.mean(diff)) if diff else None
+        out["family"] = fam
+
+    cards = {}
+    for m in models:
+        picks = []
+        for k in keys:
+            dm = T[k]["per_model"][m]["d"]
+            hit, n = same_side[m].get(k, (0, 0))
+            if abs(dm) >= 0.2 and n and hit / n >= 0.8:
+                picks.append({"key": k, "text": T[k]["high"] if dm > 0 else T[k]["low"], "d": float(dm),
+                              "categories": [hit, n]})
+        cards[m] = sorted(picks, key=lambda p: -abs(p["d"]))[:4]
+    out["cards"] = cards
+    return out
+
+
 def style_map(df, models, max_points=3000):
     try:
         from sklearn.decomposition import PCA
@@ -611,6 +714,8 @@ def main(argv=None):
     add_run_args(ap)
     ap.add_argument("--run-dir", default=None, help="override data/spectra/<revision>")
     ap.add_argument("--demo", action="store_true", help="mark output as demo data")
+    ap.add_argument("--previous", default=None,
+                    help="an earlier revision of the same roster: the accent section adds run-to-run agreement")
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
@@ -764,6 +869,14 @@ def main(argv=None):
     dist = distinctiveness(df, models)
     print("style map...")
     smap = style_map(df, models)
+    print("accent...")
+    previous = None
+    if args.previous:
+        previous = json.loads((DATA_ROOT / args.previous / "analysis.json").read_text(encoding="utf-8"))
+    rc_path = run_dir / "run_config.json"
+    vendors = ({m["name"]: m.get("provider") for m in json.loads(rc_path.read_text(encoding="utf-8")).get("models", [])}
+               if rc_path.exists() else None)
+    acc = accent(df, models, traits, previous, vendors)
 
     analysis = {
         "meta": {"revision": revision, "generated": datetime.now(timezone.utc).isoformat(),
@@ -774,7 +887,7 @@ def main(argv=None):
                  "samples": int(df["sample"].nunique()), "coders": coders, "system_prompt": cfg.get("system_prompt"),
                  "tags": pdata["meta"].get("tags", {})},
         "traits": traits, "cards": cards, "constraints": constraints, "signature": sig,
-        "distinctiveness": dist, "style_map": smap, "runstats": runstats, "agreement": agreement,
+        "distinctiveness": dist, "style_map": smap, "accent": acc, "runstats": runstats, "agreement": agreement,
         "viewer": viewer,
     }
     (run_dir / "analysis.json").write_text(json.dumps(clean(analysis), ensure_ascii=False), encoding="utf-8")

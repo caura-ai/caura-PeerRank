@@ -882,7 +882,7 @@ Behavioral profiles of the active roster: how each model writes (length, formatt
 pip install -e ".[spectra]"                          # PyYAML, pandas, scikit-learn
 python -m spectra.run --revision <rev>               # responses.jsonl (resumable)
 python -m spectra.code_behaviors --revision <rev>    # codes.jsonl, two coders outside the panel
-python -m spectra.analyze --revision <rev>           # features.csv + analysis.json (local)
+python -m spectra.analyze --revision <rev> [--previous <rev>]   # features.csv + analysis.json incl. accent (local)
 python -m spectra.guess --revision <rev>             # guesses.jsonl (paid calls); --mode briefed|heldout, --independent, --profile
 python -m spectra.guess --revision <rev> --mode heldout --profile all --dry-run   # messages, profile preview + cost estimate, free
 python -m spectra.guess --revision <rev> --mode heldout --compare-profiles --guessers <model>   # profile variants vs plain, free

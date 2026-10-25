@@ -235,7 +235,7 @@ pip install -e ".[spectra]"                            # PyYAML, pandas, scikit-
 python -m spectra.run --revision oct-23-26 --limit 5   # smoke test: 5 prompts, every model
 python -m spectra.run --revision oct-23-26             # full run (resumable; re-run retries errors)
 python -m spectra.code_behaviors --revision oct-23-26  # optional behavior codes
-python -m spectra.analyze --revision oct-23-26         # features, traits, style map, classifier
+python -m spectra.analyze --revision oct-23-26 --previous oct-14-26   # features, traits, accent, style map, classifier
 python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/report.html
 ```
 
@@ -250,6 +250,7 @@ python -m spectra.report --revision oct-23-26          # data/spectra/oct-23-26/
 `report.html` includes:
 
 - **Profiles** and a **trait explorer** — departures from the panel average, as effect sizes
+- **Accent** — per everyday trait, the share of the variation explained by the model and by the prompt, whether the model order holds across categories (Kendall's W) and, with `--previous`, from run to run; a family tree of the models; and accent cards with the habits that mark each model in at least 8 of 10 categories
 - **Traps** — false premise, pasted error, vague request, stated opinion, emotional framing
 - **Explicit limits** — whether a stated length or format constraint was met
 - **Style map** — two principal components of the measured style features

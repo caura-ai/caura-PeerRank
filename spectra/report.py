@@ -203,6 +203,20 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
     <div class="profiles" id="profiles"></div>
   </section>
 
+  <section id="accent">
+    <h2>Accent</h2>
+    <p class="prose muted" id="accentnote"></p>
+    <div class="tablewrap"><table class="stats" id="accenttable"></table></div>
+    <h3 style="margin-top:32px">Family tree</h3>
+    <div class="split">
+      <div id="familytree"></div>
+      <p class="small muted" id="familynote"></p>
+    </div>
+    <h3 style="margin-top:32px">Accent cards</h3>
+    <p class="prose muted">The habits that mark each model most reliably: departures from the panel that hold on the same side in at least 8 of every 10 categories, strongest first.</p>
+    <div class="profiles" id="accentcards"></div>
+  </section>
+
   <section>
     <h2>Trait explorer</h2>
     <p class="prose muted">Dots are averages across prompts; lines are 95% bootstrap intervals; the dashed line is the panel average.</p>
@@ -415,6 +429,65 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: .85rem; }
       "<p class='facts'>" + facts.join(" ") + "</p>";
     prof.appendChild(el);
   });
+
+  // ---------- accent: model vs prompt share, consistency, family tree, cards
+  const AC = A.accent;
+  if (!AC || !AC.traits || !AC.traits.length) {
+    document.getElementById("accent").hidden = true;
+  } else {
+    const pc = v => v === null || v === undefined ? "n/a" : Math.round(100 * v) + "%";
+    const f2 = v => v === null || v === undefined ? "n/a" : v.toFixed(2);
+    document.getElementById("accentnote").textContent = "Per answer, the prompt sets most of what varies (a median " +
+      pc(AC.median_prompt_share) + " of each trait); which model wrote the answer explains a median " + pc(AC.median_model_share) +
+      ". The model's averages still hold across categories" + (AC.previous ? " and from run " + AC.previous + " to this one" : "") +
+      ". That small, steady shift is the model's accent. Model and prompt shares come from a two-way decomposition on prompts every model answered; the same-order column is Kendall's W of the model order across categories, from 0 (no agreement) to 1 (every category ranks the models alike)" +
+      (AC.previous ? "; run to run is the Spearman agreement of the model averages." : ".");
+    document.getElementById("accenttable").innerHTML = "<thead><tr><th>Trait</th><th>Model share</th><th>Prompt share</th><th>Same order across categories (W)</th>" +
+      (AC.previous ? "<th>Run to run</th>" : "") + "</tr></thead><tbody>" +
+      AC.traits.map(r => "<tr><td>" + esc(r.label) + "</td><td>" + pc(r.model_share) + "</td><td>" + pc(r.prompt_share) + "</td><td>" +
+        f2(r.category_w) + "</td>" + (AC.previous ? "<td>" + f2(r.run_to_run) + "</td>" : "") + "</tr>").join("") + "</tbody>";
+
+    const F = AC.family;
+    if (F && F.merges && F.merges.length) {
+      const n = models.length, rowH = 34, left = 190, width = 560, top = 14, hmax = Math.max(...F.merges.map(x => x[2]));
+      const pos = {};
+      F.order.forEach((m, i) => { pos[models.indexOf(m)] = {x: left, y: top + i * rowH}; });
+      const sx = h => left + 18 + (width - left - 30) * h / hmax;
+      let lines = "";
+      F.merges.forEach(([a, b, h], k) => {
+        const pa = pos[a], pb = pos[b], x = sx(h);
+        lines += "<path d='M" + pa.x + " " + pa.y + "H" + x + "V" + pb.y + "H" + pb.x + "' fill='none' stroke='currentColor' stroke-width='1.4'/>";
+        pos[n + k] = {x: x, y: (pa.y + pb.y) / 2};
+      });
+      const labels = F.order.map((m, i) => "<circle cx='10' cy='" + (top + i * rowH) + "' r='5' fill='" + color(m) + "'/><text x='22' y='" +
+        (top + i * rowH + 5) + "' fill='currentColor' font-size='14'>" + esc(m) + "</text>").join("");
+      const ticks = [0, hmax / 2, hmax].map(h => "<text x='" + sx(h) + "' y='" + (top + n * rowH + 6) + "' fill='currentColor' opacity='.6' font-size='11' text-anchor='middle'>" +
+        h.toFixed(1) + "</text>").join("");
+      document.getElementById("familytree").innerHTML = "<svg viewBox='0 0 " + width + " " + (top + n * rowH + 14) +
+        "' style='width:100%;max-width:" + width + "px;color:var(--ink)' role='img' aria-label='Family tree of the models by their everyday traits'>" + lines + labels + ticks + "</svg>";
+      const D = F.distance, pairs = [];
+      models.forEach((a, i) => models.slice(i + 1).forEach(b => pairs.push([a, b, D[a][b]])));
+      const close = pairs.sort((x, y) => x[2] - y[2])[0];
+      document.getElementById("familynote").textContent = "Distance over the everyday traits' effect sizes, joined by average linkage. Closest pair: " +
+        close[0] + " and " + close[1] + " (" + close[2].toFixed(2) + ")." +
+        (F.same_vendor !== undefined && F.same_vendor !== null ? " Mean distance within a vendor " + F.same_vendor.toFixed(2) +
+          ", across vendors " + F.different_vendors.toFixed(2) + "." : "");
+    }
+
+    const cardsEl = document.getElementById("accentcards");
+    models.forEach(m => {
+      const items = (AC.cards[m] || []).map(c => {
+        const w = Math.min(50, Math.abs(c.d) / 1.2 * 50);
+        const p = c.d > 0 ? "left:50%;width:" + w + "%" : "left:" + (50 - w) + "%;width:" + w + "%";
+        return "<li><span class='meter' title='effect size " + c.d.toFixed(2) + "'><b style='" + p + ";background:" + dColor(c.d) + "'></b></span><span>" +
+          esc(c.text) + " <span class='muted small'>(" + c.categories[0] + " of " + c.categories[1] + " categories)</span></span></li>";
+      }).join("") || "<li><span></span><span class='muted'>No habit departs from the panel by 0.2 or more in at least 8 of every 10 categories.</span></li>";
+      const el = document.createElement("article");
+      el.className = "profile";
+      el.innerHTML = "<h3><i style='background:" + color(m) + "'></i>" + esc(m) + "</h3><ul class='desc'>" + items + "</ul>";
+      cardsEl.appendChild(el);
+    });
+  }
 
   // ---------- charts
   const charts = {};
