@@ -212,7 +212,7 @@ For a pre-registered test of generality, \pEightNew{} answered both prompt sets,
 
 \begin{table}[t]
 \centering\small
-\caption{The accent, trait by trait. Model and prompt shares of the variation between single answers (run \texttt{oct-23-26}); Kendall's $W$ of the model order across the \nCategories{} categories; and the Spearman correlation of the six model means with the next run (\texttt{oct-14-26} to \texttt{oct-23-26}) and with the locked second prompt set.}
+\caption{The accent, trait by trait. Model and prompt shares of the variation between single answers (run \texttt{oct-23-26}); Kendall's $W$ of the model order across the \nCategories{} categories; and the Spearman correlation of the six model means with the next run (\texttt{oct-14-26} to \texttt{oct-23-26}) and with the locked second prompt set. Right: the eight-model test (Section~\ref{sec:eight}), the model share with eight models and the Spearman correlation of the eight model means on the second prompt set; its behaviors were labeled by a different coder pair.}
 \label{tab:accent}
 \resizebox{\linewidth}{!}{\input{generated/tab_accent.tex}}
 \end{table}
@@ -373,7 +373,12 @@ The test covers the accent, the descriptions and contagion with the original not
 \paragraph{The accent generalizes.}
 With eight models, the model explains a median \pEightMedModel{} of the variation per answer (the prompt \pEightMedPrompt; \pEightMedModelTwo{} on the second prompt set), and on the locked second set the eight model means kept their order on \pEightGOnePass{} accent traits (\pEightGOneList).
 Both newcomers have stable habits of their own: \texttt{grok-4.7} kept \pEightCardKeptGrok{} card habits on the new prompts (\pEightCardGrok) and \texttt{kimi-k3} \pEightCardKeptKimi{} (\pEightCardKimi).
-Each sounds like a model already in the panel: \texttt{grok-4.7} sits nearest to \pEightNearGrok{} in the family tree (distance \pEightNearGrokDist) and \texttt{kimi-k3} to \pEightNearKimi{} (\pEightNearKimiDist), while the two newcomers are far apart (\pEightNewPairDist, against a median pair distance of \pEightMedianPair).
+Trait by trait (Table~\ref{tab:accent}, right), \pEightRtHigh{} of \pEightRtN{} everyday traits keep the order of the eight models on the new prompts at Spearman 0.8 or higher (median \pEightRtMedian), not only the four registered accent traits.
+Each newcomer sounds like a model already in the panel: \texttt{grok-4.7} sits nearest to \pEightNearGrok{} in the family tree (distance \pEightNearGrokDist) and \texttt{kimi-k3} to \pEightNearKimi{} (\pEightNearKimiDist), while the two newcomers are far apart (\pEightNewPairDist, against a median pair distance of \pEightMedianPair; Appendix Figure~\ref{fig:eight}).
+
+\paragraph{The newcomers are recognizable.}
+A character classifier trained on other prompts names the author of \charEightAcc{} of single answers among the eight models (chance \chanceEight; \abOriginal{} among six, chance \chance), and \charEightMatched{} when it names each model once per prompt.
+It names \texttt{grok-4.7} \charEightGrok{} of the time and \texttt{kimi-k3} \charEightKimi, against a median \charEightSixMedian{} for the original six; only \pEightNearKimi, the nearest neighbor of \texttt{kimi-k3}, is named less often (\charEightBelowKimi).
 
 \paragraph{Still misheard.}
 Describing each other, the eight models' estimates follow the measured ranks only weakly (mean Spearman \pEightRank{}, above chance), overstate caveats \pEightCaveat{}-fold, show no self-advantage (\pEightSelf{} places), and see the widest sibling gap, \pEightEmMeasured{} standard deviations in em dashes between the two Claude models, as \pEightEmSeen{}: the wrong way round.
@@ -520,6 +525,13 @@ In every check the reactions exceed the steady accent.
 
 \begin{figure}[htbp]
 \centering
+\includegraphics[width=\linewidth]{generated/fig_eight.pdf}
+\caption{The eight-model panel of the generalization test (run \texttt{oct-23-26-p8}). Left: each model's effect size $d$ against the eight-model panel mean, orange more of the trait and purple less; behaviors labeled by \texttt{deepseek-v4-pro} and \texttt{mistral-large}. Right: family tree over the everyday traits' effect sizes, average linkage. The two models added for the test are in bold. Effect sizes are relative to the panel, so they differ from the six-model fingerprint in Figure~\ref{fig:fingerprint}.}
+\label{fig:eight}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
 \includegraphics[width=0.85\linewidth]{generated/fig_identification.pdf}
 \caption{Share of answers attributed to the right model in the guessing game. Grey bars: the word-and-style classifier, trained on the other half of the prompts. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
 \label{fig:ident}
@@ -612,6 +624,7 @@ python -m spectra.replicates --config spectra/config-s3.yaml --revision $R-s3
 python -m spectra.extend --from $R --to $R-p8 --keep-coder deepseek-v4-pro  # eight models
 python -m spectra.run --config spectra/config-8.yaml --revision $R-p8      # likewise v2,
 python -m spectra.generalize   # after code_behaviors, analyze, describe, voice contagion and score
+python -m spectra.attribute --config spectra/config-8.yaml --revision $R-p8 --what sets ablations
 python -m spectra.voice score --revision $R
 python spectra/article/make_assets.py
 \end{verbatim}

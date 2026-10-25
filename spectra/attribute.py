@@ -129,7 +129,8 @@ def _fit_predict(name: str, train: pd.DataFrame, test: pd.DataFrame, y_train, k:
 
 
 def _scores(proba: np.ndarray, df: pd.DataFrame, y: np.ndarray, k: int, rng) -> dict:
-    """Accuracy one at a time and jointly per prompt, each with a 95% interval resampling prompts."""
+    """Accuracy one at a time and jointly per prompt, each with a 95% interval resampling prompts, and each model's
+    recall one at a time (in label order)."""
     codes, prompt_idx = np.unique(df.prompt_id.to_numpy(), return_inverse=True)
 
     def ci(correct, reps=2000):
@@ -143,6 +144,8 @@ def _scores(proba: np.ndarray, df: pd.DataFrame, y: np.ndarray, k: int, rng) -> 
     for kind, pred in (("accuracy", proba.argmax(axis=1)), ("matched_accuracy", match_by_prompt(proba, df, k))):
         out[kind] = float((pred == y).mean())
         out[kind + "_ci"] = ci(pred == y)
+    one = proba.argmax(axis=1)
+    out["recall"] = [float((one[y == i] == i).mean()) if (y == i).any() else None for i in range(k)]
     return out
 
 

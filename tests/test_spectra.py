@@ -501,6 +501,7 @@ def test_character_attribution_learns_punctuation_habits():
     df = pd.DataFrame(rows)
     res = attribute(df, ["a", "b"], sets=("characters",))["characters"]
     assert res["cv"]["accuracy"] == 1.0 and res["halves"]["matched_accuracy"] == 1.0
+    assert res["cv"]["recall"] == [1.0, 1.0]  # each model's share named right, in label order
     assert across(df, df, ["a", "b"], sets=("characters",))["characters"]["accuracy"] == 1.0
 
 

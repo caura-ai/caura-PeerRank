@@ -843,18 +843,30 @@ lines = [f"{names_v[r['profile']]} & {pct(r['accuracy'])} & {pct(r['base_accurac
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 mac("variantBest", f"{signed(100 * max(r['gain'] for r in pc), 1)}")
 
-# accent table: model and prompt shares, consistency across categories, both replications
+# accent table: model and prompt shares, consistency across categories, both replications; and the eight-model panel
+A8, A8v2 = (json.loads((DATA / rev / "analysis.json").read_text(encoding="utf-8")) for rev in ("oct-23-26-p8", "v2-oct-25-26-p8"))
+assert A8v2["accent"]["previous"] == "oct-23-26-p8"
+rows_8 = {r["key"]: r for r in A8["accent"]["traits"]}
+rows_8v2 = {r["key"]: r for r in A8v2["accent"]["traits"]}
+dash = lambda v: num(v) if v is not None else "--"  # noqa: E731
 lines = []
 for r in AC["traits"]:
     k = r["key"]
     rt2 = rows_v2.get(k, {}).get("run_to_run")
     lines.append(f"{label_of[k]} & {pct(r['model_share'])} & {pct(r['prompt_share'], 0)} & {num(r['category_w'])} & "
-                 f"{num(r['run_to_run']) if r['run_to_run'] is not None else '--'} & {num(rt2) if rt2 is not None else '--'} \\\\")
+                 f"{dash(r['run_to_run'])} & {dash(rt2)} & "
+                 f"{pct(rows_8[k]['model_share']) if k in rows_8 else '--'} & {dash(rows_8v2.get(k, {}).get('run_to_run'))} \\\\")
 (OUT / "tab_accent.tex").write_text(
-    "\\begin{tabular}{lrrrrr}\n\\toprule\n& \\multicolumn{2}{c}{Share of variation per answer} & Same order across & "
-    "\\multicolumn{2}{c}{Model order kept (Spearman)} \\\\\n\\cmidrule(lr){2-3}\\cmidrule(lr){5-6}\n"
-    "Trait & Model & Prompt & categories ($W$) & next run & new prompts (v2) \\\\\n\\midrule\n"
+    "\\begin{tabular}{lrrrrrrr}\n\\toprule\n& \\multicolumn{5}{c}{Six models} & \\multicolumn{2}{c}{Eight models} \\\\\n"
+    "\\cmidrule(lr){2-6}\\cmidrule(lr){7-8}\n"
+    "& \\multicolumn{2}{c}{Share per answer} & Same order & \\multicolumn{2}{c}{Order kept (Spearman)} & Model & Order kept \\\\\n"
+    "\\cmidrule(lr){2-3}\\cmidrule(lr){5-6}\n"
+    "Trait & Model & Prompt & across categories ($W$) & next run & new prompts & share & new prompts \\\\\n\\midrule\n"
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+rt8 = [rows_8v2[k]["run_to_run"] for k in rows_8v2 if rows_8v2[k]["run_to_run"] is not None]
+mac("pEightRtHigh", sum(x >= 0.8 for x in rt8))
+mac("pEightRtN", len(rt8))
+mac("pEightRtMedian", num(statistics.median(rt8)))
 
 # figure: the accent, model share against prompt share
 fig, ax = plt.subplots(figsize=(4.8, 3.2))
@@ -1148,6 +1160,54 @@ for lab in ax.get_yticklabels():
 ax.set_xlabel("shift toward the notes' author (SD along the axis)")
 ax.legend(frameon=False, fontsize=6.5, loc="lower right")
 save(fig, "fig_readers")
+
+# the character classifier on the eight models (python -m spectra.attribute --config spectra/config-8.yaml ...)
+AT8 = json.loads((DATA / "oct-23-26-p8" / "attribution.json").read_text(encoding="utf-8"))
+assert AT8["labels"] == models8
+o8 = AT8["ablations"]["original"]
+recall8 = dict(zip(models8, o8["recall"]))
+mac("charEightAcc", pct(o8["accuracy"]))
+mac("charEightMatched", pct(o8["matched_accuracy"]))
+mac("chanceEight", pct(1 / len(models8)))
+mac("charEightGrok", pct(recall8["grok-4.7"], 0))
+mac("charEightKimi", pct(recall8["kimi-k3"], 0))
+mac("charEightSixMedian", pct(statistics.median(recall8[m] for m in models), 0))
+below_kimi = [m for m in models8 if recall8[m] < recall8["kimi-k3"]]
+assert below_kimi == [P8["family"]["nearest"]["kimi-k3"][0][1]], below_kimi  # only kimi's nearest neighbor is named less often
+mac("charEightBelowKimi", pct(recall8[below_kimi[0]], 0))
+
+# figure (appendix): the eight-model fingerprint and family tree, from the eight-model analysis
+COLORS8 = COLORS + ["#000000", "#882255"]  # the six in roster order, then grok-4.7 and kimi-k3
+T8 = {t["key"]: t for t in A8["traits"]}
+keys8 = [t["key"] for t in A8["traits"]]
+D8 = np.array([[T8[k]["per_model"][m]["d"] for k in keys8] for m in models8])
+fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.2, 2.9), gridspec_kw={"width_ratios": [2.6, 1]})
+im = ax.imshow(D8, cmap="PuOr_r", vmin=-1.5, vmax=1.5, aspect="auto")
+ax.set_xticks(range(len(keys8)), [short_label[k] for k in keys8], rotation=60, ha="right", fontsize=6)
+ax.set_yticks(range(len(models8)), models8, fontsize=7)
+for lab in ax.get_yticklabels():
+    if lab.get_text() in new8:
+        lab.set_fontweight("bold")
+ax.axvline(sum(t["group"] == "style" for t in A8["traits"]) - 0.5, color="black", lw=0.8)
+for i in range(len(models8)):
+    for j in range(len(keys8)):
+        ax.text(j, i, f"{D8[i, j]:+.1f}", ha="center", va="center", fontsize=4.2, color="white" if abs(D8[i, j]) > 1.0 else "black")
+ax.set_title("Style traits (computed)      |      Behaviors (coded)", fontsize=7)
+Z8 = np.array([[a, b, h, 0] for a, b, h in A8["accent"]["family"]["merges"]], dtype=float)
+sizes8 = {i: 1 for i in range(len(models8))}
+for k, (a, b, h, _) in enumerate(Z8):
+    sizes8[len(models8) + k] = sizes8[int(a)] + sizes8[int(b)]
+    Z8[k, 3] = sizes8[len(models8) + k]
+dendrogram(Z8, labels=models8, orientation="left", ax=ax2, color_threshold=0, above_threshold_color="#444444")  # labels on the right, clear of the heatmap
+for lab in ax2.get_yticklabels():
+    lab.set_color(COLORS8[models8.index(lab.get_text())])
+    lab.set_fontsize(7)
+    if lab.get_text() in new8:
+        lab.set_fontweight("bold")
+ax2.set_xlabel("distance over effect sizes", fontsize=7)
+ax2.tick_params(axis="x", labelsize=6)
+ax2.set_title("Family tree", fontsize=7)
+save(fig, "fig_eight")
 
 # ---------------------------------------------------------------- write the macros
 header = (f"% Generated by spectra/article/make_assets.py from runs {MAIN} (main) and {REPL} (replication).\n"
