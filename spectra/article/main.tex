@@ -425,14 +425,38 @@ On answering first ($\kappa=\kappaAF$) the coders disagree on \disagreeAF{} of a
 Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLow{} to \moralHigh{} of answers), the paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}; we draw no model-level conclusion from it.
 
 % =====================================================================
-\section{Practical implications}
-\begin{itemize}
-\item \textbf{Do not ask a model how it writes.} Its account follows the stereotype of AI writing, not its habits; measure them instead.
-\item \textbf{Steer with measured habits, not generic advice.} ``Do not sound like AI'' leaves a model recognizable; a list of its measured habits works, and a measured profile lets one model write in another's voice.
-\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's, mostly through its content and, it appears, partly through its voice; in systems where agents share notes or memory, voices will blend unless that is managed.
-\item \textbf{Choose and monitor by accent.} The accent is stable enough to choose a model for a voice, and cheap to re-measure (\costRun{} in answers per run) to see whether a model behind a fixed name has changed.
-\item \textbf{Repeat answers to judge a single prompt.} One answer per prompt suffices for a model's steady accent, but how a model handles a particular prompt is a reaction mixed with sampling noise; telling the two apart takes several answers.
-\end{itemize}
+\section{Choosing and steering models by measured writing}
+\label{sec:practical}
+The measurements support choices about how a model writes and behaves in conversation, not about whether its answers are correct, which needs task evaluations.
+Table~\ref{tab:recommend} lists candidates for stated preferences, for the versions and settings measured here and only on the \nRecTraits{} habits that hold their model order across categories ($W\ge\recWMin$) and between runs (Spearman $\ge\recRtMin$).
+They are hypotheses to test for a given use, not winners.
+In the eight-model test, \texttt{grok-4.7} is nearly as short and direct as \texttt{gpt-6-astra} (\pEightGrokLen{} words, leading with the answer in \pEightGrokAF{} of answers, labeled by the other coder pair).
+
+\begin{table}[t]
+\centering\small
+\caption{Candidates for a stated writing preference, run \texttt{oct-23-26}, on habits steady across categories ($W$) and between runs (Spearman, \texttt{oct-14-26} to \texttt{oct-23-26}). Each row gives the model at that end of the panel and the one at the other end.}
+\label{tab:recommend}
+\resizebox{\linewidth}{!}{\input{generated/tab_recommend.tex}}
+\end{table}
+
+\paragraph{What a choice buys.}
+A choice moves the average answer, not every answer: a model's steady accent is \vcModel{} of a single answer's variance and its reactions to particular prompts \vcReact{} (Section~\ref{sec:reactions}), so on a given prompt a usually short model can still answer at length.
+How a model handles one particular prompt is a reaction mixed with sampling noise; judging it takes several answers.
+
+\paragraph{Selection or steering.}
+Switching models buys the whole accent, along with everything else that differs between the models.
+Steering keeps the model: given another model's measured profile, a model moved \imProfile{} of the way toward that model's voice, against \imName{} from the name alone; asked to hide its own voice, its rewrites were still named \hideUncoached{} of the time, and \hideCoached{} once it was coached with its own measured habits.
+Generic instructions do little, and asking a model how it writes returns the stereotype of AI writing, not its habits; measure them instead.
+The accent is cheap to re-measure (\costRun{} in answers per run), so a fixed model name can be checked for a changed model behind it.
+
+\paragraph{Shared notes and memory.}
+Text an agent reads moves its writing toward the author's, mostly through what the text says and, it appears, partly through its voice, so in systems where agents share notes or memory, voices will blend unless that is managed.
+Readers differ: \pEightMostReader{} moved furthest toward the notes it read and \pEightLeastReader{} showed little or no measured movement (Section~\ref{sec:eight}).
+That suggests different sensitivity to supplied context, a hypothesis to test; it does not show which model uses memory better, which would require checking that useful facts are taken up and task quality kept.
+
+\paragraph{Testing the recommendations.}
+Whether choosing by measured profile helps is untested.
+A pre-registered follow-up would route new prompts to the model whose profile matches a stated preference, compare it with a strong fixed model under the same instructions, and score preference fit and task quality separately, by people as well as by measurement; VibeCheck links measured traits to human preferences \citep{dunlap2025vibecheck}.
 
 % =====================================================================
 \section{Limitations and ethics}

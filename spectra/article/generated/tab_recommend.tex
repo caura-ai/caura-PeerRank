@@ -1,0 +1,14 @@
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.0cm}llrr>{\raggedright\arraybackslash}p{4.4cm}}
+\toprule
+Preference & Candidate & Other end & $W$ & Runs & Trade-off \\
+\midrule
+Short answers & \texttt{gpt-6-astra} (106 words) & \texttt{gemini-4-argon} (341 words) & 0.83 & 0.94 & can leave out context a reader needs \\
+Long, full answers & \texttt{gemini-4-argon} (341 words) & \texttt{gpt-6-astra} (106 words) & 0.83 & 0.94 & more to read; length is not quality \\
+Leads with the answer & \texttt{gpt-6-astra} (96\%) & \texttt{gemini-4-argon} (59\%) & 0.75 & 1.00 & little framing before the answer \\
+Headings, lists and bold & \texttt{claude-opus-5.5} (7.4 per 100 words) & \texttt{muse-wonder-1.0} (4.2 per 100 words) & 0.64 & 0.94 & easy to scan; heavy for a short reply \\
+Plain paragraphs & \texttt{muse-wonder-1.0} (4.2 per 100 words) & \texttt{claude-opus-5.5} (7.4 per 100 words) & 0.64 & 0.94 & harder to scan when long \\
+Plainer wording & \texttt{muse-wonder-1.0} (67 reading ease) & \texttt{gpt-6-astra} (58 reading ease) & 0.63 & 0.89 & simpler sentences can lose precision; a gap of a few points \\
+Few hedges & \texttt{gemini-4-argon} (0.35 per 100 words) & \texttt{gpt-6-astra} (0.81 per 100 words) & 0.75 & 0.89 & hedging is not calibration; fewer hedges can mean overstatement \\
+Few em dashes & \texttt{claude-opus-5.5} (0.04 per 100 words) & \texttt{claude-fable-5.1} (1.2 per 100 words) & 0.85 & 1.00 & a habit some readers take as a mark of model text \\
+\bottomrule
+\end{tabular}

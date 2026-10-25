@@ -863,6 +863,47 @@ for r in AC["traits"]:
     "\\cmidrule(lr){2-3}\\cmidrule(lr){5-6}\n"
     "Trait & Model & Prompt & across categories ($W$) & next run & new prompts & share & new prompts \\\\\n\\midrule\n"
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+# recommendations: candidates for a stated preference, only on habits steady across categories and between runs
+W_MIN, RT_MIN = 0.6, 0.85
+REC_ROWS = [  # trait, which end, the preference, its trade-off
+    ("length", "low", "Short answers", "can leave out context a reader needs"),
+    ("length", "high", "Long, full answers", "more to read; length is not quality"),
+    ("answer_first", "high", "Leads with the answer", "little framing before the answer"),
+    ("structure", "high", "Headings, lists and bold", "easy to scan; heavy for a short reply"),
+    ("structure", "low", "Plain paragraphs", "harder to scan when long"),
+    ("readability", "high", "Plainer wording", "simpler sentences can lose precision; a gap of a few points"),
+    ("hedging", "low", "Few hedges", "hedging is not calibration; fewer hedges can mean overstatement"),
+    ("emdash", "low", "Few em dashes", "a habit some readers take as a mark of model text"),
+]
+
+
+def shown(key, v):
+    unit = T[key]["unit"]
+    per100 = f"{v:.2f}" if v < 1 else f"{v:.1f}"
+    return {"words": f"{v:.0f} words", "per100": f"{per100} per 100 words", "score": f"{v:.0f} reading ease"}.get(unit, pct(v, 0))
+
+
+lines, kept = [], set()
+for key, end, want, cost in REC_ROWS:
+    r = rows_ac[key]
+    if r["category_w"] < W_MIN or (r["run_to_run"] or 0) < RT_MIN:
+        continue  # not steady enough to recommend on
+    kept.add(key)
+    vals = {m: val(T[key], m) for m in models}
+    pick = (max if end == "high" else min)(vals, key=vals.get)
+    other = (min if end == "high" else max)(vals, key=vals.get)
+    lines.append(f"{want} & {tt(pick)} ({shown(key, vals[pick])}) & {tt(other)} ({shown(key, vals[other])}) & "
+                 f"{num(r['category_w'])} & {num(r['run_to_run'])} & {cost} \\\\")
+(OUT / "tab_recommend.tex").write_text(
+    "\\begin{tabular}{>{\\raggedright\\arraybackslash}p{3.0cm}llrr>{\\raggedright\\arraybackslash}p{4.4cm}}\n\\toprule\n"
+    "Preference & Candidate & Other end & $W$ & Runs & Trade-off \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+mac("recWMin", num(W_MIN, 1))
+mac("recRtMin", num(RT_MIN))
+mac("nRecTraits", len(kept))
+T8a = {t["key"]: t for t in A8["traits"]}
+mac("pEightGrokLen", f"{T8a['length']['per_model']['grok-4.7']['value']:.0f}")
+mac("pEightGrokAF", pct(T8a["answer_first"]["per_model"]["grok-4.7"]["value"], 0))
 rt8 = [rows_8v2[k]["run_to_run"] for k in rows_8v2 if rows_8v2[k]["run_to_run"] is not None]
 mac("pEightRtHigh", sum(x >= 0.8 for x in rt8))
 mac("pEightRtN", len(rt8))
