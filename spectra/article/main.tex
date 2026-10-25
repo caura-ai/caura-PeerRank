@@ -38,7 +38,7 @@ The models mishear it.
 Their descriptions of themselves and each other match the measurements only weakly (rank correlations of \descRankLow{} to \descRankHigh{}) and overstate generic AI habits, such as caveats \descCaveat{}-fold; their self-portraits let a reader recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
 Measurement makes the accent usable: a measured profile moves imitations \imProfile{} of the way, and coaching on measured habits cuts identification to \hideCoached{}.
 Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent; most of that is what the notes say, but with their content held fixed, their voice alone moves answers \swapVoice{} of the way.
-Our later experiments were pre-registered.
+Our later experiments were pre-registered, including a test in which two models from two more vendors joined the panel and every finding held.
 \end{abstract}
 
 % =====================================================================
@@ -73,6 +73,7 @@ Finally, a model that reads another model's earlier answers as notes picks up pa
 \item \textbf{Models mishear accents.} Four pre-registered tests: describing, recognizing from self-written portraits, imitating from a name, and hiding (Section~\ref{sec:hearing}).
 \item \textbf{Measurement makes accents usable.} Measured profiles transfer to unseen prompts for identification, and make imitation and hiding work (Section~\ref{sec:usable}).
 \item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context, with a style swap that separates the voice of the notes from their content (Section~\ref{sec:contagion}).
+\item \textbf{Two more models.} With two models from two more vendors in the panel, the accent, its stability, the stereotyped descriptions and contagion all hold, and readers turn out to differ widely in how much of another model's voice they take on (Section~\ref{sec:eight}).
 \item \textbf{Open and pre-registered.} The pipeline, answers, labels and experiments, with pre-registrations committed before their data, including one design flaw we found afterwards (Section~\ref{sec:prereg}).
 \end{enumerate}
 
@@ -192,6 +193,7 @@ We collected two runs of the first prompt set, \texttt{oct-14-26} and \texttt{oc
 The guessing games on the main run took \callsTotal{} calls (\costBlind{} blind, \costSame{} with the same-answers profile, \costHeldPerm{} and \costHeldInd{} with the held-out profile).
 The pre-registered experiments cost \costDescribe{} for descriptions, \costPortraits{} for the portrait games, \costImitate{} for \nImitate{} imitations, \costHide{} for \nHide{} rewrites, \costContagion{} for \nContagion{} contagion answers, \costSwap{} for the style swap (\nSwapRewrites{} rewritten notes and \nSwap{} answers) and \costReplicates{} for \nReplicates{} repeat answers to the main run's prompts.
 We report \texttt{oct-23-26} as the main run.
+For a pre-registered test of generality, \pEightNew{} answered both prompt sets, with \pEightCoder{} replacing \texttt{grok-4.7} as the second coder so that no model labels its own answers: \nPanelEightCalls{} calls and \costPanelEight{}, the coding not costed.
 
 % =====================================================================
 \section{Results}
@@ -352,6 +354,35 @@ How well the rewrites kept the content we checked on names and numbers (post hoc
 We find no sign that rewriters carried their own names or numbers into the notes; the check cannot see emphasis or recommendations.
 With every note rewritten, the original effect reappears: notes wholly the source's move answers \swapSSOO{} of the way, against notes wholly the reader's.
 
+\subsection{Two more models}
+\label{sec:eight}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\linewidth]{generated/fig_readers.pdf}
+\caption{Readers differ in how much of another model's voice they take on, with eight models (exploratory). For each reader and each source of notes, the shift of its answers toward the source after reading the source's notes rather than its own, in standard deviations along the axis from the reader's accent to the source's. The two models added for the test are in bold. Whiskers: 95\% intervals over prompts.}
+\label{fig:readers}
+\end{figure}
+
+To test whether these findings depend on the panel, \pEightNew{} joined it (pre-registered), from two more vendors, one of them outside the United States; the six-model results above stand as they are, and five registered tests were scored on the eight models, all confirmed.
+
+\paragraph{The accent generalizes.}
+With eight models, the model explains a median \pEightMedModel{} of the variation per answer (the prompt \pEightMedPrompt; \pEightMedModelTwo{} on the second prompt set), and on the locked second set the eight model means kept their order on \pEightGOnePass{} accent traits (\pEightGOneList).
+Both newcomers have stable habits of their own: \texttt{grok-4.7} kept \pEightCardKeptGrok{} card habits on the new prompts (\pEightCardGrok) and \texttt{kimi-k3} \pEightCardKeptKimi{} (\pEightCardKimi).
+Each sounds like a model already in the panel: \texttt{grok-4.7} sits nearest to \pEightNearGrok{} in the family tree (distance \pEightNearGrokDist) and \texttt{kimi-k3} to \pEightNearKimi{} (\pEightNearKimiDist), while the two newcomers are far apart (\pEightNewPairDist, against a median pair distance of \pEightMedianPair).
+
+\paragraph{Still misheard.}
+Describing each other, the eight models' estimates follow the measured ranks only weakly (mean Spearman \pEightRank{}, above chance), overstate caveats \pEightCaveat{}-fold, show no self-advantage (\pEightSelf{} places), and see the widest sibling gap, \pEightEmMeasured{} standard deviations in em dashes between the two Claude models, as \pEightEmSeen{}: the wrong way round.
+
+\paragraph{Contagion reaches new readers, unequally.}
+As readers, the two newcomers moved \pEightConNew{} of the way toward the notes' author (\pEightConNewCI), and the classifier's probability for the author rose \pEightConProb{} points.
+Readers differ widely (Figure~\ref{fig:readers}; exploratory).
+Measured in standard deviations along the axis, which unlike the fraction of the way does not inflate when reader and source already sound alike, \pEightMostReader{} moved \pEightMostRange{} toward the three sources, no other reader more than \pEightOthersMax, and \pEightLeastReader{} not at all (\pEightLeastRange).
+Some models take on the voice of what they read; others keep their own.
+
+\paragraph{A different coder.}
+The new coder pair agrees less than the old one (answering first: $\kappa=\pEightKappaAF$ against \pEightKappaAFOld), yet orders the six original models alike on every behavior (Spearman \pEightCodedRhoLow{} to \pEightCodedRhoHigh).
+
 \subsection{What limits recognition}
 \label{sec:difficulty}
 \begin{table}[t]
@@ -397,7 +428,7 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 % =====================================================================
 \section{Limitations and ethics}
 \label{sec:limits}
-\paragraph{Panel and prompts.} Six models from four providers, synthetic English prompts written by the authors, one answer per prompt per run (three in one collection, for the style traits only), and no system prompt; effect sizes are relative to this panel, and habits may change under a product's instructions.
+\paragraph{Panel and prompts.} Six models from four providers (eight from six in the generalization test), synthetic English prompts written by the authors, one answer per prompt per run (three in one collection, for the style traits only), and no system prompt; effect sizes are relative to this panel, and habits may change under a product's instructions.
 \paragraph{A confound in the imitation test.} The pre-registered imitation metric measures each imitation from a single earlier answer, which any fresh answer drifts away from; we report the registered values and a control added after seeing the data, and the claims about imitation rest on the control. Re-scoring the same imitations against three-answer baselines (pre-registered) supports regression to the mean as the cause, but the corrected comparison has not been replicated with new imitations.
 \paragraph{Reactions.} The reactions are estimated on one prompt set and one run, with two of the three answers collected \repDaysLater{} days after the first; whether a model's reaction to a given prompt survives a model update is untested.
 \paragraph{Measurement by machines.} Traits are computed by code and behaviors by two coder models, which can match crowd annotators \citep{gilardi2023chatgpt} but are not validated here against human judgment; recognition and hiding are scored by a classifier and one guesser. Whether people hear the same accents is untested.
@@ -409,7 +440,8 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 \section{Conclusion}
 Frontier models write with accents: a steady part, small in any single answer but constant across tasks, runs and new prompts and carried by punctuation and word choice, and a larger part made of each model's own reactions to particular prompts.
 The models mishear them: they describe the stereotype of AI writing, their portraits of themselves help a reader only a little, and they cannot imitate each other from a name or hide.
-Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and part of the accent travels with the text to whoever reads it.
+Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and part of the accent travels with the text to whoever reads it, more to some readers than to others.
+All of this held when two models from two more vendors joined the panel.
 
 \paragraph{Code and data.} \todo{repository link and license; answers, labels, guesses and experiment records for all runs}
 
@@ -565,6 +597,9 @@ python -m spectra.run --config spectra/config-v2.yaml --revision v2-oct-25-26
 python -m spectra.extend --from $R --to $R-s3              # three answers per prompt
 python -m spectra.run --config spectra/config-s3.yaml --revision $R-s3
 python -m spectra.replicates --config spectra/config-s3.yaml --revision $R-s3
+python -m spectra.extend --from $R --to $R-p8 --keep-coder deepseek-v4-pro  # eight models
+python -m spectra.run --config spectra/config-8.yaml --revision $R-p8      # likewise v2,
+python -m spectra.generalize   # after code_behaviors, analyze, describe, voice contagion and score
 python -m spectra.voice score --revision $R
 python spectra/article/make_assets.py
 \end{verbatim}

@@ -1019,6 +1019,92 @@ ax.set_xlabel("share of one answer's variance")
 ax.legend(frameon=False, fontsize=6.5, loc="upper center", bbox_to_anchor=(0.45, -0.2), ncol=2)
 save(fig, "fig_reactions")
 
+# ================================================================ eight models (2026-10-25-panel-8.md, python -m spectra.generalize)
+P8 = json.loads((DATA / "oct-23-26-p8" / "panel8.json").read_text(encoding="utf-8"))
+assert all(P8[g]["confirmed"] for g in ("G1", "G2", "G3", "G4", "G5"))
+models8, new8 = P8["models"], [m for m in P8["models"] if m not in models]
+assert new8 == ["grok-4.7", "kimi-k3"]
+mac("pEightNew", " and ".join(tt(m) for m in new8))
+mac("pEightCoder", tt(P8["coders"][1]))
+g1 = P8["G1"]
+mac("pEightGOneList", ", ".join(f"{label_of[k].lower()} {num(v)}" for k, v in g1["spearman"].items()))
+mac("pEightGOnePass", f"{g1['passing']} of {len(g1['spearman'])}")
+mac("pEightMedModel", pct(P8["G2"]["median_model_share"]))
+mac("pEightMedModelTwo", pct(P8["G2"]["v2_median_model_share"]))
+mac("pEightMedPrompt", pct(P8["G2"]["median_prompt_share"], 0))
+for m, name in zip(new8, ("Grok", "Kimi")):
+    g3 = P8["G3"][m]
+    kept = [t for t in g3["v1"] if t in g3["shared"]]
+    mac(f"pEightCard{name}", "; ".join(t.lower() for t in kept))
+    mac(f"pEightCardKept{name}", f"{len(kept)} of {len(g3['v1'])}")
+t8 = P8["G4"]["tests"]
+mac("pEightRank", num(t8["H1"]["rank_mean"]))
+mac("pEightCaveat", half_up(t8["H5"]["median_ratio"]["caveats"], 0))
+mac("pEightSelf", signed(t8["H2"]["self_minus_others"]))
+h4 = t8["H4"]
+mac("pEightEmMeasured", num(h4["measured_gap"]))
+mac("pEightEmSeen", num(h4["seen_gap"]))
+c5 = P8["G5"]["new_readers"]
+mac("pEightConNew", way(c5["C1_moves_toward_source"]["mean"]))
+mac("pEightConNewCI", wayspan(c5["C1_moves_toward_source"]["ci"]))
+mac("pEightConProb", half_up(100 * c5["C2_classifier_leans_to_source"]["mean"], 1))
+mac("pEightConAll", way(P8["G5"]["all_eight"]["mean"]))
+per8 = P8["contagion_per_reader_source"]
+by_reader = collections.defaultdict(list)
+for key, v in per8.items():
+    by_reader[key.split(" <- ")[0]].append(v["shift_sd"])
+most, least = max(by_reader, key=lambda m: np.mean(by_reader[m])), min(by_reader, key=lambda m: np.mean(by_reader[m]))
+mac("pEightMostReader", tt(most))
+mac("pEightMostRange", f"{num(min(by_reader[most]))} to {num(max(by_reader[most]))}")
+mac("pEightLeastReader", tt(least))
+mac("pEightLeastRange", f"{num(min(by_reader[least]))} to {num(max(by_reader[least]))}")
+others_max = max(max(v) for m, v in by_reader.items() if m != most)
+mac("pEightOthersMax", num(others_max))
+fam8 = P8["family"]
+for m, name in zip(new8, ("Grok", "Kimi")):
+    d, nb = fam8["nearest"][m][0]
+    mac(f"pEightNear{name}", tt(nb))
+    mac(f"pEightNear{name}Dist", num(d))
+mac("pEightNewPairDist", num(fam8["grok_kimi"]))
+mac("pEightMedianPair", num(fam8["median_pair"]))
+assert {fam8["closest_pair"][1], fam8["closest_pair"][2]} == {c1[1], c1[2]}  # still fable and muse
+k_new, k_old = P8["kappa_all_answers"]["new_pair"], P8["kappa_all_answers"]["old_pair"]
+mac("pEightKappaAF", num(k_new["answer_first"]))
+mac("pEightKappaAFOld", num(k_old["answer_first"]))
+rhos = [v["rho"] for v in P8["coded_six_old_vs_new"].values() if v["rho"] is not None]
+mac("pEightCodedRhoLow", num(min(rhos)))
+mac("pEightCodedRhoHigh", num(max(rhos)))
+p8_cost = sum(P8[f"data_{s}"]["new_answer_cost"] for s in ("v1", "v2")) + sum(P8["cost"].values())
+mac("costPanelEight", f"\\${p8_cost:.0f}")
+p8_calls = (sum(1 for rev in ("oct-23-26-p8", "v2-oct-25-26-p8") for r in load_jsonl(DATA / rev / "responses.jsonl")
+                if r["model"] in new8 and r.get("text") and not r.get("error"))
+            + sum(1 for r in load_jsonl(DATA / "oct-23-26-p8" / "descriptions.jsonl") if r.get("estimates") and not r.get("error"))
+            + sum(1 for r in load_jsonl(DATA / "oct-23-26-p8" / "voice.jsonl")
+                  if r["experiment"] == "contagion" and r["writer"] in new8 and r.get("text")))
+mac("nPanelEightCalls", f"{p8_calls:,}".replace(",", "{,}"))  # new answers on v1 and v2, describing, new readers
+
+# figure: contagion by reader, in SD units along the axis from the reader's accent to the source's
+srcs = sorted({k.split(" <- ")[1] for k in per8}, key=models8.index)
+readers = sorted(by_reader, key=lambda m: np.mean(by_reader[m]))
+fig, ax = plt.subplots(figsize=(4.6, 2.9))
+for j, s in enumerate(srcs):
+    xs, ys, lo, hi = [], [], [], []
+    for i, m in enumerate(readers):
+        v = per8.get(f"{m} <- {s}")
+        if v:
+            xs.append(v["shift_sd"]); ys.append(i + (j - 1) * 0.18)
+            lo.append(v["shift_sd"] - v["ci"][0] * v["axis_sd"]); hi.append(v["ci"][1] * v["axis_sd"] - v["shift_sd"])
+    ax.errorbar(xs, ys, xerr=[lo, hi], fmt="o", ms=3.5, lw=0.7, capsize=1.5, color=COLORS[models8.index(s)],
+                label=f"notes by {s}")
+ax.axvline(0, color="black", lw=0.6)
+ax.set_yticks(range(len(readers)), readers)
+for lab in ax.get_yticklabels():
+    if lab.get_text() in new8:
+        lab.set_fontweight("bold")
+ax.set_xlabel("shift toward the notes' author (SD along the axis)")
+ax.legend(frameon=False, fontsize=6.5, loc="lower right")
+save(fig, "fig_readers")
+
 # ---------------------------------------------------------------- write the macros
 header = (f"% Generated by spectra/article/make_assets.py from runs {MAIN} (main) and {REPL} (replication).\n"
           "% Do not edit by hand: rerun the script.\n")
