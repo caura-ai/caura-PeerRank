@@ -282,7 +282,9 @@ lines = [f"{split} & {feats} & {cells(s, pre + 'accuracy')} & {cells(s, pre + 'm
 
 # ---------------------------------------------------------------- guessing game
 guess_records = load_jsonl(DATA / MAIN / "guesses.jsonl")
-games = {(g["mode"], g["assign"]): g for g in summarize_all(guess_records, models, MAIN) if g["profile"] == "base"}
+# the four full-panel games; profile variants and portrait games (one guesser each) are read separately
+games = {(g["mode"], g["assign"]): g for g in summarize_all(guess_records, models, MAIN)
+         if g["profile"] == "base" and g["mode"] in ("blind", "briefed", "heldout")}
 blind, same = games[("blind", "permutation")], games[("briefed", "permutation")]
 held, held_ind = games[("heldout", "permutation")], games[("heldout", "independent")]
 assert same["research"] == [MAIN]
@@ -357,7 +359,7 @@ mac("selfLoModel", tt(self_lo))
 mac("selfLo", pct(selfrates[self_lo], 0))
 costs = collections.defaultdict(float)
 for r in guess_records:
-    if r.get("cost_usd") is not None:
+    if r.get("cost_usd") is not None and game_key(r)[3] == "base":
         costs[game_key(r)[0], game_key(r)[2]] += r["cost_usd"]
 for name, g in GAMES:
     mac("cost" + name, f"\\${costs[g['mode'], g['assign']]:.0f}")
@@ -567,6 +569,293 @@ zoom.set_xlabel("PC1")
 zoom.margins(0.25)
 zoom.legend(frameon=False, fontsize=6.5, loc="center left", bbox_to_anchor=(1.0, 0.5))
 save(fig, "fig_stylemap")
+
+# ================================================================ the accent story (phase 2)
+V2 = "v2-oct-25-26"  # the locked second prompt set, collected under the 2026-10-25 voice pre-registration
+ACCENT_KEYS = ("emdash", "length", "vocab", "hedging")  # fixed in the registration: style traits with a model share >= 5%
+STEREO_KEYS = ("caveats", "warm_open", "stock", "self_ref", "exuberance")  # and <= 2%
+
+
+def num(x, digits=2):
+    s = f"{half_up(x, digits)}"
+    return s.replace("-", "$-$") if s.startswith("-") else s
+
+
+def signed(x, digits=2):
+    s = half_up(abs(x), digits)
+    return ("$-$" if x < 0 else "+") + s
+
+
+def span(pair, digits=2, scale=1.0):
+    return f"{signed(scale * pair[0], digits)} to {signed(scale * pair[1], digits)}"
+
+
+def way(x, digits=0):
+    """A fraction of the way toward a target, as a percent (0.03 -> 3%)."""
+    return pct(x, digits).replace("-", "$-$")
+
+
+def wayspan(pair, digits=1):
+    return f"{way(pair[0], digits)} to {way(pair[1], digits)}"
+
+
+label_of = {t["key"]: t["short"] for t in A["traits"]}
+AC, AC2 = A["accent"], json.loads((DATA / V2 / "analysis.json").read_text(encoding="utf-8"))["accent"]
+assert AC["previous"] == REPL and AC2["previous"] == MAIN
+rows_ac = {r["key"]: r for r in AC["traits"]}
+rows_v2 = {r["key"]: r for r in AC2["traits"]}
+mac("accentMedModel", pct(AC["median_model_share"]))
+mac("accentMedPrompt", pct(AC["median_prompt_share"], 0))
+mac("accentNTraits", len(AC["traits"]))
+top = AC["traits"][0]
+mac("accentTopTrait", label_of[top["key"]].lower())
+mac("accentTopShare", pct(top["model_share"]))
+mac("accentLengthShare", pct(rows_ac["length"]["model_share"]))
+mac("accentLengthPrompt", pct(rows_ac["length"]["prompt_share"], 0))
+mac("accentCaveatShare", pct(rows_ac["caveats"]["model_share"]))
+mac("accentEmdashW", num(rows_ac["emdash"]["category_w"]))
+mac("accentLengthW", num(rows_ac["length"]["category_w"]))
+mac("accentCaveatW", num(rows_ac["caveats"]["category_w"]))
+mac("accentWarmW", num(rows_ac["warm_open"]["category_w"]))
+rt = [r["run_to_run"] for r in AC["traits"] if r["run_to_run"] is not None]
+mac("accentRtMedian", num(statistics.median(rt)))
+mac("accentRtHigh", sum(x >= 0.89 for x in rt))
+mac("accentRtN", len(rt))
+v2_accent = [rows_v2[k]["run_to_run"] for k in ACCENT_KEYS]
+mac("vTwoAccentList", ", ".join(f"{label_of[k].lower()} {num(rows_v2[k]['run_to_run'])}" for k in ACCENT_KEYS))
+mac("vTwoAccentPass", f"{sum(x >= 0.8 for x in v2_accent)} of {len(ACCENT_KEYS)}")
+mac("vTwoMedModel", pct(AC2["median_model_share"]))
+mac("vTwoMedPrompt", pct(AC2["median_prompt_share"], 0))
+mac("vTwoCaveatRt", num(rows_v2["caveats"]["run_to_run"]))
+fam, fam2 = AC["family"], AC2["family"]
+
+
+def closest(f):
+    return min(((v, a, b) for a, row in f["distance"].items() for b, v in row.items() if a < b))
+
+
+c1, c2 = closest(fam), closest(fam2)
+assert {c1[1], c1[2]} == {c2[1], c2[2]}, "the closest pair changed on v2"
+mac("familyPair", f"{tt(c1[1])} and {tt(c1[2])}")
+mac("familyDist", num(c1[0]))
+mac("familyDistTwo", num(c2[0]))
+mac("familySame", num(fam["same_vendor"]))
+mac("familyDiff", num(fam["different_vendors"]))
+cards = AC["cards"]
+mac("cardFable", "; ".join(c["text"].lower() for c in cards["claude-fable-5.1"]))
+mac("cardAstra", "; ".join(c["text"].lower() for c in cards["gpt-6-astra"][:3]))
+
+# classifier: which layers of the text carry the accent, and how many answers it needs
+ATT = json.loads((DATA / MAIN / "attribution.json").read_text(encoding="utf-8"))
+ab = ATT["ablations"]
+mac("charHalf", pct(ATT["sets"]["characters"]["halves"]["accuracy"]))
+mac("charHalfMatched", pct(ATT["sets"]["characters"]["halves"]["matched_accuracy"]))
+mac("abOriginal", pct(ab["original"]["accuracy"]))
+mac("abNoMarkdown", pct(ab["no markdown"]["accuracy"]))
+mac("abNoPunct", pct(ab["no punctuation"]["accuracy"]))
+mac("abBare", pct(ab["bare words (also no case or line breaks)"]["accuracy"]))
+mac("abShuffled", pct(ab["bare words, shuffled"]["accuracy"]))
+mac("abShuffledMatched", pct(ab["bare words, shuffled"]["matched_accuracy"]))
+mac("abPunctDrop", half_up(100 * (ab["original"]["accuracy"] - ab["no punctuation"]["accuracy"]), 0))
+mac("abShuffleDrop", half_up(100 * (ab["bare words (also no case or line breaks)"]["accuracy"]
+                                    - ab["bare words, shuffled"]["accuracy"]), 0))
+mac("curveTen", pct(ATT["curve"]["10"]["matched_accuracy"]))
+mac("curveTwenty", pct(ATT["curve"]["20"]["matched_accuracy"]))
+
+# describing: the first pre-registration's samples 0-1 and this one's 2-4
+desc = {0: json.loads((DATA / MAIN / "descriptions.json").read_text(encoding="utf-8"))}
+for s in (1, 2, 3, 4):
+    desc[s] = json.loads((DATA / MAIN / f"descriptions-s{s}.json").read_text(encoding="utf-8"))
+ranks = [desc[s]["tests"]["H1"]["rank_mean"] for s in desc]
+mac("descRankLow", num(min(ranks)))
+mac("descRankHigh", num(max(ranks)))
+mac("descSamples", ["zero", "one", "two", "three", "four", "five"][len(desc)])
+mac("descNPerSample", len(desc[1]["describers"]) ** 2)
+s1 = desc[1]["tests"]
+mac("descCaveat", half_up(s1["H5"]["median_ratio"]["caveats"], 0))
+mac("descWarm", half_up(s1["H5"]["median_ratio"]["warm_open"], 0))
+mac("descErrors", half_up(s1["H5"]["median_ratio"]["errors"], 1))
+mac("descStyleRank", num(s1["H3"]["style"]))
+mac("descBehaviorRank", num(s1["H3"]["behavior"]))
+mac("descEmGapMeasured", num(s1["H4"]["measured_gap"]))
+mac("descEmGapSeen", num(s1["H4"]["seen_gap"]))
+h2 = [desc[s]["tests"]["H2"]["self_minus_others"] for s in (1, 2, 3, 4)]
+mac("descSelfLow", signed(min(h2)))
+mac("descSelfHigh", signed(max(h2)))
+mac("descHFiveAll", ["no", "one", "two", "three", "four"][sum(desc[s]["tests"]["H5"]["confirmed"] for s in (1, 2, 3, 4))])
+argon = "gemini-4-argon"
+pa = desc[1]["per_model"][argon]
+mac("argonSelfPlaces", num(pa["self_rank_error"]))
+mac("argonOthersPlaces", num(pa["others_rank_error"]))
+
+# the voice experiments (python -m spectra.voice score)
+VO = json.loads((DATA / MAIN / "voice.json").read_text(encoding="utf-8"))
+E2, E3, E4, E5 = VO["E2"], VO["E3"], VO["E4"], VO["E5"]
+r1, r2, r3 = E2["R1_self_below_measured"], E2["R2_self_above_blind"], E2["R3_self_vs_peer"]
+mac("portraitSelf", pct(r1["accuracy_a"]))
+mac("portraitMeasured", pct(r1["accuracy_b"]))
+mac("portraitBlind", pct(r2["accuracy_b"]))
+mac("portraitPeer", pct(r3["accuracy_b"]))
+mac("portraitVsMeasured", f"{signed(100 * r1['gain'], 1)} points ({span(r1['ci'], 1, 100)})")
+mac("portraitVsBlind", f"{signed(100 * r2['gain'], 1)} points ({span(r2['ci'], 1, 100)})")
+mac("portraitVsPeer", f"{signed(100 * r3['gain'], 1)} points ({span(r3['ci'], 1, 100)})")
+mac("portraitPrompts", r1["prompts"])
+ph = E3["posthoc_vs_self"]
+mac("imDrift", way(ph["self_drift_toward_target"]["mean"]))
+mac("imName", way(ph["name_minus_self"]["mean"]))
+mac("imNameCI", wayspan(ph["name_minus_self"]["ci"]))
+mac("imProfile", way(ph["profile_minus_self"]["mean"]))
+mac("imProfileCI", wayspan(ph["profile_minus_self"]["ci"]))
+mac("imRegistered", way(E3["I1_name_moves_toward_target"]["mean"]))
+mac("imIThree", pct(E3["I3_moves_right_where_described_wrong"]["mean"], 0))
+mac("imIThreeSelf", pct(ph["I3_cells_self"]["mean"], 0))
+att = E3["I4_attribution"]
+mac("imNamedTarget", pct(att["NAME"]["named_target"]["mean"], 0))
+mac("imNamedTargetProfile", pct(att["PROFILE"]["named_target"]["mean"], 0))
+mac("imNamedImitator", pct(att["NAME"]["named_imitator"]["mean"], 0))
+mac("imNamedBase", pct(ph["self_named_as_target"]["mean"], 0))
+acc4 = E4["accuracy"]
+mac("hideOriginal", pct(acc4["ORIGINAL"]["mean"], 0))
+mac("hideUncoached", pct(acc4["UNCOACHED"]["mean"], 0))
+mac("hideUncoachedCI", ci(acc4["UNCOACHED"]["ci"], 0))
+mac("hideCoached", pct(acc4["COACHED"]["mean"], 0))
+mac("hideDrop", half_up(100 * E4["H3_coaching_hides_better"]["mean"], 0))
+mac("hideDropCI", f"{half_up(100 * E4['H3_coaching_hides_better']['ci'][0], 0)}--{half_up(100 * E4['H3_coaching_hides_better']['ci'][1], 0)}")
+mac("hideHTwo", signed(E4["H2_stereotype_moves_more_than_accent"]["mean"]))
+mac("hideHTwoCI", span(E4["H2_stereotype_moves_more_than_accent"]["ci"]))
+c1_ = E5["C1_moves_toward_source"]
+mac("conShift", way(c1_["mean"]))
+mac("conShiftCI", wayspan(c1_["ci"]))
+mac("conProb", half_up(100 * E5["C2_classifier_leans_to_source"]["mean"], 1))
+mac("conProbCI", f"{half_up(100 * E5['C2_classifier_leans_to_source']['ci'][0], 1)}--{half_up(100 * E5['C2_classifier_leans_to_source']['ci'][1], 1)}")
+per = E5["C3_per_trait"]
+mac("conLength", signed(per["length"]["mean"]))
+mac("conExcl", signed(per["exuberance"]["mean"]))
+mac("conDash", signed(per["emdash"]["mean"]))
+mac("conCaveat", signed(per["caveats"]["mean"]))
+mac("conWarm", signed(per["warm_open"]["mean"]))
+mac("conAccent", signed(E5["C3_accent_vs_stereotype"]["accent"]))
+mac("conStereo", signed(E5["C3_accent_vs_stereotype"]["stereotype"]))
+mac("conSelf", way(E5["C3_self_notes_amplify"]["mean"]))
+mac("conSelfCI", wayspan(E5["C3_self_notes_amplify"]["ci"]))
+mac("conSources", ", ".join(tt(s) for s in ("claude-fable-5.1", "gemini-4-argon", "gpt-6-astra")))
+
+# what phase 2 cost, from the records
+voice_rows = load_jsonl(DATA / MAIN / "voice.jsonl")
+vcost = collections.defaultdict(float)
+for r in voice_rows:
+    vcost[r["experiment"]] += r.get("cost_usd") or 0
+desc_cost = sum(r.get("cost_usd") or 0 for r in load_jsonl(DATA / MAIN / "descriptions.jsonl"))
+portrait_cost = sum(r.get("cost_usd") or 0 for r in guess_records if game_key(r)[0] == "described")
+v2_cost = sum(r.get("cost_usd") or 0 for r in load_jsonl(DATA / V2 / "responses.jsonl"))
+mac("costImitate", f"\\${vcost['imitate']:.0f}")
+mac("costHide", f"\\${vcost['hide']:.0f}")
+mac("costContagion", f"\\${vcost['contagion']:.0f}")
+mac("costDescribe", f"\\${desc_cost:.0f}")
+mac("costPortraits", f"\\${portrait_cost:.0f}")
+mac("costVTwo", f"\\${v2_cost:.0f}")
+mac("nImitate", f"{sum(1 for r in voice_rows if r['experiment'] == 'imitate' and r.get('text')):,}".replace(",", "{,}"))
+mac("nHide", sum(1 for r in voice_rows if r["experiment"] == "hide" and r.get("text")))
+mac("nContagion", f"{sum(1 for r in voice_rows if r['experiment'] == 'contagion' and r.get('text')):,}".replace(",", "{,}"))
+
+# the profile variants of the first pre-registration (Part B), for the appendix
+from spectra.guess import profile_contrasts  # noqa: E402
+pc = profile_contrasts(guess_records, models, argon, "heldout", MAIN, "permutation")
+names_v = {"portrait": "portraits", "pairs": "notes on confused pairs", "examples": "quoted openings and closings",
+           "category": "category notes", "portrait+pairs+examples+category": "all four"}
+lines = [f"{names_v[r['profile']]} & {pct(r['accuracy'])} & {pct(r['base_accuracy'])} & {signed(100 * r['gain'], 1)} "
+         f"({span(r['ci'], 1, 100)}) \\\\" for r in sorted(pc, key=lambda r: -r["gain"])]
+(OUT / "tab_variants.tex").write_text(
+    "\\begin{tabular}{lrrr}\n\\toprule\nAdded to the profile & With it & Plain profile & Gain, points (95\\% CI) \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+mac("variantBest", f"{signed(100 * max(r['gain'] for r in pc), 1)}")
+
+# accent table: model and prompt shares, consistency across categories, both replications
+lines = []
+for r in AC["traits"]:
+    k = r["key"]
+    rt2 = rows_v2.get(k, {}).get("run_to_run")
+    lines.append(f"{label_of[k]} & {pct(r['model_share'])} & {pct(r['prompt_share'], 0)} & {num(r['category_w'])} & "
+                 f"{num(r['run_to_run']) if r['run_to_run'] is not None else '--'} & {num(rt2) if rt2 is not None else '--'} \\\\")
+(OUT / "tab_accent.tex").write_text(
+    "\\begin{tabular}{lrrrrr}\n\\toprule\n& \\multicolumn{2}{c}{Share of variation per answer} & Same order across & "
+    "\\multicolumn{2}{c}{Model order kept (Spearman)} \\\\\n\\cmidrule(lr){2-3}\\cmidrule(lr){5-6}\n"
+    "Trait & Model & Prompt & categories ($W$) & next run & new prompts (v2) \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+
+# figure: the accent, model share against prompt share
+fig, ax = plt.subplots(figsize=(4.8, 3.2))
+tr = AC["traits"][::-1]
+yy = np.arange(len(tr))
+ax.barh(yy, [r["prompt_share"] for r in tr], color="#E3E7EE", height=0.7, label="the prompt")
+ax.barh(yy, [r["model_share"] for r in tr], color="#0072B2", height=0.7, label="the model")
+for yi, r in zip(yy, tr):
+    ax.text(r["prompt_share"] + 0.01, yi, f"{100 * r['model_share']:.1f}%", va="center", fontsize=6.5, color="#0072B2")
+ax.set_yticks(yy, [label_of[r["key"]] for r in tr])
+ax.set_xlim(0, 1)
+ax.set_xlabel("share of the variation between single answers explained by")
+ax.legend(frameon=False, fontsize=7, loc="lower right")
+save(fig, "fig_accent")
+
+# figure: family tree of the panel's voices
+from scipy.cluster.hierarchy import dendrogram  # noqa: E402
+Z = np.array([[a, b, h, 0] for a, b, h in fam["merges"]], dtype=float)
+sizes = {i: 1 for i in range(len(models))}
+for k, (a, b, h, _) in enumerate(Z):
+    sizes[len(models) + k] = sizes[int(a)] + sizes[int(b)]
+    Z[k, 3] = sizes[len(models) + k]
+fig, ax = plt.subplots(figsize=(4.2, 1.9))
+dendrogram(Z, labels=models, orientation="right", ax=ax, color_threshold=0, above_threshold_color="#444444")
+for lab in ax.get_yticklabels():
+    lab.set_color(COLORS[models.index(lab.get_text())])
+ax.set_xlabel("distance over the everyday traits' effect sizes")
+save(fig, "fig_family")
+
+# figure: what the models cannot do, and what measurement lets them do
+fig, axes = plt.subplots(1, 3, figsize=(7.0, 2.1), gridspec_kw={"width_ratios": [1.15, 1, 1]})
+ax = axes[0]
+bars = [("blind", r2["accuracy_b"], "#BBBBBB"), ("self-portraits", r1["accuracy_a"], "#D55E00"),
+        ("peer portraits", r3["accuracy_b"], "#E69F00"), ("measured profile", r1["accuracy_b"], "#0072B2")]
+for i, (lab, v, col) in enumerate(bars):
+    ax.bar(i, v, color=col, width=0.7)
+    ax.text(i, v + 0.02, f"{100 * v:.0f}%", ha="center", fontsize=6.5)
+ax.set_xticks(range(len(bars)), [b[0] for b in bars], rotation=25, ha="right")
+ax.set_ylim(0, 1)
+ax.set_title("recognize (one guesser)", fontsize=8)
+ax = axes[1]
+im_rows = [("from the name", ph["name_minus_self"]), ("from the\nmeasured profile", ph["profile_minus_self"])]
+for i, (lab, s) in enumerate(im_rows):
+    ax.bar(i, s["mean"], color=["#D55E00", "#0072B2"][i], width=0.6)
+    ax.errorbar(i, s["mean"], yerr=[[s["mean"] - s["ci"][0]], [s["ci"][1] - s["mean"]]], color="black", capsize=2, lw=0.8)
+ax.axhline(0, color="black", lw=0.6)
+ax.set_xticks(range(2), [r[0] for r in im_rows])
+ax.set_ylim(-0.1, 0.6)
+ax.set_title("imitate (way to the target,\nbeyond self-imitation)", fontsize=8)
+ax = axes[2]
+hd = [("original", acc4["ORIGINAL"]), ("hidden", acc4["UNCOACHED"]), ("hidden,\ncoached", acc4["COACHED"])]
+for i, (lab, s) in enumerate(hd):
+    ax.bar(i, s["mean"], color=["#BBBBBB", "#D55E00", "#0072B2"][i], width=0.6)
+    ax.errorbar(i, s["mean"], yerr=[[s["mean"] - s["ci"][0]], [s["ci"][1] - s["mean"]]], color="black", capsize=2, lw=0.8)
+ax.axhline(1 / len(models), color="black", ls="--", lw=0.8)
+ax.set_xticks(range(3), [h[0] for h in hd])
+ax.set_ylim(0, 1)
+ax.set_title("hide (classifier still\nnames the author)", fontsize=8)
+save(fig, "fig_hearing")
+
+# figure: contagion, per trait
+order_c = sorted(per, key=lambda k: per[k]["mean"])
+fig, ax = plt.subplots(figsize=(4.4, 2.6))
+for i, k in enumerate(order_c):
+    s = per[k]
+    col = "#0072B2" if k in ACCENT_KEYS else ("#D55E00" if k in STEREO_KEYS else "#999999")
+    ax.errorbar(s["mean"], i, xerr=[[s["mean"] - s["ci"][0]], [s["ci"][1] - s["mean"]]], fmt="o", color=col, ms=4, capsize=2, lw=0.8)
+ax.axvline(0, color="black", lw=0.6)
+ax.set_yticks(range(len(order_c)), [label_of[k] for k in order_c])
+ax.set_xlabel("shift toward the notes' author (SD), against the model's own notes")
+ax.scatter([], [], color="#0072B2", label="accent traits")
+ax.scatter([], [], color="#D55E00", label="stereotype traits")
+ax.legend(frameon=False, fontsize=7, loc="lower right")
+save(fig, "fig_contagion")
 
 # ---------------------------------------------------------------- write the macros
 header = (f"% Generated by spectra/article/make_assets.py from runs {MAIN} (main) and {REPL} (replication).\n"

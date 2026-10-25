@@ -1,7 +1,16 @@
-# Spectra article (first draft)
+# Spectra article: *Language Models Cannot Hear Their Own Accents*
 
-A first draft of the Spectra paper for arXiv (cs.CL), built from the two most recent runs:
-`oct-23-26` (main run, with the three guessing games) and `oct-14-26` (replication).
+The Spectra paper for arXiv (cs.CL). Since 2026-10-25 it is built around the accent story:
+- every model has a small, stable accent;
+- the models cannot hear it;
+- measurement makes it usable;
+- it is contagious.
+
+It draws on three runs:
+- `oct-23-26`: the main run, with the guessing games and the pre-registered voice experiments.
+- `oct-14-26`: the replication run.
+- `v2-oct-25-26`: the locked second prompt set.
+
 The paper is standalone; PeerRank appears only as related work.
 
 ```
@@ -21,8 +30,13 @@ z >= 2.5) and figures quoted from other papers.
 
 ## Regenerate the assets
 
-Needs the run data in `data/spectra/oct-23-26/` and `data/spectra/oct-14-26/` (not in git) and the
-`spectra` extra (`pip install -e ".[spectra]"`), plus matplotlib and scipy.
+Needs the run data, which is not in git:
+- `data/spectra/oct-23-26/`, including `voice.json`, `descriptions-s1..4.json` and `attribution.json`
+- `data/spectra/oct-14-26/`
+- `data/spectra/v2-oct-25-26/`
+
+It also needs the `spectra` extra (`pip install -e ".[spectra]"`), plus matplotlib and scipy.
+Run `python -m spectra.voice score --revision oct-23-26` first, so that `voice.json` is current.
 
 ```
 python spectra/article/make_assets.py
@@ -50,7 +64,7 @@ Search `main.tex` for `\todo` and `references.bib` for `TODO`:
 - coder costs (not recorded by the pipeline)
 - bibliography entries cited from memory or with incomplete titles and author lists
 
-Done since the first draft: the classifier is also scored jointly per prompt and on the game's
+The pre-registrations and their results are in `spectra/prereg/`. Earlier work, done since the first draft: the classifier is also scored jointly per prompt and on the game's
 halves (`analyze.distinctiveness`), the held-out game was played with each model used once, a
 fixed-effects analysis separates prompts, guessers and authors (`guess.prompt_effects`), votes are
 also weighted by each guesser's skill on the other half, and a third coder settled the disputed

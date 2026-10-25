@@ -327,7 +327,41 @@ def score_imitate(rows: list[dict], base: Baseline, clf, sides: dict) -> dict:
                 to_writer.setdefault(pid, []).append(float(clf.models[int(p.argmax())] == m))
             attribution[cond] = {"named_target": prompt_ci(to_target), "named_imitator": prompt_ci(to_writer)}
     i1, i2, i3 = prompt_ci(frac["NAME"]), prompt_ci(paired), prompt_ci(moved)
-    return {"I1_name_moves_toward_target": i1 | {"confirmed": above(i1)},
+
+    # Post hoc (deviation 2 of the registration): a fresh answer drifts from the imitator's single earlier answer toward
+    # everyone else's, so each imitation is compared with the same model's SELF answer on the same axis.
+    selfv = {(r["writer"], r["prompt_id"]): base.z(r["text"], r["category"]) for r in rows if r["condition"] == "SELF"}
+    vs_self, drift, moved_self = {c: {} for c in ("NAME", "PROFILE")}, {}, {}
+    for r in rows:
+        m, t, pid = r["writer"], r["other"], r["prompt_id"]
+        if r["condition"] not in vs_self or (m, pid) not in selfv or (m, pid) not in base.v:
+            continue
+        a, b = base.v[(m, pid)], base.v[(t, pid)]
+        f, f0 = project(base.z(r["text"], r["category"]), a, b), project(selfv[(m, pid)], a, b)
+        if f is not None and f0 is not None:
+            vs_self[r["condition"]].setdefault(pid, []).append(f - f0)
+            if r["condition"] == "NAME":
+                drift.setdefault(pid, []).append(f0)
+                for i, k in enumerate(keys):
+                    gap = base.mean[t][i] - base.mean[m][i]
+                    side = sides.get((m, t, k))
+                    if side is None or abs(gap) < 0.5 or side == np.sign(gap):
+                        continue
+                    delta = selfv[(m, pid)][i] - a[i]
+                    if np.isfinite(delta) and delta != 0:
+                        moved_self.setdefault(pid, []).append(float(np.sign(delta) == np.sign(gap)))
+    named_base = {}
+    if clf is not None:
+        S = [r for r in rows if r["condition"] == "SELF"]
+        for r, p in zip(S, clf.predict_proba([r["text"] for r in S]) if S else []):
+            for t in models:
+                if t != r["writer"]:
+                    named_base.setdefault(r["prompt_id"], []).append(float(clf.models[int(p.argmax())] == t))
+    posthoc = {"self_drift_toward_target": prompt_ci(drift), "name_minus_self": prompt_ci(vs_self["NAME"]),
+               "profile_minus_self": prompt_ci(vs_self["PROFILE"]), "I3_cells_self": prompt_ci(moved_self),
+               "self_named_as_target": prompt_ci(named_base)}
+    return {"posthoc_vs_self": posthoc,
+            "I1_name_moves_toward_target": i1 | {"confirmed": above(i1)},
             "I2_profile_beats_name": i2 | {"confirmed": above(i2)},
             "I3_moves_right_where_described_wrong": i3 | {"confirmed": above(i3, 0.5)},
             "profile_fraction": prompt_ci(frac["PROFILE"]),

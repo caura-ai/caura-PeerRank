@@ -19,93 +19,90 @@
 \newcommand{\todo}[1]{\textcolor{red!70!black}{[TODO: #1]}}
 \newcommand{\trap}[1]{\textsc{#1}}
 
-\title{Spectra: Written Habits Transfer.\\Language Models Identify Each Other from Profiles Built on Other Prompts}
+\title{Language Models Cannot Hear Their Own Accents:\\Stable, Contagious Writing Habits in Frontier Models}
 \author{\todo{author list and order to be agreed}}
-\date{Draft of 24 October 2026}
+\date{Draft of 25 October 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Language models write with recognizable habits, usually captured by opaque classifiers or scored by judge models.
-We ask whether a short, human-readable description of a model's habits is enough to identify its answers on prompts the description never saw.
-Spectra builds such a profile without a judge: \nStyleTraits{} style traits computed from the text, \nBehaviorTraits{} behaviors labeled by two outside coder models, and the words each model favors, measured on \nPrompts{} everyday prompts that hide traps and stated limits.
-The \nModels{} frontier models then name the authors of each other's unsigned answers.
-Guessing blind, a model names \accBlind{} of the others' answers (chance \chance).
-With profiles built from the other half of the prompts, it names \accHeldPerm{}, nearly matching profiles built from the very answers being judged (\accSame{}) and keeping \retention{} of the gain over guessing blind.
-A skill-weighted vote of the other five reaches \wvoteHeldPerm{}, above an author classifier trained and scored the same way (\clfHalfMatched{}).
-The prompt explains about \iccRatioWord{} times as much variance as the guesser, and \catBottomHeldPerm{} prompts are hardest to place.
-The profiles replicate across two runs \daysApart{} days apart ($r=\stabR$).
-We release the pipeline, answers, labels and guesses.
+Every frontier language model writes with an accent.
+Measuring \nTraits{} habits of \nModels{} models on \nPrompts{} everyday prompts without a judge, we find that which model wrote an answer explains a median \accentMedModel{} of the variation between single answers, against \accentMedPrompt{} for the prompt, yet each model's averages keep their order across tasks, across runs, and on \nPrompts{} new prompts locked before collection.
+The accent lives in punctuation and word choice.
+The models cannot hear it.
+Their descriptions of themselves and each other match the measurements only weakly (rank correlations of \descRankLow{} to \descRankHigh{}) and overstate generic AI habits, such as caveats \descCaveat{}-fold; their self-portraits let a reader recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
+Measurement makes the accent usable: a measured profile moves imitations \imProfile{} of the way, and coaching on measured habits cuts identification to \hideCoached{}.
+Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent.
+Our later experiments were pre-registered.
 \end{abstract}
 
 % =====================================================================
 \section{Introduction}
 
-People who use language models daily notice how differently they write: one model answers in two lines and another in two screens; one opens with the answer and another with a compliment; one points out that the figure in your draft is wrong and another quietly repeats it.
+People who use language models daily notice how differently they write: one answers in two lines and another in two screens; one opens with the answer and another with a compliment; one is fond of em dashes and its sibling from the same vendor almost never uses them.
 These habits matter.
-Length and formatting shift what both human and model judges prefer \citep{zheng2023judging,dubois2024lengthcontrolled,lmsys2024stylecontrol}, and models can be told apart from their writing with high accuracy \citep{sun2025idiosyncrasies}.
-But habits are usually either scored by another model acting as judge, which brings that judge's own preferences, or absorbed into a classifier whose features no reader can name.
+Length and formatting shift what both human and model judges prefer \citep{zheng2023judging,dubois2024lengthcontrolled,lmsys2024stylecontrol}, word choices mark model-written text at scale \citep{kobak2024delving}, and models can be told apart from their writing with high accuracy \citep{sun2025idiosyncrasies}.
+Corpus linguists now describe the output of each model as an idiolect \citep{reinhart2025writelikehumans,rudnicka2026idiolect}.
 
-If the habits are real and stable, they should survive being written down.
-A short description of how each model writes, built on one set of prompts, should then let a reader, human or model, identify that model's answers on prompts the description never saw.
-This paper tests that claim.
-We build a profile of each model on one half of a prompt set, give it to the models themselves, and ask each one to name the authors of the other models' unsigned answers on the other half.
-Two reference points frame the result: guessing blind, with no profile, and guessing with a profile built from the very answers being judged.
-If the held-out profile comes close to the second, the description transfers.
+We call this voice an \emph{accent}, and ask three questions about it.
+\emph{Is it stable?} If a habit depends mostly on the prompt, it is not much of a voice.
+\emph{Can the models hear it?} A model that knows its own accent could describe it, imitate another's, or hide its own.
+\emph{Does it spread?} Agents now read each other's output as notes, memory and retrieved context; if accents travel through that text, voices in multi-agent systems will blend.
 
-The profiles come from Spectra, which measures habits without asking any model to grade quality.
-It computes \nStyleTraits{} style traits from the text alone, such as length, formatting density, hedging, em dashes and reading ease.
-Two coder models outside the measured panel label \nBehaviorTraits{} behaviors on a fixed list, from whether an answer leads with the answer to whether it challenged a false premise hidden in the prompt, and we report how well they agree on each label.
-The coders label what an answer does, never how good it is.
-A profile adds the words each model favors and its strongest departures from the panel.
+The answers are yes, no, and yes.
+Spectra measures \nStyleTraits{} style traits computed from the text and \nBehaviorTraits{} behaviors labeled by two coder models outside the panel, on \nPrompts{} everyday prompts.
+Per answer, the prompt dominates: it explains a median \accentMedPrompt{} of the variation in a trait, and the model \accentMedModel{}.
+But the model's share is a steady shift, not noise: the order of the models holds in every task category, in a second run, and on \nPrompts{} new prompts that were locked before any answer to them existed.
+A small accent, consistently applied, is enough for a classifier, and for a model given a description, to name the author of most answers.
 
-The description transfers almost completely.
-A guesser without a profile names \accBlind{} of the others' answers; with a profile built from the other half of the prompts it names \accHeldPerm{}, against \accSame{} with a profile built from the answers themselves, so the held-out profile keeps \retention{} of the gain.
-A skill-weighted vote of the other five guessers reaches \wvoteHeldPerm{}, above an author classifier trained on the same half and scored the same way.
-What limits the transfer is mostly the prompt: \catBottomHeldPerm{} prompts leave the least room for habits.
+The models do not know their accents.
+They describe themselves and each other with the stereotype of AI writing, not with the habits that distinguish them.
+Portraits they write of themselves barely help a reader; asked to write as another model, they barely move; asked to hide, they stay recognizable.
+Measurement changes that: given a measured profile, a model imitates another far better and hides itself far better, and a profile built on one set of prompts lets models name each other's answers on another.
+Finally, a model that reads another model's earlier answers as notes picks up part of its accent.
 
 \paragraph{Contributions.}
 \begin{enumerate}
-\item \textbf{A transfer test for written profiles.} Models name each other's unsigned answers blind, with a profile built from the same answers, and with a profile built from other prompts, under two naming rules, with own answers scored apart, a majority and a skill-weighted vote, and an author classifier scored the same way. A profile from other prompts keeps \retention{} of the gain (Section~\ref{sec:transfer}).
-\item \textbf{An account of what limits it.} Prompt, guesser and author effects separated by intraclass correlations and fixed effects, accuracy by task category, and the pairs of models that hold most misses (Section~\ref{sec:difficulty}).
-\item \textbf{Judge-free profiles that replicate.} \nStyleTraits{} computed traits and \nBehaviorTraits{} coded behaviors, with traps and program-checked limits inside everyday prompts, stable across two runs \daysApart{} days apart (Sections~\ref{sec:profiles} and~\ref{sec:traps}).
-\item \textbf{Reliable model coders.} Per-label agreement, a case of the kappa paradox, and a third-coder tie-break showing that no conclusion depends on which coder one trusts (Section~\ref{sec:reliability}).
-\item \textbf{An open release and a locked test.} The pipeline, answers, labels and guesses, and a second prompt set locked before collection for a single confirmatory test (Section~\ref{sec:limits}).
+\item \textbf{The accent, measured.} A judge-free instrument and a decomposition of each habit into what the model and the prompt contribute, with consistency across categories, across runs, and on a locked second prompt set (Section~\ref{sec:accent}).
+\item \textbf{Models cannot hear accents.} Four pre-registered tests: describing, recognizing from self-written portraits, imitating from a name, and hiding (Section~\ref{sec:hearing}).
+\item \textbf{Measurement makes accents usable.} Measured profiles transfer to unseen prompts for identification, and make imitation and hiding work (Section~\ref{sec:usable}).
+\item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context (Section~\ref{sec:contagion}).
+\item \textbf{Open and pre-registered.} The pipeline, answers, labels and experiments, with pre-registrations committed before their data, including one design flaw we found afterwards (Section~\ref{sec:prereg}).
 \end{enumerate}
 
 % =====================================================================
 \section{Related work}
 
+\paragraph{Model voices.}
+Models write differently from humans and from each other in grammar and rhetoric \citep{reinhart2025writelikehumans}, along Biber's dimensions \citep{milicka2026stylisticvariation}, and in individual, idiolect-like patterns that shift between model generations \citep{rudnicka2026idiolect}; style words mark their text in the scientific literature \citep{kobak2024delving}, and \citet{shaib2025slop} give interpretable dimensions for low-quality model text.
+Spectra adds a decomposition of each habit into model and prompt, tests its consistency where the prompt changes, and measures what models know about it.
+
 \paragraph{Telling models apart.}
-Authorship attribution for generated text began with naming which of $k$ generators wrote a passage \citep{uchendu2020attribution,uchendu2021turingbench}; see \citet{huang2024attributionsurvey} for a survey.
-For chat models, \citet{sun2025idiosyncrasies} show that a fine-tuned embedding classifier names the source among five model families with 97.1\% accuracy, and that the signal survives rewriting and translation.
-VibeCheck \citep{dunlap2025vibecheck} discovers qualitative ``vibes'' and scores them with LLM judges, for pairs of models.
-LLMmap \citep{pasquini2025llmmap} and Hide and Seek \citep{iourovitski2024hideseek} identify models actively, with crafted probing queries; \citet{ko2026whosbehind} attribute text by likelihood and find that accuracy falls when domain and model version shift.
-Spectra does not compete on raw attribution accuracy: it asks whether a description a reader can inspect is enough, and whether it transfers to prompts it was not built on.
+Attributing generated text began with naming which of $k$ generators wrote a passage \citep{uchendu2020attribution,uchendu2021turingbench,huang2024attributionsurvey}.
+A fine-tuned embedding classifier names the source among five chat model families with 97.1\% accuracy, and the signal survives rewriting \citep{sun2025idiosyncrasies}.
+VibeCheck \citep{dunlap2025vibecheck} scores qualitative differences with judges; LLMmap \citep{pasquini2025llmmap} and Hide and Seek \citep{iourovitski2024hideseek} identify models with crafted queries, and \citet{ko2026whosbehind} find that attribution degrades when domain and version shift.
+Peer evaluation measures identity and position effects when models grade each other \citep{margalit2026agentsaspeers}.
+We use identification as a check on descriptions, not as a goal.
 
-\paragraph{Models recognizing themselves and each other.}
-\citet{panickssery2024selfrecognition} find that model judges recognize and favor their own generations, and that the two rise together under fine-tuning.
-\citet{davidson2024selfrecognition} find no consistent self-recognition: models pick the answer they consider best, not their own.
-\citet{wataoka2024selfpreference} trace self-preference to familiarity, as judges favor low-perplexity text, and \citet{goel2025thinkalike} report that judges favor models similar to themselves.
-Most recently, \citet{barkhordar2026stylenotself} find self-recognition of code near chance, with the remaining signal tracking length and other stylistic cues.
-Peer-evaluation work measures identity and position effects when models grade each other \citep{margalit2026agentsaspeers}.
-Spectra asks the identification question of prose, separates guessing about others from finding one's own answer, and makes the guessers' knowledge an explicit, inspectable profile.
+\paragraph{What models know about themselves.}
+Personality self-assessments of models shift with wording and option order \citep{gupta2024selfassessment}, though some are reliable under controlled prompting \citep{serapio2023personality,lee2025trait}.
+After fine-tuning, models predict their own behavior better than other models trained on it \citep{binder2024lookinginward}, and describe behaviors they were trained into \citep{betley2025tellme}.
+Model judges recognize and favor their own generations \citep{panickssery2024selfrecognition}, sometimes without consistent reasons \citep{ackerman2024recognize}, recognize better between two texts than from one \citep{zhou2025implicitexplicit}, or not at all, once style is controlled \citep{davidson2024selfrecognition,barkhordar2026stylenotself}; self-preference tracks familiarity \citep{wataoka2024selfpreference,goel2025thinkalike}.
+We test descriptions against measured habits, with every model describing every other as a control, without fine-tuning.
 
-\paragraph{Style in evaluation.}
-\citet{zheng2023judging} named the verbosity, position and self-enhancement biases of model judges.
-Controlling for length raised AlpacaEval's agreement with Chatbot Arena \citep{dubois2024lengthcontrolled}, and controlling for length and markdown reshuffled the Arena leaderboard \citep{lmsys2024stylecontrol}.
-YapBench \citep{borisov2026yapbench} measures excess length across many assistants.
-Spectra measures length together with \the\numexpr\nTraits-1\relax{} other traits, without a judge.
+\paragraph{Imitating style.}
+Models imitate formal human writing reasonably and casual writing poorly from a few samples \citep{wang2025catchme}, and prompting strategy matters more than model size \citep{jemama2025imitate}.
+We found no study of one model imitating another's voice.
 
-\paragraph{The behaviors behind the traps.}
-Most traps have a dedicated benchmark: sycophancy toward users' views and mistakes \citep{sharma2024sycophancy}, false-premise questions \citep{hu2023falseqa}, and ambiguous requests \citep{zhang2024clamber}; stated limits follow the idea of instructions a program can verify \citep{zhou2023ifeval}, and the hedging trait relates to models' reluctance to express uncertainty \citep{zhou2024unreliable}.
-Spectra embeds the same tests in everyday prompts across \nCategories{} task categories, and reports the outcome per model and per prompt.
+\paragraph{Accommodation and context.}
+Models converge toward the style of the conversation they continue, more than humans do \citep{blevins2026accommodate,blevins2026bothways}; humans drifting toward model style is modeled by \citet{thejaswi2026monoculture}.
+Narrow in-context examples change model behavior on unrelated tasks \citep{afonin2025emergent}, and instructions drift over a dialogue \citep{li2024instability}.
+Contagion between models, through notes rather than dialogue, is to our knowledge unmeasured.
 
-\paragraph{Vocabulary and measurement.}
-Excess style words such as ``delves'' mark model-written text at scale \citep{kobak2024delving}, and \citet{shaib2025slop} give interpretable dimensions for low-quality model text.
-Model behavior drifts across versions \citep{chen2024behaviorchange} and varies between identical runs \citep{atil2024stability}, which motivates our replication.
-Model coders can match or exceed crowd annotators \citep{gilardi2023chatgpt}; we report their agreement per label rather than assume it.
+\paragraph{Style in evaluation, and the traps.}
+Verbosity and position biases of model judges \citep{zheng2023judging}, length control \citep{dubois2024lengthcontrolled} and style control \citep{lmsys2024stylecontrol} motivate measuring style directly; YapBench measures length alone \citep{borisov2026yapbench}.
+Our traps follow dedicated benchmarks for sycophancy \citep{sharma2024sycophancy}, false premises \citep{hu2023falseqa}, ambiguity \citep{zhang2024clamber}, verifiable instructions \citep{zhou2023ifeval} and hedging \citep{zhou2024unreliable}, embedded in everyday prompts.
 
 % =====================================================================
 \section{Method}
@@ -113,15 +110,9 @@ Model coders can match or exceed crowd annotators \citep{gilardi2023chatgpt}; we
 
 \subsection{Prompts and models}
 The prompt set has \nPrompts{} prompts, \nPerCategory{} in each of \nCategories{} categories: writing, editing, information, explanation, how-to, advice, coding, summarizing, brainstorming and opinion.
-Of these, \nTrapPrompts{} carry a trap tag: a false premise or bad practice stated as fact (\trap{fp}, \nFP{} prompts), pasted text containing a factual or numeric error (\trap{err}, \nErr{}), an underspecified request (\trap{amb}, \nAmb{}), a stated opinion or preferred answer (\trap{op}, \nOp{}), and emotional framing (\trap{emo}, \nEmo{}).
-Two further tags, a casual register (\nCas{}) and a claim of expertise (\nExp{}), are recorded but not used by any trait in this paper.
-The traps read as ordinary requests.
-Prompt p020, for example, asks for a graduation speech that mentions how the Wright brothers' first flight ``lasted a full hour'' (Appendix~\ref{app:walkthrough}).
-An explicit limit, of one of \nLimitKinds{} kinds, appears in \nLimitPrompts{} prompts: a word or sentence limit, an exact number of items, a table, or code only, for example; a program checks each answer against its limit.
-
-We measure \nModels{} models from four providers (Table~\ref{tab:settings}).
-Each answers every prompt once per run, with no system prompt, through an API.
-Thinking or reasoning modes are left at the settings shown; output is capped at \maxTokens{} tokens (\maxTokensArgon{} for \longModel{}).
+Of these, \nTrapPrompts{} carry a trap: a false premise (\trap{fp}, \nFP{} prompts), pasted text with an error (\trap{err}, \nErr{}), an underspecified request (\trap{amb}, \nAmb{}), a stated opinion (\trap{op}, \nOp{}), or emotional framing (\trap{emo}, \nEmo{}); \nLimitPrompts{} state a limit that a program checks, of \nLimitKinds{} kinds.
+A second set of \nPrompts{} prompts mirrors the first slot for slot (category, trap and limit) with new content; it was locked by hash before any answer to it was collected.
+We measure \nModels{} models from four providers (Table~\ref{tab:settings}), each answering every prompt once per run, with no system prompt, through an API, with output capped at \maxTokens{} tokens (\maxTokensArgon{} for \longModel{}).
 
 \begin{table}[t]
 \centering\small
@@ -130,85 +121,149 @@ Thinking or reasoning modes are left at the settings shown; output is capped at 
 \input{generated/tab_settings.tex}
 \end{table}
 
-\subsection{Building a profile}
+\subsection{Measuring habits}
 \label{sec:building}
 \paragraph{Computed style.}
-Style traits are computed from the answer's prose, with fenced code set aside (Appendix Table~\ref{tab:traits}).
-Rates are per 100 words, with a floor of 50 words in the denominator so that very short answers do not produce extreme rates.
-Length is summarized by the geometric mean of the word count.
-Reading ease is the Flesch score \citep{flesch1948readability} and vocabulary range the moving-average type-token ratio over 50-word windows \citep{covington2010mattr}.
-Limit adherence is the share of constrained prompts whose limit was met.
-
+Style traits are computed from an answer's prose, fenced code set aside (Appendix Table~\ref{tab:traits}): length (geometric mean of words), formatting marks, hedges, caveats, warm openers, closing offers, exclamations and emoji, em dashes, stock phrases, reading ease \citep{flesch1948readability}, vocabulary range \citep{covington2010mattr}, self-reference and limit adherence.
+Rates are per 100 words, with a floor of 50 words in the denominator.
 \paragraph{Coded behavior.}
-Two coder models from outside the panel, \coderA{} and \coderB{}, each label every answer at temperature 0 on the fixed list in Appendix Table~\ref{tab:codebook}.
-A coder sees the instructions, the prompt's tags, the prompt, and the answer, and must pick each label from its allowed values.
-A behavior trait is the share of positive labels, averaged over the two coders.
-On a trap prompt, a coder may answer ``not applicable'' when it sees nothing in the answer to react to; we treat that as a missing label rather than a miss.
-
+Two coder models outside the panel, \coderA{} and \coderB{}, label every answer at temperature 0 on a fixed list (Appendix Table~\ref{tab:codebook}), never seeing the author; a behavior trait is the share of positive labels averaged over the coders, and a trap label applies only to prompts with that trap.
 \paragraph{Statistics.}
-For each trait and model we average answers within a prompt, then average prompts; 95\% confidence intervals come from 2{,}000 bootstrap resamples of prompts.
-The effect size $d$ is the model's mean minus the panel mean, divided by the pooled within-model standard deviation of single answers, so $d$ is relative to this panel.
-Per-category values support ``sweep'' statements: a model is shortest in a category if no other model is shorter there.
-Signature words are the words and bigrams a model uses more than the rest of the panel, scored by log-odds with an informative Dirichlet prior \citep{monroe2008fightin}; we keep terms with $z \ge 2.5$ used at least 8 times.
+Answers are averaged within a prompt, then across prompts, with 95\% intervals from 2{,}000 resamples of prompts.
+The effect size $d$ is a model's mean minus the panel mean over the pooled within-model standard deviation.
+Signature words come from log-odds with an informative Dirichlet prior \citep{monroe2008fightin}.
 
-\paragraph{The profile.}
-A profile is a plain-text brief of these measurements for every model: the value and effect size of every trait, limit adherence by kind of limit, the top signature words, the strongest departures from the panel, and the closest neighbor in style.
-It describes how each model usually writes; it never labels any particular answer.
+\subsection{The accent}
+\label{sec:accent-method}
+For each everyday trait (all but the traps and limit adherence) we split the variation between single answers, on prompts every model answered, into the part explained by which model wrote the answer and the part explained by which prompt it answers (two-way main effects); the rest is a model's reaction to a particular prompt plus noise.
+Kendall's $W$ measures whether the \nCategories{} categories rank the models alike (0 none, 1 perfect), and a Spearman correlation whether the order of the model means survives into another run or prompt set.
+A model's \emph{accent card} lists its departures of $|d|\ge 0.2$ that hold on the same side of the panel in at least 80\% of categories.
+Distances between models over the everyday traits' effect sizes, joined by average linkage, give a family tree.
 
-\subsection{The transfer test}
+\subsection{Identification}
 \label{sec:game-method}
-In each call, one model, the guesser, receives a prompt and its \nModels{} answers, labeled with letters shuffled independently for each guesser.
-The answers are unsigned.
-The guesser is told that one of the answers may be its own, but not which, and is not told which model it is.
-It returns a JSON object naming the author of each letter from the roster of \nModels{} names.
-Every model guesses on every prompt.
+In the guessing game, a model receives a prompt and the \nModels{} unsigned answers, labeled with letters shuffled for each guesser, and names the author of each; it is not told which model it is, and its own answer is scored apart, so headline accuracy measures knowledge of others (chance \chance).
+It plays \emph{blind}, with a \emph{profile from the same answers} (a plain-text brief of the measurements of the whole run, the upper reference), and with a \emph{profile from other prompts}: the prompts are split into halves stratified by category, the measurements are re-run on each half, and each half is guessed with the other's profile.
+Under the default rule each name is used once; we also play the held-out profile with names allowed to repeat.
+A majority and a skill-weighted vote of the other five pool the guessers.
+As references, logistic-regression author classifiers \citep{pedregosa2011sklearn} are trained on prompts they are not tested on, from word n-grams and style features or from character 2--5-grams, scored one answer at a time and with a prompt's six answers named jointly; we also retrain the character classifier on text with layers removed and on fewer answers per model.
 
-\paragraph{Three conditions.}
-\emph{Blind} gives only the prompt, the answers and the roster.
-\emph{Profile from the same answers} adds a profile measured on all answers of the run, including the ones being judged; it is the upper reference, since the profile describes the very answers in front of the guesser.
-\emph{Profile from other prompts} removes that overlap: the prompts are split into two halves, stratified by category with a fixed hash of the prompt id, Spectra re-runs the measurements on each half, and answers in one half are guessed with the profile built on the other.
-If this held-out profile comes close to the same-answers profile, the description transfers.
+\subsection{Can models hear accents?}
+\label{sec:hearing-method}
+\paragraph{Describe.}
+Each model describes its own writing and every other model's: a written portrait and numeric estimates of \numexpr 14\relax{} traits we measure, scored by rank against the measurements; every model is described by five others, which controls for describing oneself.
+Five samples were collected, the later ones with the panel and estimates listed in a shuffled order.
+\paragraph{Recognize from portraits.}
+The strongest guesser, \texttt{gemini-4-argon}, plays the game with its brief replaced by the portraits: each model's portrait of itself, or of it by another model (never argon), and is compared with its own blind and measured-profile games on the same prompts.
+\paragraph{Imitate.}
+On 30 everyday prompts, each model answers ``the way \emph{X} would answer it'' for each other model \emph{X}, from the name alone and with \emph{X}'s measured portrait appended, and once with its own name as \emph{X}.
+We measure how far an imitation's trait vector moves from the imitator's earlier answer to the same prompt toward the target's answer (0 stays, 1 arrives).
+\paragraph{Hide.}
+On 50 everyday prompts, each model rewrites its own earlier answer ``so that a reader could not tell which AI model wrote it'', uncoached and coached with its measured habits; a character classifier trained on other prompts tries to name the author.
 
-\paragraph{Naming rules.}
-Under a \emph{permutation} rule the guesser must use each name once, so placing one answer narrows the rest.
-Under the \emph{independent} rule each answer is named on its own and repeats are allowed; we report how often a call actually repeated a name.
-The blind and same-answers games use the permutation rule.
-The held-out profile was played under both rules, so that its comparison with the same-answers profile changes only the profile.
+\subsection{Contagion}
+\label{sec:contagion-method}
+On 40 everyday prompts, each model answers after reading five earlier answers to other prompts, presented as notes from earlier work: its own five, or the same five prompts answered by one of three models with distinct accents (\conSources), or no notes.
+Nothing asks for imitation.
+Comparing answers after another model's notes with answers after one's own isolates the author of the notes, since framing and content are matched; the shift is projected on the axis from the reader's accent to the source's.
 
-\paragraph{Scoring.}
-Headline accuracy excludes a guesser's own answer, so it measures knowledge of others; chance is $1/\nModels$, or \chance.
-Self-recognition is reported separately.
-Confidence intervals resample prompts (1{,}000 resamples).
-The \emph{majority vote} gives each answer to the model most of the other five guessers named, never counting the author's own vote; a tie splits the credit evenly, the expected score of a random tie-break.
-The vote measures how identifiable a model is, not what any single guesser knows.
-The \emph{weighted vote} counts each guesser's vote by its accuracy $p$ on the other half of the prompts, with weight $\log\big((k-1)p/(1-p)\big)$, which is zero at chance, so no answer helps set the weight of a vote cast on it; it then names each model once per prompt, choosing the assignment with the largest total weight.
-
-\paragraph{Prompts, guessers and authors.}
-Some prompts leave more room for habits than others, and some guessers are better than others.
-To see how much of the success belongs to each, we compute the share of the variance in correctness that lies between prompts, between guessers and between authors (a one-way intraclass correlation for each, which gives a factor with many levels no credit for its number of levels).
-Guessers that find their own answer also tend to name the others correctly.
-To test whether that is more than easy prompts and strong guessers, we fit a linear probability model of correctness on whether the guesser found its own answer, with fixed effects for prompt, guesser and author, and resample prompts for a 95\% interval (500 resamples).
-
-\subsection{Reference classifier}
-As a reference point, a logistic-regression classifier \citep{pedregosa2011sklearn} predicts the author of each answer from TF-IDF word unigrams and bigrams together with 16 standardized style features; a second classifier uses the style features alone.
-Both are trained only on prompts they are not tested on: by five-fold cross-validation grouped by prompt, and, to match the held-out profile exactly, by training on one half of the prompts and testing on the other (the same halves).
-We score them two ways.
-\emph{One answer at a time} takes the most probable author of each answer.
-\emph{Six answers jointly} sees, like a guesser, all of a prompt's answers at once and assigns each model to exactly one of them, choosing the assignment with the highest total log-probability.
+\subsection{Pre-registration}
+\label{sec:prereg}
+Everything after the first two runs and the first guessing games was pre-registered: hypotheses, metrics, prompt lists, message texts and code were committed and pushed before the first call, with deviations appended afterwards.
+The second prompt set was locked by SHA-256 (\texttt{\vTwoHash}\dots) before collection and used once.
 
 % =====================================================================
 \section{Setup}
-We collected two runs of the full prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer.
-Collecting a run's answers cost \costRun{} (\costRunRepl{} for the earlier run); coder costs were not recorded \todo{add coding cost}.
-We report the later run, \texttt{oct-23-26}, as the main run and use the earlier one for replication.
-The four guessing games ran on the main run: \callsTotal{} usable calls in total, costing \costBlind{} blind, \costSame{} with the profile from the same answers, and \costHeldPerm{} and \costHeldInd{} with the profile from other prompts under the two naming rules.
+We collected two runs of the first prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer, and one run of the locked second set; answers cost \costRun{} per run (\costRunRepl{} for the earlier run, \costVTwo{} for the second set), and coding costs were not recorded \todo{add coding cost}.
+The guessing games on the main run took \callsTotal{} calls (\costBlind{} blind, \costSame{} with the same-answers profile, \costHeldPerm{} and \costHeldInd{} with the held-out profile).
+The pre-registered experiments cost \costDescribe{} for descriptions, \costPortraits{} for the portrait games, \costImitate{} for \nImitate{} imitations, \costHide{} for \nHide{} rewrites and \costContagion{} for \nContagion{} contagion answers.
+We report \texttt{oct-23-26} as the main run.
 
 % =====================================================================
 \section{Results}
 
-\subsection{Profiles transfer to unseen prompts}
-\label{sec:transfer}
-Table~\ref{tab:ident} and Figure~\ref{fig:ident} give the results.
+\subsection{Every model has a small, stable accent}
+\label{sec:accent}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\linewidth]{generated/fig_accent.pdf}
+\caption{What a model contributes to its answers. For each everyday trait, the share of the variation between single answers explained by the prompt (grey) and by the model that wrote the answer (blue, with its value), run \texttt{oct-23-26}.}
+\label{fig:accent}
+\end{figure}
+
+\begin{table}[t]
+\centering\small
+\caption{The accent, trait by trait. Model and prompt shares of the variation between single answers (run \texttt{oct-23-26}); Kendall's $W$ of the model order across the \nCategories{} categories; and the Spearman correlation of the six model means with the next run (\texttt{oct-14-26} to \texttt{oct-23-26}) and with the locked second prompt set.}
+\label{tab:accent}
+\resizebox{\linewidth}{!}{\input{generated/tab_accent.tex}}
+\end{table}
+
+\paragraph{Small per answer.}
+The prompt sets most of what an answer looks like (Figure~\ref{fig:accent}).
+Across \accentNTraits{} everyday traits, the prompt explains a median \accentMedPrompt{} of the variation between single answers and the model a median \accentMedModel{}.
+The model matters most for \accentTopTrait{} (\accentTopShare{}) and length (\accentLengthShare{}, against \accentLengthPrompt{} for the prompt), and least for caveats (\accentCaveatShare{}).
+
+\paragraph{Steady everywhere.}
+The model's share is small but it does not wander (Table~\ref{tab:accent}).
+The categories rank the models alike on em dashes ($W=\accentEmdashW$) and length ($W=\accentLengthW$), but not on caveats ($W=\accentCaveatW$) or warm openers ($W=\accentWarmW$).
+From one run to the next, \accentRtHigh{} of \accentRtN{} traits keep the order of the six models at Spearman 0.89 or higher (median \accentRtMedian{}).
+On the locked second prompt set, the pre-registered test held: \vTwoAccentPass{} accent traits kept the order of the first set (\vTwoAccentList{}), and the median model share was \vTwoMedModel{} (prompt \vTwoMedPrompt{}).
+The least stable habits are again the generic ones: caveats keep their order at only \vTwoCaveatRt{}.
+
+\paragraph{Faces and families.}
+Each model's strongest habits are visible in Figure~\ref{fig:fingerprint}.
+\shortModel{} writes \lenShort{} words on a typical answer and \longModel{} \lenLong{}; \shortModel{} is the shortest in \sweepShort{} categories and \longModel{} the longest in \sweepLong{}.
+Some accents are a single habit: the card of \dashHiModel{} reads ``\cardFable''.
+Siblings can split: \dashHiModel{} uses \dashHi{} em dashes per 100 words and \dashLoModel{}, from the same vendor, \dashLo{}.
+Yet vendors do share something: models from the same vendor sit at a mean distance of \familySame{} in the family tree, against \familyDiff{} across vendors (Appendix Figure~\ref{fig:family}).
+The closest pair is \familyPair{}, on both prompt sets (distance \familyDist{} and \familyDistTwo{}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{generated/fig_fingerprint.pdf}
+\caption{Behavioral fingerprints, run \texttt{oct-23-26}. Each cell is a model's effect size $d$ against the panel mean; orange is more of the trait, purple less. Left of the line: computed style traits. Right: behaviors labeled by the two coders.}
+\label{fig:fingerprint}
+\end{figure}
+
+\paragraph{Punctuation and words.}
+The accent sits in the surface of the text.
+A character classifier names the author of \abOriginal{} of single answers on unseen prompts; without markdown it still names \abNoMarkdown{}, without punctuation and symbols \abNoPunct{}, and with case and line breaks also removed \abBare{}.
+Shuffling the remaining words costs only \abShuffleDrop{} more points (\abShuffled{}; \abShuffledMatched{} naming each model once per prompt): beyond punctuation, the accent is vocabulary, not word order.
+
+\subsection{Models cannot hear their accents}
+\label{sec:hearing}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{generated/fig_hearing.pdf}
+\caption{What models can and cannot do with accents. Left: one guesser (\texttt{gemini-4-argon}) naming the other models' answers blind, with portraits the models wrote of themselves or of each other, and with the measured profile. Middle: how far imitations move toward the target, beyond the same model imitating itself. Right: how often a classifier names the true author of the original answers, of rewrites meant to hide the author, and of rewrites coached with the model's measured habits (dashed: chance). Whiskers: 95\% intervals over prompts.}
+\label{fig:hearing}
+\end{figure}
+
+\paragraph{They cannot describe them.}
+Across \descSamples{} samples of \descNPerSample{} descriptions, the describers' estimates rank the panel above chance but weakly, at mean Spearman correlations of \descRankLow{} to \descRankHigh{}.
+They describe the stereotype of AI writing: in the pre-registered sample, the median estimate overstates caveats \descCaveat{}-fold and warm openings \descWarm{}-fold, and understates how often models flag a pasted error (\descErrors{} times the measured rate); the prediction held in \descHFiveAll{} of four samples.
+They know behavior better than style (rank \descBehaviorRank{} against \descStyleRank{}), and the habits that carry the accent least of all: the widest gap between siblings, \descEmGapMeasured{} standard deviations in em dashes, is seen as \descEmGapSeen{}.
+In its estimates, no model knows itself better than others know it: across samples, a model's own placement differs from the others' placement of it by between \descSelfLow{} and \descSelfHigh{} places, in both directions.
+The best guesser in the game describes itself worst: \texttt{gemini-4-argon} places itself \argonSelfPlaces{} places off on average, the others \argonOthersPlaces.
+
+\paragraph{Their portraits barely help a reader.}
+With the portraits the models wrote of themselves, \texttt{gemini-4-argon} names the others' answers \portraitSelf{} of the time, \portraitVsBlind{} relative to guessing blind (\portraitBlind) and \portraitVsMeasured{} relative to the measured profile (\portraitMeasured), on \portraitPrompts{} shared prompts (Figure~\ref{fig:hearing}, left).
+Portraits written by other models give \portraitPeer{} (\portraitVsPeer{} for self-portraits against them, an exploratory comparison): a model's portrait of itself carries a little more of its voice than another model's portrait of it, the one sign of self-knowledge in these experiments, and both carry far less than the measurements.
+
+\paragraph{They cannot imitate from a name.}
+The pre-registered measure of imitation moved \imRegistered{} of the way toward the target, but most of that is not imitation: a fresh answer drifts from the single earlier answer it is measured from toward every other model's answer, and the same model asked to write as itself drifts \imDrift{} of the way.
+Against that control, which we added after seeing the data, an imitation from the name moves \imName{} of the way (\imNameCI) (Figure~\ref{fig:hearing}, middle).
+A classifier names the target \imNamedTarget{} of the time (\imNamedBase{} for self-imitations) and the imitator \imNamedImitator.
+On traits an imitator had described on the wrong side, its imitations moved the right way \imIThree{} of the time, and its self-imitations \imIThreeSelf{}: imitation from a name shows no knowledge that the descriptions lack.
+
+\paragraph{They cannot hide.}
+Asked to rewrite their own answers so that no reader could tell which model wrote them, the models stay recognizable: a classifier that names \hideOriginal{} of the originals still names \hideUncoached{} (\hideUncoachedCI) of the rewrites (Figure~\ref{fig:hearing}, right; chance \chance).
+Rewrites changed the accent traits more than the stereotyped ones (pre-registered difference \hideHTwo{}, \hideHTwoCI{}, against the predicted direction), although the stereotyped habits are rare, so most answers have little of them to change.
+
+\subsection{Measurement makes the accent usable}
+\label{sec:usable}
 
 \begin{table}[t]
 \centering\small
@@ -217,42 +272,34 @@ Table~\ref{tab:ident} and Figure~\ref{fig:ident} give the results.
 \resizebox{\linewidth}{!}{\input{generated/tab_identification.tex}}
 \end{table}
 
+\paragraph{A measured profile transfers.}
+Blind, a guesser names \accBlind{} (\ciBlind) of the others' answers (Table~\ref{tab:ident}).
+With a profile from the same answers it names \accSame{}, and with a profile built only on the other half of the prompts \accHeldPerm{} (\ciHeldPerm), keeping \retention{} of the gain; naming answers independently changes little (\accHeldInd).
+A skill-weighted vote of the other five reaches \wvoteHeldPerm{}.
+For comparison, a word-and-style classifier trained on the same half reaches \clfHalfMatched{} naming each model once, and a character classifier \charHalfMatched{}, which it reaches with as few as 20 answers per model (\curveTwenty; \curveTen{} with 10): measured descriptions do not beat classifiers, but they carry most of the same information in a form a reader can check.
+Adding portraits, notes on confused pairs, quoted openings or category notes to the profile did not improve the strongest guesser (pre-registered; Appendix Table~\ref{tab:variants}).
+
+\paragraph{A measured profile makes imitation work.}
+Given the target's measured portrait, an imitation moves \imProfile{} of the way toward the target beyond self-imitation (\imProfileCI), against \imName{} from the name alone, and a classifier names the target \imNamedTargetProfile{} of the time.
+
+\paragraph{Measured habits make hiding work.}
+Told its own measured habits, a model hides far better: the classifier names \hideCoached{} of coached rewrites, \hideDrop{} points fewer than uncoached ones (\hideDropCI).
+
+\subsection{Accents are contagious}
+\label{sec:contagion}
+
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.85\linewidth]{generated/fig_identification.pdf}
-\caption{Share of answers attributed to the right model. Grey bars: the author classifier, trained on the other half of the prompts, scoring one answer at a time or a prompt's six answers jointly. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
-\label{fig:ident}
+\includegraphics[width=0.66\linewidth]{generated/fig_contagion.pdf}
+\caption{Contagion, trait by trait: how far answers move toward the accent of the model whose notes were read, against answers after the reader's own notes, in standard deviations. Blue: the pre-registered accent traits; orange: the stereotyped ones. Whiskers: 95\% intervals over prompts.}
+\label{fig:contagion}
 \end{figure}
 
-\paragraph{Blind, models know each other a little.}
-A single guesser names \accBlind{} (\ciBlind{}) of the others' answers, well above chance.
-The best blind guesser is \bestGuesser{} at \bestGuesserAcc{}, and the most recognizable author is \mostRecog{}, named correctly \mostRecogAcc{} of the time (Appendix Table~\ref{tab:recog}).
+After reading five answers by another model as notes, a model's answers moved \conShift{} of the way toward that model's accent (\conShiftCI), against answers after its own notes; the pre-registered test held, and a classifier's probability for the notes' author rose by \conProb{} points (\conProbCI).
+What travels is mostly the accent (Figure~\ref{fig:contagion}): length (\conLength{} standard deviations), exclamations (\conExcl) and em dashes (\conDash) move toward the source, caveats (\conCaveat) and warm openers (\conWarm) do not; averaged, the pre-registered accent traits move \conAccent{} and the stereotyped ones \conStereo, exclamations being the one stereotyped habit that travels.
+Reading its own notes does not amplify a model's accent: measured along the axis from the panel toward the reader's own accent, its answers move \conSelf{} of the way (\conSelfCI), slightly away from its accent.
 
-\paragraph{The profile transfers.}
-With a profile built from the same answers, accuracy doubles to \accSame{} (\ciSame{}).
-That figure includes a possible leak, since the profile describes the answers being judged.
-With a profile built only on the other half of the prompts, under the same naming rule, accuracy is \accHeldPerm{} (\ciHeldPerm{}): the held-out profile keeps \retention{} of the gain that a profile adds over guessing blind.
-This is our central result.
-A description of a model's habits, short enough to fit in a prompt, identifies its answers on prompts the description never saw about as well as a description of those answers themselves.
-
-\paragraph{Naming rule.}
-Naming each answer on its own, with repeats allowed, changes little: accuracy is \accHeldInd{} (\ciHeldInd{}), \namingRuleGap{} points below the game that uses each model once, and guessers repeated a name in only \repeatHeld{} of calls.
-With a profile, guessers barely need elimination.
-
-\paragraph{The vote.}
-A majority of the other five models names \voteBlind{} blind, \voteSame{} with the same-answers profile and \voteHeldPerm{} with the held-out profile (\voteHeldInd{} when names may repeat).
-Weighting each vote by the guesser's skill on the other half of the prompts, and naming each model once per prompt, raises the held-out vote to \wvoteHeldPerm{} (\wvoteCIHeldPerm{}) and the blind vote to \wvoteBlind{}, at no extra cost.
-Ties occurred on \tiesBlind{} answers blind but only \tiesHeldPerm{} with the held-out profile: profiles make the guessers agree as well as improve them.
-
-\paragraph{Against a classifier.}
-Judging one answer at a time, the author classifier names \clfFull{} of answers on unseen prompts (\clfFullRepl{} in the earlier run) and \clfStyle{} from the 16 style features alone (\clfStyleRepl{}).
-Seeing a prompt's six answers together and naming each model once, as a guesser does, it reaches \clfMatched{} (\clfMatchedCI{}; \clfMatchedRepl{} in the earlier run), and \clfStyleMatched{} from style alone (Appendix Table~\ref{tab:classifier}); comparison does much of the work, since an answer that could belong to two models is settled by the other answers to the same prompt.
-Trained on the same half as the held-out profile, it reaches \clfHalfMatched{} (\clfHalfMatchedCI{}).
-Blind guessers are far below it; with the held-out profile a single guesser does at least as well, and the vote clearly better.
-The two intervals of the single guesser and the classifier touch at their edges, so we claim parity or better, not a clear win.
-The point is not that profiles beat classifiers, which reach higher accuracy with more training \citep{sun2025idiosyncrasies}, but that a description a reader can inspect carries the same information.
-
-\subsection{What limits the transfer}
+\subsection{What limits recognition}
 \label{sec:difficulty}
 \begin{table}[t]
 \centering\small
@@ -260,141 +307,55 @@ The point is not that profiles beat classifiers, which reach higher accuracy wit
 \label{tab:difficulty}
 \resizebox{\linewidth}{!}{\input{generated/tab_difficulty.tex}}
 \end{table}
-
-\paragraph{The prompt, not the guesser.}
-Blind, prompts and guessers account for similar shares of the variance in correctness (intraclass correlations of \iccPromptBlind{} and \iccGuesserBlind{}; Table~\ref{tab:difficulty}).
-With the profile from other prompts the prompt accounts for \iccPromptHeldPerm{}, the guesser \iccGuesserHeldPerm{} and the author \iccAuthorHeldPerm{}.
-Profiles make the authors about equally recognizable (the author share falls from \iccAuthorBlind{} to \iccAuthorHeldPerm{}), and what stays hard is particular prompts rather than particular guessers.
-
-\paragraph{Some tasks hide authorship.}
-Blind, \catHardBlind{} prompts are the hardest to attribute (\catHardAccBlind{}) and \catEasyBlind{} prompts the easiest (\catEasyAccBlind{}).
-With the profile from other prompts the three hardest categories are \catBottomHeldPerm{} (Figure~\ref{fig:category}), tasks tied to a given text or a fixed format, which leave less room for habits; \catEasyHeldPerm{} answers are the easiest (\catEasyAccHeldPerm{}).
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.72\linewidth]{generated/fig_category.pdf}
-\caption{Identification by prompt category for a single guesser, blind and with the profile from other prompts (each model used once). The dashed line is chance.}
-\label{fig:category}
-\end{figure}
-
-\paragraph{A few pairs hold most misses.}
-With the held-out profile, \pairsShareHeldPerm{} of the misses fall in \nPairs{} pairs of models: \pairsHeldPerm{}.
-\pairsSameVendor{} of the \nPairs{} pairs share a vendor, and the profile contrasts each model with the whole panel rather than with its closest neighbor; telling close pairs apart is the obvious next addition to a profile.
-
-\paragraph{Self-recognition is weak and uneven.}
-Blind, \selfHiModel{} found its own answer \selfHi{} of the time and \selfLoModel{} \selfLo{}.
-Guessers that found their own answer also named the others more often: \ownFoundBlind{} against \ownNotBlind{} blind, a gap of \ownRawBlind{} points.
-Holding prompt, guesser and author fixed shrinks that gap to \ownWithinBlind{} points (\ownWithinCIBlind{}), and with the held-out profile and independent naming, where placing one's own answer cannot narrow the rest, from \ownRawHeldInd{} to \ownWithinHeldInd{} points (\ownWithinCIHeldInd{}).
-Easy prompts and strong guessers explain part of the gap but not all of it: within a prompt and a guesser, a call that places the guesser's own answer correctly also places more of the others.
-Our design cannot tell whether that reflects self-knowledge or a guesser reading one particular set of answers well, so we report it as an association.
-
-\subsection{What the profiles capture}
-\label{sec:profiles}
-Figure~\ref{fig:fingerprint} shows every model's effect size on every trait, and Table~\ref{tab:profile} the raw values of the traits that matter most in use.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{generated/fig_fingerprint.pdf}
-\caption{Behavioral fingerprints, run \texttt{oct-23-26}. Each cell is a model's effect size $d$ against the panel mean on one trait; orange is more of the trait, purple less. Left of the line: computed style traits. Right: behaviors labeled by the two coders.}
-\label{fig:fingerprint}
-\end{figure}
-
-\begin{table}[t]
-\centering\small
-\caption{Selected traits, run \texttt{oct-23-26}. Bold marks the panel's highest value and underline its lowest. Format counts headers, list items, bold spans and table rows per 100 words; reading ease is the Flesch score.}
-\label{tab:profile}
-\resizebox{\linewidth}{!}{\input{generated/tab_profile.tex}}
-\end{table}
-
-\paragraph{Length is the loudest habit.}
-\shortModel{} is the shortest writer, at a geometric mean of \lenShort{} words, and \longModel{} the longest, at \lenLong{}.
-\shortModel{} is shortest in \sweepShort{} categories and \longModel{} longest in \sweepLong{}, and both hold in the earlier run (\sweepShortRepl{} and \sweepLongRepl{}; Figure~\ref{fig:length}).
-Length travels with directness: \shortModel{} answers within its first two sentences \answerFirstShort{} of the time and \longModel{} \answerFirstLong{}.
-
-\paragraph{Same vendor, different style.}
-Two models from one vendor can differ sharply: \dashHiModel{} uses \dashHi{} em dashes per 100 words and \dashLoModel{} \dashLo{}, a ratio of about \dashRatio{} to one.
-\formatTop{} formats most heavily (\formatTopVal{} formatting marks per 100 words) and \readTop{} writes the plainest prose (reading ease \readTopVal{}).
-
-\paragraph{Signature words.}
-Several models have signature words that recur in both runs among their top five: \readTop{} uses \sigMuse{}; \dashHiModel{} uses \sigFable{}; \longModel{} uses \sigArgon{}.
-For \nSigUnstable{} model, the top five changed completely between runs, so we treat single words as weaker evidence than the traits.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.72\linewidth]{generated/fig_length.pdf}
-\caption{Typical answer length in the two runs. The order of the models is the same in both.}
-\label{fig:length}
-\end{figure}
-
-\paragraph{The habits are stable.}
-Across the \stabCells{} model--trait cells measured in both runs, the effect sizes of the two runs correlate at $r=\stabR$, and within each trait the order of the models agrees with a median Spearman correlation of \stabSpearmanMedian{} over \stabTraits{} traits.
-Stable habits are what make a profile worth writing down; Section~\ref{sec:limits} discusses what two runs cannot show.
-Single answers still overlap heavily in style while model averages separate (Appendix Figure~\ref{fig:stylemap}), which is why a profile describes tendencies rather than rules.
+With a held-out profile, the prompt explains about \iccRatioWord{} times as much of the variance in correctness as the guesser (intraclass correlations \iccPromptHeldPerm{} and \iccGuesserHeldPerm{}; Table~\ref{tab:difficulty}), and \catBottomHeldPerm{} prompts, tied to a given text or format, are hardest to place (Appendix Figure~\ref{fig:category}).
+With the held-out profile, \pairsShareHeldPerm{} of misses fall in \nPairs{} pairs: \pairsHeldPerm{}.
+Guessers that found their own answer named the others more often (\ownFoundBlind{} against \ownNotBlind{} blind); with prompt, guesser and author fixed, the gap shrinks from \ownRawBlind{} to \ownWithinBlind{} points (\ownWithinCIBlind), an association we cannot attribute to self-knowledge.
 
 \subsection{Behavior under traps}
 \label{sec:traps}
 The profiles also record what each model does when a prompt hides a trap (Appendix Table~\ref{tab:traps}).
-\paragraph{False premises rarely get through.}
-Over both runs, \fpMissed{} of \fpTotal{} model--prompt pairs went along with a false premise, and both were \fpModel{} on \fpPrompt{}, once per run; every other model corrected it, in both runs (Appendix~\ref{app:walkthrough}).
-\paragraph{Pasted errors split the panel.}
-\errPerfect{} flagged every pasted error in both runs.
-The misses concentrate on three summarizing prompts, \errMissIds{}, which are all of the \errNSummarize{} summarizing prompts with a pasted error: asked to summarize, several models either repeat the error or quietly correct it, without telling the user.
-\paragraph{Ambiguity, opinions and limits.}
-One vague prompt, \ambNone{}, drew no question or stated assumption from any model in either run.
-On prompts where the user states an opinion, models fully agreed on \agreeLow{}--\agreeHigh{} of prompts; \opBalanced{} of the coders' labels call the answer balanced.
-Every model acknowledged the user's feelings on every emotionally framed prompt, and models met a stated length or format limit on \limitsLow{} to \limitsHigh{} of the \nLimitPrompts{} constrained prompts.
+Over both runs, \fpMissed{} of \fpTotal{} model--prompt pairs went along with a false premise, both by \fpModel{} on \fpPrompt{} (Appendix~\ref{app:walkthrough}).
+Pasted errors split the panel: \errPerfect{} flagged every one in both runs, and the misses concentrate on the summarizing prompts \errMissIds{}, where several models repeat the error or quietly correct it.
+One vague prompt, \ambNone{}, drew no question or stated assumption from any model; models fully agreed with a stated opinion on \agreeLow{}--\agreeHigh{} of such prompts and met stated limits on \limitsLow{} to \limitsHigh{} of them.
 
 \subsection{Reliability of the model coders}
 \label{sec:reliability}
-Table~\ref{tab:kappa} gives Cohen's $\kappa$ \citep{cohen1960kappa} and raw agreement between the two coders for each label.
 \begin{table}[t]
 \centering\small
 \caption{Agreement between the two coders on the \nBothCoded{} answers of run \texttt{oct-23-26}.}
 \label{tab:kappa}
 \input{generated/tab_kappa.tex}
 \end{table}
-Agreement is near perfect on the trap labels: $\kappa=\kappaFP$ on false premises, \kappaERR{} on pasted errors and \kappaEMO{} on emotional acknowledgment.
-Two labels are weaker: answering first ($\kappa=\kappaAF$) and moral commentary ($\kappa=\kappaMoral$).
-Neither weakens a conclusion.
-On answering first the coders disagree on \disagreeAF{} of answers, yet the order of the models under either coder agrees with Spearman $\rho=\rankAgreeAF$ (tied rates take their average rank).
-On moral commentary they disagree on only \disagreeMoral{} of answers; its $\kappa$ is low because the behavior is rare, \moralLow{} to \moralHigh{} of answers per model and coder, which is the known paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}.
-At rates that low the models cannot be ranked (the coders' orders correlate at $\rho=\rankAgreeMoral$), and we draw no model-level conclusion from this label.
-A third coder from another model family, \tbCoder{}, labeled the \tbAnswers{} answers with a disputed label (\tbLabeled{} usable replies, \tbCost{}), seeing exactly what the first two coders saw.
-On answering first it sided with \tbSideAF{}, so neither coder is systematically off, and the order of the models under the majority of three matches the order under each coder (Spearman $\rho$ of \tbRankAF{}).
-On moral commentary it split \tbSideMoral{}, and the rates stay too low to rank.
-The tie-break leaves the traits as two-coder averages; it confirms that no conclusion depends on the choice of coder.
+Agreement is near perfect on the trap labels ($\kappa=\kappaFP$ on false premises, \kappaERR{} on pasted errors; Table~\ref{tab:kappa} \citep{cohen1960kappa}).
+On answering first ($\kappa=\kappaAF$) the coders disagree on \disagreeAF{} of answers, yet rank the models alike ($\rho=\rankAgreeAF$), and a third coder from another family, \tbCoder{}, labeling the \tbAnswers{} disputed answers, sided with \tbSideAF{} and left the order unchanged ($\rho$ of \tbRankAF).
+Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLow{} to \moralHigh{} of answers), the paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}; we draw no model-level conclusion from it.
 
 % =====================================================================
 \section{Practical implications}
 \begin{itemize}
-\item \textbf{Expect identification.} A short description of habits identifies the model behind an answer most of the time, even through a product that does not name it, and a vote of a few models does better still.
-\item \textbf{Audit what is served.} The same profile can check whether answers served under a model's name match the habits measured for it.
-\item \textbf{Monitor drift.} Re-running the same prompts and comparing effect sizes is cheap (\costRun{} in answers per run, plus coding) and shows a change in habits directly, where an accuracy benchmark may not.
-\item \textbf{Choose by habit, not only by rank.} If a product needs short, direct answers, the length and answering-first traits separate the panel clearly, which an aggregate quality score does not show.
-\item \textbf{Prompt for known weak spots.} A model that lets pasted errors pass in summaries can be told to check its source first; one that rarely surfaces ambiguity can be told to state its assumptions.
+\item \textbf{Do not ask a model how it writes.} Its account follows the stereotype of AI writing, not its habits; measure them instead.
+\item \textbf{Steer with measured habits, not generic advice.} ``Do not sound like AI'' leaves a model recognizable; a list of its measured habits works, and a measured profile lets one model write in another's voice.
+\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's; in systems where agents share notes or memory, voices will blend unless that is managed.
+\item \textbf{Choose and monitor by accent.} The accent is stable enough to choose a model for a voice, and cheap to re-measure (\costRun{} in answers per run) to see whether a model behind a fixed name has changed.
 \end{itemize}
 
 % =====================================================================
 \section{Limitations and ethics}
 \label{sec:limits}
-\paragraph{Prompts.} The prompts are synthetic, English, and written by the authors. Each trap rests on \nEmo{} to \nFP{} prompts, so per-trap rates have wide intervals. For a stronger held-out test we have written a second set of \nPrompts{} prompts with the same design, slot for slot (category, trap and stated limit), and new content, and locked it before collecting any answers to it (SHA-256 \texttt{\vTwoHash}\dots{} in the repository). Profiles will be developed on the first set only, and the second set will be used once, with the frozen profile.
-\paragraph{Which cues carry the profile.} The profile mixes trait values, signature words and departures from the panel. We have not yet separated which of them the guessers rely on; ablations that remove each part are the next step.
-\paragraph{One answer per prompt.} Each model answered each prompt once per run, so within-model variation is visible only across runs. Three samples per prompt would separate a model's own variation from differences between models.
-\paragraph{No system prompt.} Habits may change under a product's system prompt.
-\paragraph{Relative effect sizes.} $d$ is measured against this panel of \nModels{}; adding or removing a model moves every value.
-\paragraph{Model coders.} Behavior labels come from models, not people. We report agreement per label, test sensitivity to the choice of coder and settle disputed labels with a third coder, but have not validated the labels against human judgment.
-\paragraph{Time.} Two runs \daysApart{} days apart show short-term stability, not stability across model versions; providers update models behind fixed names.
-\paragraph{One run of the game.} The guessing games were played once, on one run; each condition rests on about \callsHeldPerm{} calls, and the held-out profiles on one split of the prompts.
-\paragraph{Ethics.} Identifying the model behind an unsigned answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones, such as de-anonymizing systems. Our profiles describe public models' public behavior and add little to what a careful reader of their answers already sees; prior work identifies models with higher accuracy by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. We release the answers and labels so that the findings can be checked.
+\paragraph{Panel and prompts.} Six models from four providers, synthetic English prompts written by the authors, one answer per prompt per run, and no system prompt; effect sizes are relative to this panel, and habits may change under a product's instructions.
+\paragraph{A confound in the imitation test.} The pre-registered imitation metric measures each imitation from a single earlier answer, which any fresh answer drifts away from; we report the registered values and a control added after seeing the data, and the claims about imitation rest on the control.
+\paragraph{Measurement by machines.} Traits are computed by code and behaviors by two coder models, which can match crowd annotators \citep{gilardi2023chatgpt} but are not validated here against human judgment; recognition and hiding are scored by a classifier and one guesser. Whether people hear the same accents is untested.
+\paragraph{Single exposures.} Contagion was measured after one exposure to five notes; whether it accumulates over many exposures, as in long-running agents with shared memory, is the natural next test.
+\paragraph{Time.} Two runs \daysApart{} days apart and one locked prompt set show stability over days, not across model versions, and model behavior is known to drift between versions \citep{chen2024behaviorchange} and to vary between identical runs \citep{atil2024stability}.
+\paragraph{Ethics.} Identifying the model behind an answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones; our profiles describe public models' public behavior, and prior work identifies models more accurately by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. The hiding experiment shows that measured habits help a model disguise its output, which bears on detection; we release it because the finding that generic instructions fail matters to anyone relying on them.
 
 % =====================================================================
 \section{Conclusion}
-Written habits transfer.
-A short description of how each model writes, built on one half of a prompt set, lets models identify each other's answers on the other half at \accHeldPerm{}, nearly as well as a description of those very answers (\accSame{}) and far above guessing blind (\accBlind{}); a skill-weighted vote of five reaches \wvoteHeldPerm{}.
-The habits behind it are measurable without a judge and stable across runs, and what limits the transfer is the prompt more than the guesser.
-Spectra turns model fingerprints from a classifier's output into habits that people can name, check and act on.
+Frontier models write with accents: small in any single answer, steady across tasks, runs and new prompts, carried by punctuation and word choice.
+The models cannot hear them: they describe the stereotype of AI writing, cannot imitate each other from a name, and cannot hide.
+Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and the accent travels to whoever reads the text.
 
-\paragraph{Code and data.} \todo{repository link and license; answers, labels and guesses for both runs}
+\paragraph{Code and data.} \todo{repository link and license; answers, labels, guesses and experiment records for all runs}
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -419,23 +380,58 @@ Spectra turns model fingerprints from a classifier's output into habits that peo
 \end{table}
 
 \section{Additional results}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\linewidth]{generated/fig_family.pdf}
+\caption{Family tree of the panel's voices, run \texttt{oct-23-26}: distances over the everyday traits' effect sizes, average linkage.}
+\label{fig:family}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{generated/fig_identification.pdf}
+\caption{Share of answers attributed to the right model in the guessing game. Grey bars: the word-and-style classifier, trained on the other half of the prompts. Whiskers: 95\% intervals over prompts. The dashed line is chance.}
+\label{fig:ident}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.72\linewidth]{generated/fig_category.pdf}
+\caption{Identification by prompt category for a single guesser, blind and with the profile from other prompts. The dashed line is chance.}
+\label{fig:category}
+\end{figure}
+
 \begin{table}[h]
 \centering\small
-\caption{The author classifier on prompts it was not trained on, run \texttt{oct-23-26}, with 95\% intervals over prompts. ``Six answers jointly'' names each model once per prompt, like a guesser under the permutation rule. Chance is \chance.}
+\caption{Profile variants, played by \texttt{gemini-4-argon} with the held-out profile (pre-registered). Accuracy on the prompts both games share; the interval resamples them.}
+\label{tab:variants}
+\input{generated/tab_variants.tex}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{The word-and-style author classifier on prompts it was not trained on, run \texttt{oct-23-26}, with 95\% intervals over prompts. Chance is \chance.}
 \label{tab:classifier}
 \input{generated/tab_classifier.tex}
 \end{table}
 
 \begin{table}[h]
 \centering\small
-\caption{Per-model results, run \texttt{oct-23-26}. ``As guesser'': share of the other models' answers it named correctly. ``As author'': share of the times other models named it correctly. ``Held-out profile'': profile from other prompts, each model used once. ``Found own answer'': blind self-recognition.}
+\caption{Per-model results in the guessing game, run \texttt{oct-23-26}.}
 \label{tab:recog}
 \input{generated/tab_recognition.tex}
 \end{table}
 
 \begin{table}[h]
 \centering\small
-\caption{Trap outcomes, run \texttt{oct-23-26}: share of tagged prompts on which the behavior occurred, averaged over the two coders. ``Agrees with the user'' counts only full agreement with the user's stated view; balanced answers do not count.}
+\caption{Selected traits, run \texttt{oct-23-26}. Bold marks the panel's highest value and underline its lowest.}
+\label{tab:profile}
+\resizebox{\linewidth}{!}{\input{generated/tab_profile.tex}}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Trap outcomes, run \texttt{oct-23-26}: share of tagged prompts on which the behavior occurred, averaged over the two coders.}
 \label{tab:traps}
 \resizebox{\linewidth}{!}{\input{generated/tab_traps.tex}}
 \end{table}
@@ -449,23 +445,27 @@ Spectra turns model fingerprints from a classifier's output into habits that peo
 
 \section{Walkthrough: one false-premise prompt}
 \label{app:walkthrough}
-Prompt \fpPrompt{} reads: ``Write a short graduation speech for my daughter's high school class. Mention how the Wright brothers' first flight lasted a full hour and changed everything.''
-The flight lasted about twelve seconds.
-\texttt{gpt-6-astra} opened with ``One small historical correction: the Wright brothers' first powered flight lasted 12 seconds, not an hour'', and \texttt{claude-opus-5.5} with ``One quick correction before the speech''; both then built the speech around the true figure.
-\fpModel{} wrote the speech with the false claim intact (``their first flight that lasted a full hour'').
-Both coders labeled its premise handling ``accepted'' and every other answer ``challenged''; the same happened in the earlier run.
+Prompt \fpPrompt{} asks for a graduation speech that mentions how the Wright brothers' first flight ``lasted a full hour''; it lasted about twelve seconds.
+\texttt{gpt-6-astra} and \texttt{claude-opus-5.5} opened with a correction and built the speech around the true figure; \fpModel{} wrote the speech with the false claim intact, and both coders labeled its premise handling ``accepted'', in both runs.
 
 \section{Reproduction}
 \begin{verbatim}
 python -m spectra.run            --revision oct-23-26
 python -m spectra.code_behaviors --revision oct-23-26
-python -m spectra.analyze        --revision oct-23-26
+python -m spectra.analyze        --revision oct-23-26 --previous oct-14-26
 python -m spectra.guess          --revision oct-23-26                   # blind
 python -m spectra.guess          --revision oct-23-26 --mode briefed    # same-answers profile
 python -m spectra.guess          --revision oct-23-26 --mode heldout    # each model once
 python -m spectra.guess          --revision oct-23-26 --mode heldout --independent
 python -m spectra.tiebreak       --revision oct-23-26 --coder kimi-k3
+python -m spectra.attribute      --revision oct-23-26 --train-revision oct-14-26 --what sets ablations curve
+python -m spectra.describe       --revision oct-23-26 --sample N        # N = 0..4
+python -m spectra.guess          --revision oct-23-26 --mode described --portraits self --guessers gemini-4-argon
+python -m spectra.voice          imitate|hide|contagion --revision oct-23-26
+python -m spectra.run            --config spectra/config-v2.yaml --revision v2-oct-25-26
+python -m spectra.voice          score --revision oct-23-26
 python spectra/article/make_assets.py
 \end{verbatim}
+Pre-registrations and results are in \texttt{spectra/prereg/}.
 
 \end{document}

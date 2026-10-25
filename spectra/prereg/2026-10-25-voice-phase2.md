@@ -207,4 +207,21 @@ Estimates assume no retries. The 2026-10-25 run overshot its estimate by about 6
 
 ## Deviations
 
-None so far.
+Appended after the data came in. Nothing above was changed.
+
+1. **Budget (2026-10-25).**
+   - **The overruns:** the impression contest and contagion ran about 10–13% over their estimates. The portrait
+     games ran 63% over ($53.50 against $32.84), because argon reasoned longer with portrait briefs.
+   - **The total:** $159.13 recorded, plus uncoded coding costs.
+   - **Approval:** during the runs, the user raised the cap above the approved $144 and asked to continue.
+2. **E3: a confound in I1 and I3, found after the data.**
+   - **The problem:** both metrics measure an imitation from the imitator's single earlier answer to the same
+     prompt. A fresh answer drifts from that one sample toward the prompt's typical answer, so it moves "toward the
+     target" without imitating anything.
+   - **The evidence:** the registered SELF control, the same message with the imitator's own name, moves 0.25 of
+     the way toward the other models' answers.
+   - **What is reported:** the registered verdicts stand as computed. The results file adds post-hoc contrasts
+     against SELF on the same axes, and interprets E3 only through them.
+   - **I2 is unaffected:** it compares PROFILE with NAME, and both drift alike.
+3. **E4 H2: a reading, not a change.** The STEREOTYPE traits are rare yes/no habits. Most answers have none, so
+   their mean |Δ| is small by construction. The registered contrast is reported as computed, with this caveat.
