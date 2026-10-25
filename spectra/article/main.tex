@@ -37,8 +37,8 @@ The accent lives in punctuation and word choice.
 The models mishear it.
 Their descriptions of themselves and each other match the measurements only weakly (rank correlations of \descRankLow{} to \descRankHigh{}) and overstate generic AI habits, such as caveats \descCaveat{}-fold; their self-portraits let a reader recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
 Measurement makes the accent usable: a measured profile moves imitations \imProfile{} of the way, and coaching on measured habits cuts identification to \hideCoached{}.
-Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent; most of that is what the notes say, but with their content held fixed, their voice alone moves answers \swapVoice{} of the way.
-Our later experiments were pre-registered, including a test in which two models from two more vendors joined the panel and every finding held.
+Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent; in a style swap that rewrites the notes to keep their content, most of that is what the notes say, and their voice moves answers \swapVoice{} of the way, though rewriting cannot hold the content exactly fixed.
+Our later experiments were pre-registered, including a test in which two models from two more vendors joined the panel; the accent, the misheard descriptions and contagion held.
 \end{abstract}
 
 % =====================================================================
@@ -65,15 +65,15 @@ The models barely know their accents.
 They describe themselves and each other with the stereotype of AI writing, not with the habits that distinguish them.
 Portraits they write of themselves barely help a reader; asked to write as another model, they barely move; asked to hide, they stay recognizable.
 Measurement changes that: given a measured profile, a model imitates another far better and hides itself far better, and a profile built on one set of prompts lets models name each other's answers on another.
-Finally, a model that reads another model's earlier answers as notes picks up part of its accent: mostly through what the notes say, but also, with their content held fixed, through their voice.
+Finally, a model that reads another model's earlier answers as notes picks up part of its accent: mostly through what the notes say, but also, in a style swap designed to keep the content, through their voice.
 
 \paragraph{Contributions.}
 \begin{enumerate}
 \item \textbf{The accent, measured.} An instrument without quality judges (style computed from the text, behaviors labeled by two coder models outside the panel) and a decomposition of each habit into what the model and the prompt contribute, with consistency across categories, across runs, and on a locked second prompt set (Section~\ref{sec:accent}); with repeated answers, a model's steady accent separated from its reactions to particular prompts and from noise (Section~\ref{sec:reactions}).
 \item \textbf{Models mishear accents.} Four pre-registered tests: describing, recognizing from self-written portraits, imitating from a name, and hiding (Section~\ref{sec:hearing}).
 \item \textbf{Measurement makes accents usable.} Measured profiles transfer to unseen prompts for identification, and make imitation and hiding work (Section~\ref{sec:usable}).
-\item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context, with a style swap that separates the voice of the notes from their content (Section~\ref{sec:contagion}).
-\item \textbf{Two more models.} With two models from two more vendors in the panel, the accent, its stability, the stereotyped descriptions and contagion all hold, and readers turn out to differ widely in how much of another model's voice they take on (Section~\ref{sec:eight}).
+\item \textbf{Accents are contagious.} The first measurement, to our knowledge, of one model's accent moving into another's answers through shared context, with a style swap that separates the voice of the notes from their content as far as rewriting allows (Section~\ref{sec:contagion}).
+\item \textbf{Two more models.} With two models from two more vendors in the panel, five registered tests hold: the accent's size and order, the newcomers' own stable habits, the stereotyped descriptions, and contagion to new readers; readers also differ widely in how far notes move them (Section~\ref{sec:eight}).
 \item \textbf{Open and pre-registered.} The pipeline, answers, labels and experiments, with pre-registrations committed before their data, including one design flaw we found afterwards (Section~\ref{sec:prereg}).
 \end{enumerate}
 
@@ -179,13 +179,15 @@ Comparing answers after another model's notes with answers after one's own holds
 \paragraph{The style swap.}
 To separate the voice of the notes from their content (pre-registered), each set of notes is first rewritten ``in your own words and your own usual style, keeping all of its content and facts'', either by its author or by the other model.
 This crosses whose content the notes carry, the reader's or the source's, with whose voice they are in, and every note set has passed through the same rewriting step.
-The \emph{voice effect} is the shift toward the source when the notes are in its voice rather than the reader's, with content held fixed and averaged over both contents; the \emph{content effect} is the converse.
+The \emph{voice effect} is the shift toward the source when the notes are in its voice rather than the reader's, comparing note sets meant to carry the same content and averaged over both contents; the \emph{content effect} is the converse.
+In the voice effect a rewrite by the other model enters once with a plus sign and once with a minus sign, so a loss of content common to all such rewrites cancels; content a rewriter adds from its own answers does not cancel, and would inflate the voice effect.
 A manipulation check asks whether a classifier names the rewriter of a rewritten note more often than its original author.
 
 \subsection{Pre-registration}
 \label{sec:prereg}
 Everything after the first two runs and the first guessing games was pre-registered: hypotheses, metrics, prompt lists, message texts and code were committed and pushed before the first call, with deviations appended afterwards.
 The second prompt set was locked by SHA-256 (\texttt{\vTwoHash}\dots) before collection and used once.
+The registrations and their results files are in the public repository (\repoLink, directory \texttt{spectra/prereg/}); Appendix Table~\ref{tab:prereg} gives the commit that added each one and the time of the first record it governs.
 
 % =====================================================================
 \section{Setup}
@@ -345,13 +347,14 @@ Trait by trait, the accent traits move more than the stereotyped ones (Figure~\r
 Reading its own notes does not amplify a model's accent: measured along the axis from the panel toward the reader's own accent, its answers move \conSelf{} of the way (\conSelfCI), slightly away from its accent.
 
 \paragraph{Mostly content, partly voice.}
-Another model's notes differ from one's own in what they say as well as in how they say it, and the style swap separates the two.
+Another model's notes differ from one's own in what they say as well as in how they say it, and the style swap separates the two as far as rewriting can.
 The rewrites changed the voice: a classifier named the rewriter of a rewritten note \swapRewriter{} of the time and its original author \swapAuthor{}, so the swap was real but partial.
-With content held fixed, notes in the source's voice moved answers \swapVoice{} of the way toward the source (\swapVoiceCI; \swapVoiceNoLen{} with length left out), and the classifier's probability for the source rose \swapProb{} points (\swapProbCI); all three pre-registered tests held.
-With the voice held fixed, the source's content moved answers \swapContent{} of the way (\swapContentCI).
-Most of what spreads, then, is what the notes say and the form that content takes; a smaller part, reliably above zero, is the voice itself.
-How well the rewrites kept the content we checked on names and numbers (post hoc): rewrites by another model kept \ccCrossKept{} of the original's, against \ccSelfKept{} when authors rewrote their own, and \ccCrossNovel{} of their names and numbers were new (\ccSelfNovel{} for self-rewrites); the new ones came from the rewriter's own answer to that prompt no more often than from any other model's (\ccImported{} against \ccControl, a difference of \ccExcess{} points, \ccExcessCI).
-We find no sign that rewriters carried their own names or numbers into the notes; the check cannot see emphasis or recommendations.
+Between note sets meant to carry the same content, notes in the source's voice moved answers \swapVoice{} of the way toward the source (\swapVoiceCI; \swapVoiceNoLen{} with length left out), and the classifier's probability for the source rose \swapProb{} points (\swapProbCI); all three pre-registered tests held.
+Between note sets in the same voice, the source's content moved answers \swapContent{} of the way (\swapContentCI).
+Most of what spreads, then, is what the notes say and the form that content takes; a smaller part, above zero in every registered test, appears to be the voice itself.
+Rewriting kept the content only approximately, as we checked on names and numbers (post hoc): rewrites by another model kept \ccCrossKept{} of the original's, against \ccSelfKept{} when authors rewrote their own, and \ccCrossNovel{} of their names and numbers were new (\ccSelfNovel{} for self-rewrites).
+A difference of this kind, common to all rewrites by another model, cancels in the voice effect; what would not cancel is a rewriter carrying in its own content, and the new names and numbers came from the rewriter's own answer to that prompt no more often than from any other model's (\ccImported{} against \ccControl, a difference of \ccExcess{} points, \ccExcessCI).
+The check cannot see meaning, emphasis or recommendations, so these residual content differences limit a causal reading: the swap shows that voice can spread, more firmly than it fixes how much.
 With every note rewritten, the original effect reappears: notes wholly the source's move answers \swapSSOO{} of the way, against notes wholly the reader's.
 
 \subsection{Two more models}
@@ -360,11 +363,12 @@ With every note rewritten, the original effect reappears: notes wholly the sourc
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.72\linewidth]{generated/fig_readers.pdf}
-\caption{Readers differ in how much of another model's voice they take on, with eight models (exploratory). For each reader and each source of notes, the shift of its answers toward the source after reading the source's notes rather than its own, in standard deviations along the axis from the reader's accent to the source's. The two models added for the test are in bold. Whiskers: 95\% intervals over prompts.}
+\caption{Readers differ in how far another model's notes move them, with eight models (exploratory). For each reader and each source of notes, the shift of its answers toward the source after reading the source's original notes rather than its own, in standard deviations along the axis from the reader's accent to the source's. The notes differ in content as well as voice, so the shift combines the two; it does not rank readers by voice transfer alone. The two models added for the test are in bold. Whiskers: 95\% intervals over prompts.}
 \label{fig:readers}
 \end{figure}
 
 To test whether these findings depend on the panel, \pEightNew{} joined it (pre-registered), from two more vendors, one of them outside the United States; the six-model results above stand as they are, and five registered tests were scored on the eight models, all confirmed.
+The test covers the accent, the descriptions and contagion with the original notes; imitation, hiding, the portraits, the repeat answers and the style swap were not repeated.
 
 \paragraph{The accent generalizes.}
 With eight models, the model explains a median \pEightMedModel{} of the variation per answer (the prompt \pEightMedPrompt; \pEightMedModelTwo{} on the second prompt set), and on the locked second set the eight model means kept their order on \pEightGOnePass{} accent traits (\pEightGOneList).
@@ -377,8 +381,8 @@ Describing each other, the eight models' estimates follow the measured ranks onl
 \paragraph{Contagion reaches new readers, unequally.}
 As readers, the two newcomers moved \pEightConNew{} of the way toward the notes' author (\pEightConNewCI), and the classifier's probability for the author rose \pEightConProb{} points.
 Readers differ widely (Figure~\ref{fig:readers}; exploratory).
-Measured in standard deviations along the axis, which unlike the fraction of the way does not inflate when reader and source already sound alike, \pEightMostReader{} moved \pEightMostRange{} toward the three sources, no other reader more than \pEightOthersMax, and \pEightLeastReader{} not at all (\pEightLeastRange).
-Some models take on the voice of what they read; others keep their own.
+Measured in standard deviations along the axis, which unlike the fraction of the way does not inflate when reader and source already sound alike, \pEightMostReader{} moved \pEightMostRange{} toward the three sources, no other reader more than \pEightOthersMax, and \pEightLeastReader{} showed little or no measured movement toward the source (\pEightLeastRange).
+Some models move far toward the notes they read and others hardly at all; as these are the original notes, the differences combine what the notes say with how they say it.
 
 \paragraph{A different coder.}
 The new coder pair agrees less than the old one (answering first: $\kappa=\pEightKappaAF$ against \pEightKappaAFOld), yet orders the six original models alike on every behavior (Spearman \pEightCodedRhoLow{} to \pEightCodedRhoHigh).
@@ -420,7 +424,7 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 \begin{itemize}
 \item \textbf{Do not ask a model how it writes.} Its account follows the stereotype of AI writing, not its habits; measure them instead.
 \item \textbf{Steer with measured habits, not generic advice.} ``Do not sound like AI'' leaves a model recognizable; a list of its measured habits works, and a measured profile lets one model write in another's voice.
-\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's, mostly through its content but also through its voice; in systems where agents share notes or memory, voices will blend unless that is managed.
+\item \textbf{Expect accents to survive rewriting and to travel.} Rewrites keep most of the accent, and text an agent reads moves its writing toward the author's, mostly through its content and, it appears, partly through its voice; in systems where agents share notes or memory, voices will blend unless that is managed.
 \item \textbf{Choose and monitor by accent.} The accent is stable enough to choose a model for a voice, and cheap to re-measure (\costRun{} in answers per run) to see whether a model behind a fixed name has changed.
 \item \textbf{Repeat answers to judge a single prompt.} One answer per prompt suffices for a model's steady accent, but how a model handles a particular prompt is a reaction mixed with sampling noise; telling the two apart takes several answers.
 \end{itemize}
@@ -432,7 +436,7 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 \paragraph{A confound in the imitation test.} The pre-registered imitation metric measures each imitation from a single earlier answer, which any fresh answer drifts away from; we report the registered values and a control added after seeing the data, and the claims about imitation rest on the control. Re-scoring the same imitations against three-answer baselines (pre-registered) supports regression to the mean as the cause, but the corrected comparison has not been replicated with new imitations.
 \paragraph{Reactions.} The reactions are estimated on one prompt set and one run, with two of the three answers collected \repDaysLater{} days after the first; whether a model's reaction to a given prompt survives a model update is untested.
 \paragraph{Measurement by machines.} Traits are computed by code and behaviors by two coder models, which can match crowd annotators \citep{gilardi2023chatgpt} but are not validated here against human judgment; recognition and hiding are scored by a classifier and one guesser. Whether people hear the same accents is untested.
-\paragraph{Single exposures.} Contagion was measured after one exposure to five notes; whether it accumulates over many exposures, as in long-running agents with shared memory, is the natural next test. The style swap holds content fixed only as well as rewriting does: a partial change of voice would weaken the voice effect, while content a rewriter adds, drops or re-weights could bias it either way, and our check covers names and numbers, not meaning.
+\paragraph{Single exposures.} Contagion was measured after one exposure to five notes; whether it accumulates over many exposures, as in long-running agents with shared memory, is the natural next test. The style swap keeps content only as well as rewriting does: a partial change of voice would weaken the voice effect, a content loss common to all rewrites by another model cancels, and content a rewriter carries in from its own answers would inflate it; our check covers names and numbers, not meaning, emphasis or recommendations.
 \paragraph{Time.} Two runs \daysApart{} days apart and one locked prompt set show stability over days, not across model versions, and model behavior is known to drift between versions \citep{chen2024behaviorchange} and to vary between identical runs \citep{atil2024stability}.
 \paragraph{Ethics.} Identifying the model behind an answer has legitimate uses, such as auditing which model a vendor serves, and less welcome ones; our profiles describe public models' public behavior, and prior work identifies models more accurately by other means \citep{sun2025idiosyncrasies,pasquini2025llmmap}. The hiding experiment shows that measured habits help a model disguise its output, which bears on detection; we release it because the finding that generic instructions fail matters to anyone relying on them.
 
@@ -441,9 +445,9 @@ Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLo
 Frontier models write with accents: a steady part, small in any single answer but constant across tasks, runs and new prompts and carried by punctuation and word choice, and a larger part made of each model's own reactions to particular prompts.
 The models mishear them: they describe the stereotype of AI writing, their portraits of themselves help a reader only a little, and they cannot imitate each other from a name or hide.
 Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and part of the accent travels with the text to whoever reads it, more to some readers than to others.
-All of this held when two models from two more vendors joined the panel.
+The accent, its misheard descriptions and contagion held when two models from two more vendors joined the panel.
 
-\paragraph{Code and data.} \todo{repository link and license; answers, labels, guesses and experiment records for all runs}
+\paragraph{Code and data.} The pipeline, prompt sets, codebook, pre-registrations, results files and the scripts that generate every number, table and figure in this paper are at \repoLink{} (directory \texttt{spectra/}). \todo{license; release of the answers, labels, guesses and experiment records of all runs}
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -569,6 +573,14 @@ In every check the reactions exceed the steady accent.
 \caption{Style map of the 16 style features, run \texttt{oct-23-26}. Left: every answer, with model averages as large dots. Right: the averages alone, zoomed. The first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.}
 \label{fig:stylemap}
 \end{figure}
+
+\section{Pre-registrations}
+\begin{table}[htbp]
+\centering\small
+\caption{The \nRegistrations{} registrations, each committed to the public repository before the first record it governs (times UTC, 2026). The results of each are in \texttt{spectra/prereg/}, in a file of the same name ending in \texttt{-results.md} (for the self-knowledge registration, \texttt{2026-10-25-results.md}); the second prompt set's lock file holds its hash.}
+\label{tab:prereg}
+\resizebox{\linewidth}{!}{\input{generated/tab_prereg.tex}}
+\end{table}
 
 \section{Walkthrough: one false-premise prompt}
 \label{app:walkthrough}

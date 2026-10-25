@@ -101,6 +101,50 @@ second = min(r["timestamp"] for r in load_jsonl(DATA / MAIN / "responses.jsonl")
 from datetime import datetime  # noqa: E402
 gap_days = round((datetime.fromisoformat(second) - datetime.fromisoformat(first)).total_seconds() / 86400)
 mac("daysApart", gap_days)
+# the repository, and each pre-registration: the commit that added it against the first record it governs (UTC)
+import subprocess  # noqa: E402
+from datetime import timezone  # noqa: E402
+
+
+def git(*args):
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout.strip()
+
+
+remote = git("remote", "get-url", "origin").removesuffix(".git")
+assert remote.startswith("https://github.com/"), remote
+mac("repoLink", f"\\url{{{remote}}}")
+
+
+def first_record(recs):
+    return min(datetime.fromisoformat(r["timestamp"]) for r in recs if r.get("timestamp")).astimezone(timezone.utc)
+
+
+g_all = load_jsonl(DATA / MAIN / "guesses.jsonl")
+v_all = load_jsonl(DATA / MAIN / "voice.jsonl")
+v2_resp = load_jsonl(DATA / "v2-oct-25-26" / "responses.jsonl")
+REGISTRATIONS = [  # file, what it governs, the records it governs
+    ("spectra/prompts/prompts_v2.lock", "Second prompt set, locked by hash", v2_resp),
+    ("spectra/prereg/2026-10-25-self-knowledge-and-profiles.md", "Self-knowledge replication; profile variants",
+     [g for g in g_all if (g.get("profile") or "base") != "base"]),
+    ("spectra/prereg/2026-10-25-voice-phase2.md", "Describe, recognize, imitate, hide, contagion; second set",
+     [v for v in v_all if v["experiment"] in ("imitate", "hide", "contagion")] + [g for g in g_all if g.get("mode") == "described"] + v2_resp),
+    ("spectra/prereg/2026-10-25-contagion-swap.md", "Style swap", [v for v in v_all if v["experiment"] in ("swap-notes", "swap")]),
+    ("spectra/prereg/2026-10-25-panel-8.md", "Two more models",
+     [r for rev in ("oct-23-26-p8", "v2-oct-25-26-p8") for r in load_jsonl(DATA / rev / "responses.jsonl") if r["model"] in ("grok-4.7", "kimi-k3")]),
+    ("spectra/prereg/2026-10-25-replicates.md", "Three answers per prompt",
+     [r for r in load_jsonl(DATA / "oct-23-26-s3" / "responses.jsonl") if int(r.get("sample", 0)) > 0]),
+]
+lines = []
+for path, what, recs in REGISTRATIONS:
+    h, t = git("log", "--diff-filter=A", "--format=%h %cI", "--", path).splitlines()[-1].split()
+    registered, data_from = datetime.fromisoformat(t).astimezone(timezone.utc), first_record(recs)
+    assert registered < data_from, (path, registered, data_from)  # registered before any record it governs
+    name = path.split("/")[-1].replace("_", "\\_")
+    lines.append(f"{what} & \\texttt{{{name}}} & \\texttt{{{h}}} & {registered:%m-%d %H:%M} & {data_from:%m-%d %H:%M} \\\\")
+(OUT / "tab_prereg.tex").write_text(
+    "\\begin{tabular}{lllrr}\n\\toprule\nRegistration & File & Commit & Committed & First record \\\\\n\\midrule\n"
+    + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
+mac("nRegistrations", len(REGISTRATIONS))
 mac("maxTokens", f"{min(m['max_tokens'] for m in run_config['models']):,}".replace(",", "{,}"))
 mac("maxTokensArgon", f"{max(m['max_tokens'] for m in run_config['models']):,}".replace(",", "{,}"))
 
