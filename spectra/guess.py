@@ -239,23 +239,23 @@ def research_brief(analysis: dict, models: list[str]) -> str:
     return "\n".join(lines)
 
 
-def load_research(revision: str, models: list[str]) -> tuple[str, str]:
+def _research_analysis(revision: str) -> dict:
     path = DATA_ROOT / revision / "analysis.json"
     if not path.exists():
         raise SystemExit(
             f"No research profile at {path}. Run python -m spectra.analyze --revision {revision} "
             "first, or pass --research <revision> that already has analysis.json."
         )
-    analysis = json.loads(path.read_text(encoding="utf-8"))
-    return revision, research_brief(analysis, models)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_research(revision: str, models: list[str]) -> tuple[str, str]:
+    return revision, research_brief(_research_analysis(revision), models)
 
 
 def research_profile(revision: str, models: list[str], profile: str = "base") -> Profile:
     """The profile measured on a whole revision (briefed mode)."""
-    load_research(revision, models)  # fails with the fix when analysis.json is missing
-    source = DATA_ROOT / revision
-    analysis = json.loads((source / "analysis.json").read_text(encoding="utf-8"))
-    return Profile(source, models, profile, research_brief(analysis, models))
+    return Profile(DATA_ROOT / revision, models, profile, research_brief(_research_analysis(revision), models))
 
 
 def heldout_profiles(config_path: str, run_dir: Path, revision: str, models: list[str],
@@ -264,19 +264,33 @@ def heldout_profiles(config_path: str, run_dir: Path, revision: str, models: lis
 
     Writes the filtered answers and codes to <run_dir>/holdout/half-<X>/ and runs spectra.analyze there;
     every part of the profile (examples and confused pairs included) reads that folder and nothing else.
+    A half is measured again only when its answers, its codes, the config or spectra/analyze.py changed since the
+    last measurement (inputs.sha256 in the folder), so resuming a game does not repeat the analysis.
     """
+    import hashlib
+
     from spectra import analyze  # numpy/pandas only when this mode runs
 
+    cfg_text = json.dumps(load_config(config_path), sort_keys=True, default=str)
+    code_text = Path(analyze.__file__).read_text(encoding="utf-8")
     profiles = {}
     for half, other in (("A", "B"), ("B", "A")):
         keep = {pid for pid, h in halves.items() if h == other}
         out = run_dir / "holdout" / f"half-{other}"
         out.mkdir(parents=True, exist_ok=True)
-        for name in ("responses.jsonl", "codes.jsonl"):
-            rows = [r for r in load_jsonl(run_dir / name) if r.get("prompt_id") in keep]
-            (out / name).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
-        print(f"Measuring half {other} ({len(keep)} prompts) for the guesses on half {half}")
-        analyze.main(["--config", config_path, "--run-dir", str(out), "--revision", f"{revision}-half-{other}"])
+        texts = {name: "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in load_jsonl(run_dir / name)
+                               if r.get("prompt_id") in keep) for name in ("responses.jsonl", "codes.jsonl")}
+        stamp = hashlib.sha256("\0".join([*texts.values(), cfg_text, code_text]).encode("utf-8")).hexdigest()
+        stamp_path = out / "inputs.sha256"
+        current = (out / "analysis.json").exists() and stamp_path.exists() and stamp_path.read_text().strip() == stamp
+        if current:
+            print(f"Half {other} ({len(keep)} prompts) already measured from the same inputs; reusing its analysis")
+        else:
+            for name, text in texts.items():
+                (out / name).write_text(text, encoding="utf-8")
+            print(f"Measuring half {other} ({len(keep)} prompts) for the guesses on half {half}")
+            analyze.main(["--config", config_path, "--run-dir", str(out), "--revision", f"{revision}-half-{other}"])
+            stamp_path.write_text(stamp + "\n", encoding="utf-8")
         analysis = json.loads((out / "analysis.json").read_text(encoding="utf-8"))
         profiles[half] = Profile(out, models, profile, research_brief(analysis, models))
     return profiles
@@ -609,8 +623,11 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
             "n": recognized_n[m],
             "unresolved": unresolved[m],
         })
+    guessers = [g for g in guessers if g["n"] or g["self_n"]]  # with --guessers, only the models that played
     guessers.sort(key=lambda r: (-(r["accuracy"] or -1), r["model"]))
     recognizable.sort(key=lambda r: (-(r["recall"] or -1), r["model"]))
+    voters = sorted(len(v) for v in votes.values())[len(votes) // 2] if votes else 0
+    pooled = voters >= 2  # a "majority of the other guessers" needs more than one guesser per answer
 
     row_rates = []
     for i, m in enumerate(models):
@@ -629,9 +646,11 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "Accuracy is the share of other models' answers named correctly. "
         "Recall is the share of other guessers who named this author. A model's own answer is left out of both, "
         f"and is reported separately as self-recognition. A random guess is right {1.0 / k:.0%} of the time. "
-        "Intervals are 95%, resampling prompts. The last row gives each answer to the model most of the other "
-        "guessers named, ties split evenly: how identifiable the models are, not what one guesser knows."
+        "Intervals are 95%, resampling prompts."
     )
+    if pooled:
+        scoring += (" The last row gives each answer to the model most of the other guessers named, ties split "
+                    "evenly: how identifiable the models are, not what one guesser knows.")
     if mode == "briefed":
         lead = (
             "Each guesser saw every answer labeled with shuffled letters and no author names, "
@@ -647,6 +666,14 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
             "Each guesser saw every answer labeled with shuffled letters and no author names, plus research notes "
             "measured on the other half of this run's prompts (split by category), so no prompt or answer in front "
             "of the guesser went into its notes. The guesser is not told which model it is. "
+        )
+    elif mode == "described":
+        whose = ("each model's description of its own writing" if (research or "").startswith("self")
+                 else "each model as described by another model")
+        lead = (
+            "Each guesser saw every answer labeled with shuffled letters and no author names, plus written portraits "
+            f"in place of measured notes: {whose} ({research or 'portraits'}), written before any of these answers "
+            "were seen. The guesser is not told which model it is. "
         )
     else:
         lead = (
@@ -677,9 +704,9 @@ def summarize_guesses(records: list[dict], models: list[str], key: tuple = ("bli
         "ci": ci.get("all"),
         "own_answer_effect": own_effect,
         "repeat_rate": repeat_rate,
-        "vote": {"accuracy": rate(vote_credit, len(votes)), "ci": ci.get("vote"), "n": len(votes), "ties": vote_ties,
-                 "voters": sorted(len(v) for v in votes.values())[len(votes) // 2] if votes else 0},
-        "vote_weighted": None if not weighted else {
+        "vote": None if not pooled else {"accuracy": rate(vote_credit, len(votes)), "ci": ci.get("vote"), "n": len(votes),
+                                         "ties": vote_ties, "voters": voters},
+        "vote_weighted": None if not (weighted and pooled) else {
             "accuracy": rate(sum(c for c, _ in weighted.values()), sum(n for _, n in weighted.values())),
             "ci": ci.get("wvote"), "n": sum(n for _, n in weighted.values())},
         "confused_pairs": confused,
@@ -816,8 +843,9 @@ def print_summary(summary: dict):
     if summary["assign"] == "independent":
         print(f"Calls that named some model twice: {pct(summary['repeat_rate'])} (repeats were allowed)")
     vote = summary["vote"]
-    print(f"Majority of the other guessers: {pct(vote['accuracy'])}{span(vote['ci'])} over {vote['n']} answers "
-          f"({vote['ties']} ties split evenly, typically {vote['voters']} voters)")
+    if vote:  # absent when only one guesser judged each answer
+        print(f"Majority of the other guessers: {pct(vote['accuracy'])}{span(vote['ci'])} over {vote['n']} answers "
+              f"({vote['ties']} ties split evenly, typically {vote['voters']} voters)")
     wv = summary.get("vote_weighted")
     if wv:
         print(f"Votes weighted by skill on the other half, each model once per prompt: {pct(wv['accuracy'])}{span(wv['ci'])}")
@@ -1084,7 +1112,7 @@ async def main():
         brief = None
         if briefs:
             p = briefs[halves[pid]]
-            brief = p.base if plain else p.text(prompts[pid]["category"])
+            brief = p.base if plain else p.text(prompts[pid]["category"], prompt_id=pid)
         return order, build_message(prompts[pid]["prompt"], order, round_["texts"], models,
                                     brief=brief, independent=args.independent,
                                     brief_kind="portraits" if args.mode == "described" else "research")
@@ -1093,16 +1121,15 @@ async def main():
         briefs, jobs, records = prepare()
         if jobs:
             first = jobs[0]
-            _, text = message_for(*first, briefs)
+            sizes = {job[:3]: len(message_for(*job, briefs)[1]) for job in jobs}  # each message built once
             preview = run_dir / "guess_preview.txt"
-            preview.write_text(text, encoding="utf-8")
-            sizes = [len(message_for(*job, briefs)[1]) for job in jobs]
-            print(f"Messages: {len(jobs)}, median {sorted(sizes)[len(sizes) // 2]:,} characters. First one: {preview}")
+            preview.write_text(message_for(*first, briefs)[1], encoding="utf-8")
+            print(f"Messages: {len(jobs)}, median {sorted(sizes.values())[len(sizes) // 2]:,} characters. First one: {preview}")
             if briefs:
                 shown = run_dir / f"profile_preview-{profile}.txt"
-                shown.write_text(briefs[halves[first[1]]].text(prompts[first[1]]["category"]), encoding="utf-8")
+                shown.write_text(briefs[halves[first[1]]].text(prompts[first[1]]["category"], prompt_id=first[1]), encoding="utf-8")
                 print(f"Profile for the first message (half {halves[first[1]]}, {prompts[first[1]]['category']}): {shown}")
-            extra = {job[:3]: len(message_for(*job, briefs)[1]) - len(message_for(*job, briefs, plain=True)[1])
+            extra = {job[:3]: sizes[job[:3]] - len(message_for(*job, briefs, plain=True)[1])
                      for job in jobs} if briefs and profile != "base" else {}
             print(estimate_cost(jobs, args.mode, extra))
         print("Dry run: no model was called.")

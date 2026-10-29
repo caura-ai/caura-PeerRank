@@ -256,6 +256,23 @@ def test_majority_vote_splits_ties_and_ignores_own_votes():
     assert (vote["n"], vote["ties"], vote["voters"]) == (3, 1, 2)
 
 
+def test_a_single_guesser_game_lists_only_that_guesser_and_no_majority():
+    records = [guess("alpha-1", "alpha-1", "beta-1", "gamma-1", prompt=p) for p in ("p1", "p2")]
+    s = summarize_guesses(records, GUESSERS)
+    assert [g["model"] for g in s["guessers"]] == ["alpha-1"]  # the models that did not play are not listed
+    assert s["vote"] is None and s["vote_weighted"] is None  # one voter per answer is no majority
+    assert "most of the other guessers" not in s["note"]
+
+
+def test_the_portrait_game_says_what_the_guesser_saw():
+    records = [guess("alpha-1", "alpha-1", "beta-1", "gamma-1", mode="described", research="self, sample 1"),
+               guess("alpha-1", "alpha-1", "beta-1", "gamma-1", mode="described", research="peer, sample 1")]
+    notes = {g["research"][0]: g["note"] for g in summarize_all(records, GUESSERS, "rev")}
+    assert "description of its own writing" in notes["self, sample 1"]
+    assert "described by another model" in notes["peer, sample 1"]
+    assert all("written portraits" in n and "was not told" not in n for n in notes.values())
+
+
 def test_skill_weighted_vote_trusts_the_guesser_that_is_right_on_the_other_half():
     # alpha names every other answer correctly; beta and gamma name every other answer wrongly.
     records = []
@@ -1005,3 +1022,68 @@ class TestRecommendations:
         assert [g["title"] for g in data["guessing"]["games"]] == [
             "Just guess",
             "Guess from held-out research (notes from the other half of the prompts), each answer judged on its own"]
+
+
+def test_read_answers_counts_retried_failures_apart_from_missing_answers(tmp_path):
+    from spectra.analyze import read_answers
+
+    lines = [{"model": "a", "prompt_id": "p1", "sample": 0, "error": "429"},
+             {"model": "a", "prompt_id": "p1", "sample": 0, "text": "recovered"},
+             {"model": "a", "prompt_id": "p2", "sample": 0, "error": "429"},
+             {"model": "a", "prompt_id": "p2", "sample": 0, "error": "429"},
+             {"model": "b", "prompt_id": "p1", "sample": 0, "text": "fine"}]
+    path = tmp_path / "responses.jsonl"
+    path.write_text("".join(json.dumps(r) + "\n" for r in lines), encoding="utf-8")
+    rows, errors, retried = read_answers(path)
+    assert set(rows) == {("a", "p1", 0), ("b", "p1", 0)}
+    assert errors == {"a": 1} and retried == {"a": 1}  # p2 never succeeded; p1 failed once, then succeeded
+
+
+def test_quoted_examples_never_come_from_the_prompt_being_guessed(tmp_path):
+    from spectra.profile import Profile
+
+    (tmp_path / "analysis.json").write_text(json.dumps({"signature": {}}), encoding="utf-8")
+    rows = [{"model": "a", "prompt_id": f"p{i}", "category": f"c{i}", "text": f"Opening line number {i}. Then more. End {i}."}
+            for i in range(5)]
+    (tmp_path / "responses.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    prof = Profile(tmp_path, ["a"], "examples", "BRIEF")
+    shown = lambda text: [r["prompt_id"] for r in rows if f"number {r['prompt_id'][1:]}" in text]  # noqa: E731
+    full = prof.text("c0")
+    assert len(shown(full)) == 3
+    guessed = shown(full)[0]
+    without = prof.text("c0", prompt_id=guessed)
+    assert guessed not in shown(without) and len(shown(without)) == 3  # another answer takes its place
+    assert prof.text("c0", prompt_id="p-elsewhere") == full  # a prompt that is not quoted changes nothing
+
+
+def test_heldout_halves_are_measured_once_for_the_same_inputs(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from spectra import analyze
+    from spectra import guess as g
+
+    calls = []
+
+    def fake_analyze(argv):
+        out = Path(argv[argv.index("--run-dir") + 1])
+        calls.append(out.name)
+        (out / "analysis.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr(analyze, "main", fake_analyze)
+    monkeypatch.setattr(g, "research_brief", lambda analysis, models: "brief")
+    run = tmp_path / "run"
+    run.mkdir()
+
+    def answers(prompts):
+        (run / "responses.jsonl").write_text("".join(json.dumps({"model": "a", "prompt_id": p, "text": "x"}) + "\n"
+                                                     for p in prompts), encoding="utf-8")
+
+    answers(("p1", "p2"))
+    (run / "codes.jsonl").write_text("", encoding="utf-8")
+    cfg = str(SPECTRA_DIR / "config.yaml")
+    g.heldout_profiles(cfg, run, "r", ["a"], {"p1": "A", "p2": "B"})
+    g.heldout_profiles(cfg, run, "r", ["a"], {"p1": "A", "p2": "B"})
+    assert calls == ["half-B", "half-A"]  # the second launch reuses both analyses
+    answers(("p1", "p2", "p3"))
+    g.heldout_profiles(cfg, run, "r", ["a"], {"p1": "A", "p2": "B", "p3": "A"})
+    assert calls == ["half-B", "half-A", "half-A"]  # only the half whose answers changed is measured again

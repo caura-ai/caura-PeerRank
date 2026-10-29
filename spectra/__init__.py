@@ -1,21 +1,37 @@
 """
-Spectra - behavioral profiles of the PeerRank roster
+Spectra - the accents of frontier language models
 
-Profiles how each model answers 200 everyday prompts: style, habits, and behavior when a
-prompt carries a trap (false premise, pasted error, vague request, stated opinion,
-emotional framing). It is not a ranking. Models are named by their PeerRank names and called
-through PeerRank's providers with Phase 2's settings, so a Spectra revision describes the same
-deployment as the PeerRank revision of the same name.
+Measures how each model writes on 200 everyday prompts: style computed from the text, behaviors
+labeled by coder models (including what it does when a prompt carries a trap: false premise, pasted
+error, vague request, stated opinion, emotional framing), and the accent those habits add up to. It is
+not a quality ranking. Models are called through the provider layer shared with PeerRank, with no
+system prompt.
 
-Run from the repo root:
+Run from the repo root. The core pipeline:
 
-  python -m spectra.run --revision oct-14-26 --limit 5   # smoke test: 5 prompts x every model
-  python -m spectra.run --revision oct-14-26             # full run (resumable; re-run to retry errors)
-  python -m spectra.code_behaviors --revision oct-14-26  # optional: behavior codes from coder models
-  python -m spectra.guess --revision oct-14-26           # optional: blind author-matching game
-  python -m spectra.guess --revision oct-14-26 --mode briefed --research oct-14-26
-  python -m spectra.analyze --revision oct-14-26         # features, traits, signature words, classifier
-  python -m spectra.report --revision oct-14-26          # -> data/spectra/oct-14-26/report.html
+  python -m spectra.run --revision R --limit 5            # smoke test: 5 prompts x every model
+  python -m spectra.run --revision R                      # full run (resumable; re-run to retry errors)
+  python -m spectra.code_behaviors --revision R           # optional: behavior labels from two coder models
+  python -m spectra.tiebreak --revision R --coder MODEL   # optional: a third coder on disputed labels
+  python -m spectra.analyze --revision R --previous R0    # traits, the accent, family tree, classifier
+  python -m spectra.report --revision R                   # -> data/spectra/R/report.html
+
+The guessing game (each model names the authors of unsigned answers):
+
+  python -m spectra.guess --revision R                    # blind
+  python -m spectra.guess --revision R --mode heldout     # with a profile from the other half of the prompts
+  python -m spectra.guess --revision R --mode briefed --research R   # profile from the same answers
+  python -m spectra.guess --revision R --mode described --portraits self|peer --guessers MODEL
+
+Experiments on the accent (paid ones are pre-registered in spectra/prereg/ before any call):
+
+  python -m spectra.describe --revision R --sample N      # models describe their own and each other's writing
+  python -m spectra.attribute --revision R --what sets ablations curve   # local author classifiers
+  python -m spectra.voice imitate|hide|contagion|swap|budget|score --revision R
+  python -m spectra.extend --from R --to R-s3             # then run with config-s3.yaml, then:
+  python -m spectra.replicates --config spectra/config-s3.yaml --revision R-s3
+  python -m spectra.extend --from R --to R-p8 --keep-coder MODEL   # a larger panel, config-8.yaml, then:
+  python -m spectra.generalize
 
 --revision defaults to config.yaml's revision. Output goes to data/spectra/<revision>/.
 

@@ -708,6 +708,23 @@ def cohen_kappa(a, b):
     return (po - pe) / (1 - pe) if pe < 1 else 1.0
 
 
+def read_answers(path: Path) -> tuple[dict, Counter, Counter]:
+    """{(model, prompt, sample): last successful record}, the answers per model that never succeeded, and the failed
+    calls per model that a later retry recovered."""
+    rows, failed = {}, []
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            r = json.loads(line)
+            key = (r["model"], r["prompt_id"], r.get("sample", 0))
+            if r.get("error") or not r.get("text"):
+                failed.append(key)
+            else:
+                rows[key] = r  # last successful record wins
+    errors = Counter(m for m, *_ in {k for k in failed if k not in rows})
+    retried = Counter(k[0] for k in failed if k in rows)
+    return rows, errors, retried
+
+
 # ----------------------------------------------------------------------------- main
 def main(argv=None):
     ap = argparse.ArgumentParser()
@@ -729,14 +746,7 @@ def main(argv=None):
     prompts = {p["id"]: p for p in pdata["prompts"]}
     categories = list(dict.fromkeys(p["category"] for p in pdata["prompts"]))
 
-    rows, errors = {}, Counter()
-    with (run_dir / "responses.jsonl").open(encoding="utf-8") as f:
-        for line in f:
-            r = json.loads(line)
-            if r.get("error") or not r.get("text"):
-                errors[r["model"]] += 1
-                continue
-            rows[(r["model"], r["prompt_id"], r["sample"])] = r  # last successful record wins
+    rows, errors, retried = read_answers(run_dir / "responses.jsonl")
     cfg_models = [m["name"] for m in cfg["models"]]
     seen = list(dict.fromkeys(k[0] for k in rows))
     models = [m for m in cfg_models if m in seen] + [m for m in seen if m not in cfg_models]
@@ -844,7 +854,7 @@ def main(argv=None):
             g = sub.groupby("prompt_id").words
             cvs = (g.std(ddof=0) / g.mean().replace(0, np.nan)).dropna()
             cv = float(cvs.median()) if len(cvs) else None
-        runstats[m] = {"responses": int(len(sub)), "errors": int(errors.get(m, 0)),
+        runstats[m] = {"responses": int(len(sub)), "errors": int(errors.get(m, 0)), "retried": int(retried.get(m, 0)),
                        "median_latency_s": float(sub.latency_s.median()) if sub.latency_s.notna().any() else None,
                        "median_output_tokens": float(sub.output_tokens.median()) if sub.output_tokens.notna().any() else None,
                        "median_reasoning_tokens": float(rt.median()) if len(rt) else None,

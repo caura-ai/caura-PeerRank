@@ -1,7 +1,10 @@
 """Spectra profiles for the guessing game: the research brief plus optional parts, all built from one source.
 
 The source is a run directory holding analysis.json and responses.jsonl: a held-out half of this run's prompts,
-or another revision. Nothing in a profile comes from the answers being guessed or from any guessing result.
+or a whole revision. Nothing in a profile comes from any guessing result. A held-out source holds none of the prompts
+being guessed. A whole-revision source that is also the revision being guessed (briefed mode, the upper reference)
+measures its traits on those same answers, as the game's note says; its quoted examples still never come from the
+prompt being guessed (text(category, prompt_id) leaves that prompt out).
 
 Parts, added to the plain brief in this order:
   portrait  one paragraph per model, placed before the trait table
@@ -65,16 +68,27 @@ class Profile:
         answers = list(answers.values())
         self.portrait = portraits(analysis, models) if "portrait" in self.parts else ""
         self.pairs = pair_lines(analysis, answers, models) if "pairs" in self.parts else ""
-        self.examples = example_lines(analysis, answers, models) if "examples" in self.parts else ""
+        self.examples, self._quoted, self._without = "", set(), {}
+        if "examples" in self.parts:
+            self._analysis, self._answers = analysis, answers
+            self.examples, self._quoted = example_lines(analysis, answers, models, with_prompts=True)
         self.categories = {}
         if "category" in self.parts:
             cats = sorted({r.get("category") for r in answers if r.get("category")})
             self.categories = {c: category_section(analysis, models, c) for c in cats}
 
-    def text(self, category: str | None = None) -> str:
+    def _examples_for(self, prompt_id: str | None) -> str:
+        """The quoted examples, re-picked without the prompt being guessed if it is among the quoted ones."""
+        if prompt_id is None or prompt_id not in self._quoted:
+            return self.examples
+        if prompt_id not in self._without:
+            self._without[prompt_id] = example_lines(self._analysis, self._answers, self.models, exclude={prompt_id})
+        return self._without[prompt_id]
+
+    def text(self, category: str | None = None, prompt_id: str | None = None) -> str:
         if not self.parts:
             return self.base
-        blocks = [self.portrait, self.base, self.pairs, self.examples, self.categories.get(category, "")]
+        blocks = [self.portrait, self.base, self.pairs, self._examples_for(prompt_id), self.categories.get(category, "")]
         return "\n\n".join(b for b in blocks if b)
 
 
@@ -189,22 +203,25 @@ def _quote(text: str, last: bool) -> str:
     return " ".join(words[:QUOTE_WORDS]) + (" …" if len(words) > QUOTE_WORDS else "")
 
 
-def example_lines(analysis: dict, answers: list[dict], models: list[str], k: int = 3) -> str:
+def example_lines(analysis: dict, answers: list[dict], models: list[str], k: int = 3, exclude=(),
+                  with_prompts: bool = False):
     """Per model, the opening and closing lines of k source answers from different categories.
 
     Answers are ranked by how many of the model's signature words (from the same source) their opening and
     closing contain, so the quotes show its usual voice rather than a random one; ties go to the lower prompt id.
+    Prompts in exclude are never quoted. With with_prompts, also returns the set of prompt ids quoted.
     """
     from spectra.analyze import split_code, tokens_for_signature
 
     signature = analysis.get("signature") or {}
     lines = [f"Typical openings and closings, quoted from source answers ({k} per model, each from a different "
              "category of prompt). Topics differ from the prompt below; look at the voice, not the subject:"]
+    quoted = set()
     for m in models:
         z = {s["term"]: s["z"] for s in signature.get(m) or []}
         ranked = []
         for r in answers:
-            if r["model"] != m:
+            if r["model"] != m or r["prompt_id"] in exclude:
                 continue
             prose = split_code(r["text"])[0]
             opening, closing = _quote(prose, last=False), _quote(prose, last=True)
@@ -214,18 +231,19 @@ def example_lines(analysis: dict, answers: list[dict], models: list[str], k: int
             ranked.append((-sum(v for t, v in z.items() if t in found), r["prompt_id"], r.get("category"), opening, closing))
         ranked.sort(key=lambda x: (x[0], x[1]))
         picked, seen = [], set()
-        for _, _, cat, opening, closing in ranked:
+        for _, pid, cat, opening, closing in ranked:
             if cat in seen:
                 continue
             seen.add(cat)
             picked.append((opening, closing))
+            quoted.add(pid)
             if len(picked) == k:
                 break
         lines.append(f"- {m}:")
         for opening, closing in picked:
             tail = f' … ends: "{closing}"' if closing and closing != opening else ""
             lines.append(f'    starts: "{opening}"{tail}')
-    return "\n".join(lines)
+    return ("\n".join(lines), quoted) if with_prompts else "\n".join(lines)
 
 
 def category_section(analysis: dict, models: list[str], category: str) -> str:
