@@ -76,7 +76,8 @@ MODEL_TEMPERATURE_OVERRIDES = {
     "claude-fable-5-1": 1.0,  # Fable 5.1 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-opus-5-5": 1.0,  # Opus 5.5 rejects any temperature other than the default 1 (adaptive thinking always on)
     "claude-sonnet-5-5": 1.0,  # Sonnet 5.5 rejects any temperature other than the default 1
-    "gemini-4-argon": 1.0,  # Argon uses Google's default temperature (1.0); omitted on the wire in _call_google
+    "gemini-4-carbon": 1.0,  # Carbon uses Google's default temperature (1.0); omitted on the wire in _call_google
+    "gemini-4-argon": 1.0,  # same Gemini 4 path, if an older id is called directly
     "gemini-3.8-flash": 1.0,  # Align Gemini 3.8 Flash thinking model to temperature 1.0 with the rest of the panel
     "muse-wonder-1.0": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
     "muse-spark-1.3": 1.0,  # Muse is tuned for temperature 1; lower values are allowed but not recommended
@@ -113,13 +114,13 @@ def set_web_grounding_provider(provider: str):
 # Google thinking budget for models that still take thinking_budget (Gemini 3.x).
 GOOGLE_THINKING_BUDGET = 8192  # -1=dynamic, N=fixed budget (0 invalid for thinking models)
 
-# Gemini 4 Argon takes thinking_level, not thinking_budget. On "medium", Argon's
+# Gemini 4 takes thinking_level, not thinking_budget. On "medium", Argon's
 # router skipped thinking (thoughts_token_count=0) on 49/72 short benchmark prompts
 # in oct-14-26 (including 17/18 reasoning/logic questions). "high" engages CoT
 # reasoning consistently on par with Gemini 3.8 Flash (8192 budget) and Claude/Muse.
-# Its output limit covers thinking plus the answer, so keep the cap >= 32,768.
-GOOGLE_ARGON_THINKING_LEVEL = "high"
-GOOGLE_ARGON_MIN_OUTPUT_TOKENS = 32768
+# Carbon follows that path. The output limit covers thinking plus the answer, so keep the cap >= 32,768.
+GOOGLE_GEMINI4_THINKING_LEVEL = "high"
+GOOGLE_GEMINI4_MIN_OUTPUT_TOKENS = 32768
 
 # grok-4.5+ cannot turn reasoning off and default to high. Medium matches the
 # effort Astra and Opus use. providers.py sends the proto enum because the
@@ -229,6 +230,7 @@ MODEL_SHORTCUTS = {
     'claude-fable-5': 'fable-5', 'claude-opus-5': 'opus-5', 'claude-sonnet-5': 'sonnet-5',
     'claude-fable-5.1': 'fable-5.1', 'claude-opus-5.5': 'opus-5.5', 'claude-sonnet-5.5': 'sonnet-5.5',
     'claude-haiku-4-5': 'haiku-4.5',
+    'gemini-4-carbon': 'gem-4-carbon',
     'gemini-4-argon': 'gem-4-argon',
     'gemini-3.1-pro-preview': 'gem-3.1-pro', 'gemini-3.7-flash': 'gem-3.7-fl',
     'gemini-3.5-flash': 'gem-3.5-fl', 'gemini-3.5-flash-lite': 'gem-3.5-lt',

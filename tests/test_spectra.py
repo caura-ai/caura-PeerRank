@@ -23,7 +23,7 @@ from spectra.profile import parse_profile
 from spectra.report import build_recommendations
 from spectra.run import select_prompts
 
-ROSTER = ["gpt-6-astra", "claude-fable-5.1", "claude-opus-5.5", "gemini-4-argon", "gemini-3.8-flash", "muse-wonder-1.0"]
+ROSTER = ["gpt-6-astra", "claude-fable-5.1", "claude-opus-5.5", "gemini-4-carbon", "gemini-3.8-flash", "muse-wonder-1.0"]
 
 
 def words(n, word="word"):
@@ -101,7 +101,7 @@ def test_select_prompts_round_robins_categories():
 class TestGuessParsing:
     @pytest.mark.parametrize("raw, expected", [
         ("gpt-6-astra", "gpt-6-astra"),
-        ("Gemini 4 Argon", "gemini-4-argon"),
+        ("Gemini 4 Carbon", "gemini-4-carbon"),
         ("opus", "claude-opus-5.5"),
         ("flash", "gemini-3.8-flash"),
         ("claude", None),   # two Claude models: ambiguous
@@ -135,8 +135,8 @@ class TestGuessParsing:
         assert parse_assignment(raw, ["A", "B"], ROSTER) == {"A": "gpt-6-astra", "B": "muse-wonder-1.0"}
 
     def test_escaped_object_inside_prose(self):
-        raw = 'My answer: {\\"A\\": \\"gemini-4-argon\\", \\"B\\": \\"gpt-6-astra\\"}'
-        assert parse_assignment(raw, ["A", "B"], ROSTER) == {"A": "gemini-4-argon", "B": "gpt-6-astra"}
+        raw = 'My answer: {\\"A\\": \\"gemini-4-carbon\\", \\"B\\": \\"gpt-6-astra\\"}'
+        assert parse_assignment(raw, ["A", "B"], ROSTER) == {"A": "gemini-4-carbon", "B": "gpt-6-astra"}
 
 
 class TestMessages:
@@ -846,11 +846,11 @@ class TestCodedTraits:
 
 # ----------------------------------------------------------------------------- throttling and locks
 def test_models_from_one_provider_share_a_semaphore():
-    sems = providers.semaphores([{"name": "gemini-4-argon"}, {"name": "gemini-3.8-flash"}, {"name": "gpt-6-astra"}], 32)
-    assert sems["gemini-4-argon"] is sems["gemini-3.8-flash"]
-    assert sems["gpt-6-astra"] is not sems["gemini-4-argon"]
+    sems = providers.semaphores([{"name": "gemini-4-carbon"}, {"name": "gemini-3.8-flash"}, {"name": "gpt-6-astra"}], 32)
+    assert sems["gemini-4-carbon"] is sems["gemini-3.8-flash"]
+    assert sems["gpt-6-astra"] is not sems["gemini-4-carbon"]
     from peerrank.config import PROVIDER_CONCURRENCY
-    assert sems["gemini-4-argon"]._value == min(32, PROVIDER_CONCURRENCY["google"])
+    assert sems["gemini-4-carbon"]._value == min(32, PROVIDER_CONCURRENCY["google"])
 
 
 class TestWriterLock:

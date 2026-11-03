@@ -24,7 +24,7 @@ from .config import (
     TEMPERATURE_DEFAULT, MODEL_TEMPERATURE_OVERRIDES,
     MODEL_TIMEOUT_OVERRIDES,
     GOOGLE_SERVICE_ACCOUNT_FILE, GOOGLE_PROJECT_ID, GOOGLE_LOCATION,
-    GOOGLE_THINKING_BUDGET, GOOGLE_ARGON_THINKING_LEVEL, GOOGLE_ARGON_MIN_OUTPUT_TOKENS,
+    GOOGLE_THINKING_BUDGET, GOOGLE_GEMINI4_THINKING_LEVEL, GOOGLE_GEMINI4_MIN_OUTPUT_TOKENS,
     GROK_REASONING_EFFORT, META_REASONING_EFFORT,
     get_api_key
 )
@@ -242,16 +242,16 @@ async def _call_google(model: str, prompt: str, api_key: str, max_tokens: int, t
 
     actual_model = model
 
-    # Gemini 4 Argon bills thinking against max_output_tokens, rejects the older
+    # Gemini 4 bills thinking against max_output_tokens, rejects the older
     # thinking_budget field, and ignores temperature/top_p/top_k (Google docs
     # recommend omitting sampling parameters and controlling depth via thinking_level).
-    is_argon = model.startswith("gemini-4-argon")
-    effective_max_tokens = max(max_tokens, GOOGLE_ARGON_MIN_OUTPUT_TOKENS) if is_argon else max_tokens
+    is_gemini4 = model.startswith("gemini-4-")
+    effective_max_tokens = max(max_tokens, GOOGLE_GEMINI4_MIN_OUTPUT_TOKENS) if is_gemini4 else max_tokens
     config: dict = {
         "max_output_tokens": effective_max_tokens,
     }
-    if is_argon:
-        config["thinking_config"] = {"thinking_level": GOOGLE_ARGON_THINKING_LEVEL}
+    if is_gemini4:
+        config["thinking_config"] = {"thinking_level": GOOGLE_GEMINI4_THINKING_LEVEL}
     else:
         config["temperature"] = _get_temperature(model, temperature)
         if GOOGLE_THINKING_BUDGET is not None:
@@ -762,8 +762,8 @@ def get_google_auth_method() -> str:
 def _get_reasoning_mode(provider: str, model_id: str) -> str:
     """Get the reasoning/thinking mode description for a model."""
     if provider == "google":
-        if model_id.startswith("gemini-4-argon"):
-            return f"thinking: {GOOGLE_ARGON_THINKING_LEVEL}"
+        if model_id.startswith("gemini-4-"):
+            return f"thinking: {GOOGLE_GEMINI4_THINKING_LEVEL}"
         if "thinking" in model_id:
             return "thinking: OFF (disabled)"
         if GOOGLE_THINKING_BUDGET is not None:

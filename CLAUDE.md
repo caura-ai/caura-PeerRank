@@ -194,7 +194,7 @@ Defined in `peerrank/models.py`. Each model has:
 gpt-6-astra             # openai, model_id gpt-6-astra
 claude-fable-5.1        # anthropic, model_id claude-fable-5-1
 claude-opus-5.5         # anthropic, model_id claude-opus-5-5
-gemini-4-argon          # google, model_id gemini-4-argon
+gemini-4-carbon         # google, model_id gemini-4-carbon
 gemini-3.8-flash        # google, model_id gemini-3.8-flash
 muse-wonder-1.0         # meta, model_id muse-wonder-1.0
 

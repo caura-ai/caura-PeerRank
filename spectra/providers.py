@@ -3,7 +3,7 @@ providers.py - the only Spectra module that imports PeerRank
 
 An entry named after a PeerRank model ("claude-opus-5.5") is sent through
 peerrank.providers.call_llm with Phase 2's settings (MAX_TOKENS_ANSWER, the default
-temperature and its per-model overrides, Argon's thinking level, Grok's reasoning effort),
+temperature and its per-model overrides, Carbon's thinking level, Grok's reasoning effort),
 so a Spectra profile describes the same deployment PeerRank ranks. An entry with
 litellm_model goes through LiteLLM instead, for models PeerRank does not carry.
 
@@ -76,11 +76,11 @@ def describe(entry: dict) -> dict:
     config, _, providers = _peerrank()
     temp = e.get("temperature", config.TEMPERATURE_DEFAULT)
     max_tok = e.get("max_tokens", config.MAX_TOKENS_ANSWER)
-    if e["model_id"].startswith("gemini-4-argon"):
-        max_tok = max(max_tok, getattr(config, "GOOGLE_ARGON_MIN_OUTPUT_TOKENS", max_tok))
+    if e["model_id"].startswith("gemini-4-"):
+        max_tok = max(max_tok, getattr(config, "GOOGLE_GEMINI4_MIN_OUTPUT_TOKENS", max_tok))
     out = {"name": e["name"], "backend": "peerrank", "provider": e["provider"], "model_id": e["model_id"],
            "max_tokens": max_tok,
-           "temperature": config.MODEL_TEMPERATURE_OVERRIDES.get(e["model_id"], temp)}  # Argon drops it in favor of thinking_level
+           "temperature": config.MODEL_TEMPERATURE_OVERRIDES.get(e["model_id"], temp)}  # Gemini 4 drops it in favor of thinking_level
     try:
         out["reasoning"] = providers._get_reasoning_mode(e["provider"], e["model_id"])
     except Exception:

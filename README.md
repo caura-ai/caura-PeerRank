@@ -101,7 +101,7 @@ python generate_figures_PeerRank.py --revision v1           # Publication figure
 |----------|---------------|----------------|
 | OpenAI | gpt-6-astra | gpt-5.6-terra, gpt-5.6-luna, gpt-5-nano, gpt-5-mini |
 | Anthropic | claude-fable-5.1, claude-opus-5.5 | claude-sonnet-5, claude-haiku-4-5 |
-| Google | gemini-4-argon, gemini-3.8-flash | gemini-3.5-flash-lite, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite |
+| Google | gemini-4-carbon, gemini-3.8-flash | gemini-3.5-flash-lite, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite |
 | xAI | — | grok-4.7, grok-code-fast-1 |
 | DeepSeek | — | deepseek-v4-pro, deepseek-v4.1-flash |
 | Meta | muse-wonder-1.0 | muse-spark-1.3 |
