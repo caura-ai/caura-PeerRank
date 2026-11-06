@@ -11,6 +11,7 @@
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{caption}
+\usepackage{placeins}  % \FloatBarrier keeps each appendix's floats inside its own section
 \usepackage{xcolor}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
@@ -492,23 +493,31 @@ The accent, its misheard descriptions and contagion held when two models from tw
 \bibliography{references}
 
 % =====================================================================
+\clearpage
 \appendix
 
 \section{Label list for the coders}
+The two coders give every answer the ten labels of Table~\ref{tab:codebook}, each value chosen from a fixed list; the behavior traits of Appendix~\ref{app:traits} are built from these labels.
+
 \begin{table}[htbp]
 \centering\small
 \caption{The coders' labels and allowed values. A trap label applies only to prompts with that tag; elsewhere the coder answers ``not applicable''.}
 \label{tab:codebook}
 \input{generated/tab_codebook.tex}
 \end{table}
+\FloatBarrier
 
 \section{Trait definitions}
+\label{app:traits}
+Table~\ref{tab:traits} defines the \nTraits{} traits: the style traits, computed from each answer's text, and the behavior traits, built from the coders' labels.
+
 \begin{table}[htbp]
 \centering\small
 \caption{The \nTraits{} traits. ``Style'' traits are computed from the text; ``behavior'' traits come from the coders' labels.}
 \label{tab:traits}
 \input{generated/tab_traits.tex}
 \end{table}
+\FloatBarrier
 
 \section{Variance components}
 \label{app:variance}
@@ -548,8 +557,14 @@ In every check the reactions exceed the steady accent.
 \label{tab:robust}
 \input{generated/tab_robust.tex}
 \end{table}
+\FloatBarrier
 
 \section{Additional results}
+This appendix collects results that support the main text: the family trees, identification in more detail, and the trait and trap tables.
+
+\subsection{Family resemblance}
+Figure~\ref{fig:family} is the family tree of the six voices in the main run (Section~\ref{sec:accent}); Figure~\ref{fig:eight} shows the eight-model panel of the generalization test, with its fingerprint and family tree (Section~\ref{sec:eight}).
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.6\linewidth]{generated/fig_family.pdf}
@@ -563,6 +578,11 @@ In every check the reactions exceed the steady accent.
 \caption{The eight-model panel of the generalization test (run \texttt{oct-23-26-p8}). Left: each model's effect size $d$ against the eight-model panel mean, orange more of the trait and purple less; behaviors labeled by \texttt{deepseek-v4-pro} and \texttt{mistral-large}. Right: family tree over the everyday traits' effect sizes, average linkage. The two models added for the test are in bold. Effect sizes are relative to the panel, so they differ from the six-model fingerprint in Figure~\ref{fig:fingerprint}.}
 \label{fig:eight}
 \end{figure}
+\FloatBarrier
+
+\subsection{Identification}
+Figure~\ref{fig:ident} compares the guessing games with the word-and-style classifier, and Figure~\ref{fig:category} breaks one guesser's accuracy down by prompt category (Sections~\ref{sec:usable} and~\ref{sec:difficulty}).
+Table~\ref{tab:variants} gives the pre-registered profile variants, Table~\ref{tab:classifier} the word-and-style classifier on unseen prompts, and Table~\ref{tab:recog} each model's results as guesser and as author.
 
 \begin{figure}[htbp]
 \centering
@@ -598,6 +618,10 @@ In every check the reactions exceed the steady accent.
 \label{tab:recog}
 \input{generated/tab_recognition.tex}
 \end{table}
+\FloatBarrier
+
+\subsection{Profiles and traps}
+Table~\ref{tab:profile} lists selected traits for each model, Table~\ref{tab:traps} the outcomes on trap prompts (Section~\ref{sec:traps}), and Figure~\ref{fig:stylemap} places every answer on the first two principal components of its measured style.
 
 \begin{table}[htbp]
 \centering\small
@@ -619,14 +643,18 @@ In every check the reactions exceed the steady accent.
 \caption{Style map of the 16 style features, run \texttt{oct-23-26}. Left: every answer, with model averages as large dots. Right: the averages alone, zoomed. The first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.}
 \label{fig:stylemap}
 \end{figure}
+\FloatBarrier
 
 \section{Pre-registrations}
+Table~\ref{tab:prereg} lists every registration with the commit that added it to the public repository and the time of the first record it governs; in each case the registration came first (Section~\ref{sec:prereg}).
+
 \begin{table}[htbp]
 \centering\small
 \caption{The \nRegistrations{} registrations, each committed to the public repository before the first record it governs (times UTC, 2026). The results of each are in \texttt{spectra/prereg/}, in a file of the same name ending in \texttt{-results.md} (for the self-knowledge registration, \texttt{2026-10-25-results.md}); the second prompt set's lock file holds its hash.}
 \label{tab:prereg}
 \resizebox{\linewidth}{!}{\input{generated/tab_prereg.tex}}
 \end{table}
+\FloatBarrier
 
 \section{Walkthrough: one false-premise prompt}
 \label{app:walkthrough}
