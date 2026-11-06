@@ -1,4 +1,4 @@
-% Spectra: draft for arXiv (cs.CL). Build: see README.md in this folder.
+% Spectra: preprint for arXiv (cs.CL). Build: see README.md in this folder.
 % Every number in the text comes from generated/numbers.tex, which make_assets.py writes from the runs.
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
@@ -19,12 +19,21 @@
 \renewcommand{\bibfont}{\small\raggedright}  % long titles and arXiv notes break lines instead of overflowing
 
 \input{generated/numbers.tex}
-\newcommand{\todo}[1]{\textcolor{red!70!black}{[TODO: #1]}}
+\newcommand{\dataLink}{\url{https://github.com/caura-ai/caura-PeerRank/releases/tag/spectra-runs}}
 \newcommand{\trap}[1]{\textsc{#1}}
 
 \title{Language Models Mishear Their Own Accents:\\Stable, Situational and Contagious Writing Habits in Frontier Models}
-\author{\todo{author list and order to be agreed}}
-\date{Draft of 25 October 2026}
+\author{%
+  Yanki Margalit\textsuperscript{1}\thanks{Corresponding author: \texttt{yanki@caura.ai}},
+  Erni Avram\textsuperscript{1},
+  Seffi Cohen\textsuperscript{2},
+  Oded Margalit\textsuperscript{2},
+  and Nurit Cohen-Inger\textsuperscript{2}
+  \\[0.5em]
+  \textsuperscript{1}Caura.ai, Israel \\
+  \textsuperscript{2}Computer Science and Information, Ben-Gurion University of the Negev, Israel
+}
+\date{4 November 2026}
 
 \begin{document}
 \maketitle
@@ -191,7 +200,7 @@ The registrations and their results files are in the public repository (\repoLin
 
 % =====================================================================
 \section{Setup}
-We collected two runs of the first prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer, and one run of the locked second set; answers cost \costRun{} per run (\costRunRepl{} for the earlier run, \costVTwo{} for the second set), and coding costs were not recorded \todo{add coding cost}.
+We collected two runs of the first prompt set, \texttt{oct-14-26} and \texttt{oct-23-26}, \daysApart{} days apart, each with \nAnswers{} answers and two coder labels per answer, and one run of the locked second set; answers cost \costRun{} per run (\costRunRepl{} for the earlier run, \costVTwo{} for the second set), and coding costs were not recorded.
 The guessing games on the main run took \callsTotal{} calls (\costBlind{} blind, \costSame{} with the same-answers profile, \costHeldPerm{} and \costHeldInd{} with the held-out profile).
 The pre-registered experiments cost \costDescribe{} for descriptions, \costPortraits{} for the portrait games, \costImitate{} for \nImitate{} imitations, \costHide{} for \nHide{} rewrites, \costContagion{} for \nContagion{} contagion answers, \costSwap{} for the style swap (\nSwapRewrites{} rewritten notes and \nSwap{} answers) and \costReplicates{} for \nReplicates{} repeat answers to the main run's prompts.
 We report \texttt{oct-23-26} as the main run.
@@ -476,7 +485,7 @@ The models mishear them: they describe the stereotype of AI writing, their portr
 Measurement makes the accent usable, as a description that transfers, a voice to imitate, or habits to drop, and part of the accent travels with the text to whoever reads it, more to some readers than to others.
 The accent, its misheard descriptions and contagion held when two models from two more vendors joined the panel.
 
-\paragraph{Code and data.} The pipeline, prompt sets, codebook, pre-registrations, results files and the scripts that generate every number, table and figure in this paper are at \repoLink{} (directory \texttt{spectra/}). \todo{license; release of the answers, labels, guesses and experiment records of all runs}
+\paragraph{Code and data.} The pipeline, prompt sets, codebook, pre-registrations, results files and the scripts that generate every number, table and figure in this paper are at \repoLink{} (directory \texttt{spectra/}), under the MIT license. The answers, labels, guesses and experiment records for the runs reported here are at \dataLink.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

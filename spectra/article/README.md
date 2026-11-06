@@ -17,7 +17,7 @@ The paper is standalone; PeerRank appears only as related work.
 ```
 article/
   main.tex          the paper
-  references.bib    bibliography; entries marked TODO still need checking against their source
+  references.bib    bibliography, checked against sources on 24--25 Oct 2026
   make_assets.py    writes everything in generated/ from data/spectra/<run>/
   generated/        numbers.tex (one macro per number), tab_*.tex, fig_*.pdf (+ .png previews)
 ```
@@ -49,21 +49,18 @@ writing a number into a sentence that no longer fits it.
 
 ## Build the PDF
 
-No LaTeX engine is installed on the machine this draft was written on, so it has not been compiled yet.
-Either upload this folder (with `generated/`) to Overleaf, or with a local TeX installation run:
+Upload this folder (with `generated/`) to Overleaf, or with a local TeX installation run:
 
 ```
 cd spectra/article
 latexmk -pdf main.tex
 ```
 
-## Open items in the draft
+The 4 November 2026 Overleaf compile of this source is a 27-page PDF. Recompile after any later edit of `main.tex`.
 
-Search `main.tex` for `\todo` and `references.bib` for `TODO`:
+## Front matter and release
 
-- author list and order; repository link and license
-- coder costs (not recorded by the pipeline)
-- bibliography entries cited from memory or with incomplete titles and author lists
+Corresponding author: Yanki Margalit, `yanki@caura.ai`. Code is MIT. Run records are the `spectra-runs` release. Coding costs were not recorded: `codes.jsonl` does not store them. `main.tex` has no `\todo` markers.
 
 The pre-registrations and their results are in `spectra/prereg/`. Earlier work, done since the first draft: the classifier is also scored jointly per prompt and on the game's
 halves (`analyze.distinctiveness`), the held-out game was played with each model used once, a
