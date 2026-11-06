@@ -94,8 +94,10 @@ mac("nAnswers", f"{A['meta']['n_responses']:,}".replace(",", "{,}"))
 mac("nCoders", len(A["meta"]["coders"]))
 mac("coderA", tt(A["meta"]["coders"][1]))
 mac("coderB", tt(A["meta"]["coders"][0]))
-mac("costRun", f"\\${sum(v['total_cost_usd'] or 0 for v in A['runstats'].values()):.2f}")
-mac("costRunRepl", f"\\${sum(v['total_cost_usd'] or 0 for v in A0['runstats'].values()):.2f}")
+# what each run's answers cost: every logged call, including an answer collected twice (the analysis keeps the last)
+spend = lambda run: sum(r.get("cost_usd") or 0 for r in load_jsonl(DATA / run / "responses.jsonl"))  # noqa: E731
+mac("costRun", f"\\${spend(MAIN):.2f}")
+mac("costRunRepl", f"\\${spend(REPL):.2f}")
 first = min(r["timestamp"] for r in load_jsonl(DATA / REPL / "responses.jsonl"))
 second = min(r["timestamp"] for r in load_jsonl(DATA / MAIN / "responses.jsonl"))
 from datetime import datetime  # noqa: E402
@@ -826,7 +828,7 @@ mac("costHide", f"\\${vcost['hide']:.0f}")
 mac("costContagion", f"\\${vcost['contagion']:.0f}")
 mac("costDescribe", f"\\${desc_cost:.0f}")
 mac("costPortraits", f"\\${portrait_cost:.0f}")
-mac("costVTwo", f"\\${v2_cost:.0f}")
+mac("costVTwo", f"\\${v2_cost:.2f}")  # to the cent, like the two runs of the first set
 mac("nImitate", f"{sum(1 for r in voice_rows if r['experiment'] == 'imitate' and r.get('text')):,}".replace(",", "{,}"))
 mac("nHide", sum(1 for r in voice_rows if r["experiment"] == "hide" and r.get("text")))
 mac("nContagion", f"{sum(1 for r in voice_rows if r['experiment'] == 'contagion' and r.get('text')):,}".replace(",", "{,}"))
@@ -913,18 +915,24 @@ mac("pEightRtHigh", sum(x >= 0.8 for x in rt8))
 mac("pEightRtN", len(rt8))
 mac("pEightRtMedian", num(statistics.median(rt8)))
 
-# figure: the accent, model share against prompt share
-fig, ax = plt.subplots(figsize=(4.8, 3.2))
+# figure: the accent, the model's and the prompt's shares stacked, with Table 2's numbers in two columns on the right
+fig, ax = plt.subplots(figsize=(5.4, 3.3))
 tr = AC["traits"][::-1]
 yy = np.arange(len(tr))
-ax.barh(yy, [r["prompt_share"] for r in tr], color="#E3E7EE", height=0.7, label="the prompt")
-ax.barh(yy, [r["model_share"] for r in tr], color="#0072B2", height=0.7, label="the model")
+model_pc = np.array([100 * r["model_share"] for r in tr])
+prompt_pc = np.array([100 * r["prompt_share"] for r in tr])
+ax.barh(yy, model_pc, color="#0072B2", height=0.7, label="the model")
+ax.barh(yy, prompt_pc, left=model_pc, color="#C9D0DB", height=0.7, label="the prompt")
+for x, head in ((108, "model"), (124, "prompt")):  # the columns of Table 2, formatted the same way
+    ax.text(x, len(tr) - 0.3, head, ha="right", va="bottom", fontsize=6.5, color="#555555", clip_on=False)
 for yi, r in zip(yy, tr):
-    ax.text(r["prompt_share"] + 0.01, yi, f"{100 * r['model_share']:.1f}%", va="center", fontsize=6.5, color="#0072B2")
+    ax.text(108, yi, pct(r["model_share"]).replace("\\%", "%"), ha="right", va="center", fontsize=6.5, color="#0072B2", clip_on=False)
+    ax.text(124, yi, pct(r["prompt_share"], 0).replace("\\%", "%"), ha="right", va="center", fontsize=6.5, color="#555555", clip_on=False)
 ax.set_yticks(yy, [label_of[r["key"]] for r in tr])
-ax.set_xlim(0, 1)
-ax.set_xlabel("share of the variation between single answers explained by")
-ax.legend(frameon=False, fontsize=7, loc="lower right")
+ax.set_xlim(0, 100)
+ax.set_xticks(range(0, 101, 25), [f"{v}%" for v in range(0, 101, 25)])
+ax.set_xlabel("share of the variation between single answers (the rest: reactions and noise)")
+ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.17), ncol=2)
 save(fig, "fig_accent")
 
 # figure: family tree of the panel's voices
@@ -1025,7 +1033,10 @@ mac("repModel", pct(RP["median_shares"]["model"]))
 mac("repModelOne", pct(RP["median_one_answer"]["model"]))
 mac("repSig", RP["interaction_significant"])
 mac("repSigLater", RP["interaction_significant_later"])
-mac("repPExp", int(np.floor(np.log10(max(t["p"] for t in RP["traits"].values())))) + 1)  # every p < 10^this
+# the F tests, all answers and the same-day pair alone: the effect size is F; p is only checked against 0.001
+assert all(t["p"] < 0.001 and t["later_answers"]["p"] < 0.001 for t in RP["traits"].values())
+mac("repFMin", num(min(t["F"] for t in RP["traits"].values()), 1))
+mac("repFMax", num(max(t["F"] for t in RP["traits"].values()), 1))
 mac("ssPrompt", pct(RP["median_shares"]["prompt"], 0))
 mac("ssReact", pct(RP["median_shares"]["model_x_prompt"], 0))
 mac("ssNoise", pct(RP["median_shares"]["noise"], 0))
