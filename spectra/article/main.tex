@@ -260,7 +260,7 @@ The closest pair is \familyPair{}, on both prompt sets (distance \familyDist{} a
 \paragraph{Punctuation and words.}
 The accent sits in the surface of the text.
 A character classifier names the author of \abOriginal{} of single answers on unseen prompts; without markdown it still names \abNoMarkdown{}, without punctuation and symbols \abNoPunct{}, and with case and line breaks also removed \abBare{}.
-Shuffling the remaining words costs only \abShuffleDrop{} more points (\abShuffled{}; \abShuffledMatched{} naming each model once per prompt): beyond punctuation, the accent is vocabulary, not word order.
+Shuffling the remaining words costs only \abShuffleDrop{} more percentage points (\abShuffled{}; \abShuffledMatched{} naming each model once per prompt): beyond punctuation, the accent is vocabulary, not word order.
 
 \subsection{Models differ most in their reactions to prompts}
 \label{sec:reactions}
@@ -343,7 +343,7 @@ Adding portraits, notes on confused pairs, quoted openings or category notes to 
 Given the target's measured portrait, an imitation moves \imProfile{} of the way toward the target beyond self-imitation (\imProfileCI), against \imName{} from the name alone, and a classifier names the target \imNamedTargetProfile{} of the time.
 
 \paragraph{Measured habits make hiding work.}
-Told its own measured habits, a model hides far better: the classifier names \hideCoached{} of coached rewrites, \hideDrop{} points fewer than uncoached ones (\hideDropCI).
+Told its own measured habits, a model hides far better: the classifier names \hideCoached{} of coached rewrites, against \hideUncoached{} of uncoached ones, a drop of \hideDrop{} percentage points (\hideDropCI).
 
 \subsection{Accents are contagious}
 \label{sec:contagion}
@@ -355,18 +355,18 @@ Told its own measured habits, a model hides far better: the classifier names \hi
 \label{fig:contagion}
 \end{figure}
 
-After reading five answers by another model as notes, a model's answers moved \conShift{} of the way toward that model's accent (\conShiftCI), against answers after its own notes; the pre-registered test held, and a classifier's probability for the notes' author rose by \conProb{} points (\conProbCI).
+After reading five answers by another model as notes, a model's answers moved \conShift{} of the way toward that model's accent (\conShiftCI), against answers after its own notes; the pre-registered test held, and a classifier's probability for the notes' author rose by \conProb{} percentage points (\conProbCI).
 Trait by trait, the accent traits move more than the stereotyped ones (Figure~\ref{fig:contagion}): length (\conLength{} standard deviations), exclamations (\conExcl) and em dashes (\conDash) move toward the source, caveats (\conCaveat) and warm openers (\conWarm) do not; averaged, the pre-registered accent traits move \conAccent{} and the stereotyped ones \conStereo, exclamations being the one stereotyped habit that travels.
 Reading its own notes does not amplify a model's accent: measured along the axis from the panel toward the reader's own accent, its answers move \conSelf{} of the way (\conSelfCI), slightly away from its accent.
 
 \paragraph{Mostly content, partly voice.}
 Another model's notes differ from one's own in what they say as well as in how they say it, and the style swap separates the two as far as rewriting can.
 The rewrites changed the voice: a classifier named the rewriter of a rewritten note \swapRewriter{} of the time and its original author \swapAuthor{}, so the swap was real but partial.
-Between note sets meant to carry the same content, notes in the source's voice moved answers \swapVoice{} of the way toward the source (\swapVoiceCI; \swapVoiceNoLen{} with length left out), and the classifier's probability for the source rose \swapProb{} points (\swapProbCI); all three pre-registered tests held.
+Between note sets meant to carry the same content, notes in the source's voice moved answers \swapVoice{} of the way toward the source (\swapVoiceCI; \swapVoiceNoLen{} with length left out), and the classifier's probability for the source rose \swapProb{} percentage points (\swapProbCI); all three pre-registered tests held.
 Between note sets in the same voice, the source's content moved answers \swapContent{} of the way (\swapContentCI).
 Most of what spreads, then, is what the notes say and the form that content takes; a smaller part, above zero in every registered test, appears to be the voice itself.
 Rewriting kept the content only approximately, as we checked on names and numbers (post hoc): rewrites by another model kept \ccCrossKept{} of the original's, against \ccSelfKept{} when authors rewrote their own, and \ccCrossNovel{} of their names and numbers were new (\ccSelfNovel{} for self-rewrites).
-Such a loss, common to all rewrites by another model, cancels in the voice effect (Section~\ref{sec:contagion-method}); a rewriter carrying in its own content would not, and the new names and numbers came from the rewriter's own answer to that prompt no more often than from any other model's (\ccImported{} against \ccControl, a difference of \ccExcess{} points, \ccExcessCI).
+Such a loss, common to all rewrites by another model, cancels in the voice effect (Section~\ref{sec:contagion-method}); a rewriter carrying in its own content would not, and the new names and numbers came from the rewriter's own answer to that prompt no more often than from any other model's (\ccImported{} against \ccControl, a difference of \ccExcess{} percentage points, \ccExcessCI).
 The check cannot see meaning, emphasis or recommendations, so these residual differences limit a causal reading: the swap shows that voice can spread, more firmly than it fixes how much.
 With every note rewritten, the original effect reappears: notes wholly the source's move answers \swapSSOO{} of the way, against notes wholly the reader's.
 
@@ -397,7 +397,7 @@ It names \texttt{grok-4.7} \charEightGrok{} of the time and \texttt{kimi-k3} \ch
 Describing each other, the eight models' estimates follow the measured ranks only weakly (mean Spearman \pEightRank{}, above chance), overstate caveats \pEightCaveat{}-fold, show no self-advantage (\pEightSelf{} places), and see the widest sibling gap, \pEightEmMeasured{} standard deviations in em dashes between the two Claude models, as \pEightEmSeen{}: the wrong way round.
 
 \paragraph{Contagion reaches new readers, unequally.}
-As readers, the two newcomers moved \pEightConNew{} of the way toward the notes' author (\pEightConNewCI), and the classifier's probability for the author rose \pEightConProb{} points.
+As readers, the two newcomers moved \pEightConNew{} of the way toward the notes' author (\pEightConNewCI), and the classifier's probability for the author rose \pEightConProb{} percentage points.
 Readers differ widely (Figure~\ref{fig:readers}; exploratory).
 Measured in standard deviations along the axis, which unlike the fraction of the way does not inflate when reader and source already sound alike, \pEightMostReader{} moved \pEightMostRange{} toward the three sources, no other reader more than \pEightOthersMax, and \pEightLeastReader{} showed little or no measured movement toward the source (\pEightLeastRange).
 Because these are the original notes, the differences combine what the notes say with how they say it.
@@ -415,14 +415,14 @@ The new coder pair agrees less than the old one (answering first: $\kappa=\pEigh
 \end{table}
 With a held-out profile, the prompt explains about \iccRatioWord{} times as much of the variance in correctness as the guesser (intraclass correlations \iccPromptHeldPerm{} and \iccGuesserHeldPerm{}; Table~\ref{tab:difficulty}), and \catBottomHeldPerm{} prompts, tied to a given text or format, are hardest to place (Appendix Figure~\ref{fig:category}).
 With the held-out profile, \pairsShareHeldPerm{} of misses fall in \nPairs{} pairs: \pairsHeldPerm{}.
-Guessers that found their own answer named the others more often (\ownFoundBlind{} against \ownNotBlind{} blind); with prompt, guesser and author fixed, the gap shrinks from \ownRawBlind{} to \ownWithinBlind{} points (\ownWithinCIBlind), an association we cannot attribute to self-knowledge.
+Guessers that found their own answer named the others more often (\ownFoundBlind{} against \ownNotBlind{} blind); with prompt, guesser and author fixed, the gap shrinks from \ownRawBlind{} to \ownWithinBlind{} percentage points (\ownWithinCIBlind), an association we cannot attribute to self-knowledge.
 
 \subsection{Behavior under traps}
 \label{sec:traps}
 The profiles also record what each model does when a prompt hides a trap (Appendix Table~\ref{tab:traps}).
 Over both runs, \fpMissed{} of \fpTotal{} model--prompt pairs went along with a false premise, both by \fpModel{} on \fpPrompt{} (Appendix~\ref{app:walkthrough}).
 Pasted errors split the panel: \errPerfect{} flagged every one in both runs, and the misses concentrate on the summarizing prompts \errMissIds{}, where several models repeat the error or quietly correct it.
-One vague prompt, \ambNone{}, drew no question or stated assumption from any model; models fully agreed with a stated opinion on \agreeLow{}--\agreeHigh{} of such prompts and met stated limits on \limitsLow{} to \limitsHigh{} of them.
+One vague prompt, \ambNone{}, drew no question or stated assumption from any model; models fully agreed with a stated opinion on \agreeLow{} to \agreeHigh{} of such prompts and met stated limits on \limitsLow{} to \limitsHigh{} of them.
 
 \subsection{Reliability of the model coders}
 \label{sec:reliability}
@@ -590,7 +590,7 @@ In every check the reactions exceed the steady accent.
 \centering\small
 \caption{The word-and-style author classifier on prompts it was not trained on, run \texttt{oct-23-26}, with 95\% intervals over prompts. Chance is \chance.}
 \label{tab:classifier}
-\input{generated/tab_classifier.tex}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{\input{generated/tab_classifier.tex}}  % shrinks only if wider than the page
 \end{table}
 
 \begin{table}[htbp]

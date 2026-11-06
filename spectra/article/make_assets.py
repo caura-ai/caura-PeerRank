@@ -47,7 +47,13 @@ def pct(v, digits=1):
 
 
 def ci(pair, digits=1):
-    return f"{half_up(100 * pair[0], digits)}--{half_up(100 * pair[1], digits)}\\%"
+    """A percentage interval, written like every range in the paper: 'a% to b%'."""
+    return f"{pct(pair[0], digits)} to {pct(pair[1], digits)}".replace("-", "$-$")
+
+
+def pp_span(pair, digits=0, scale=100):
+    """An interval of percentage-point differences: 'a to b'."""
+    return " to ".join(half_up(scale * v, digits).replace("-", "$-$") for v in pair)
 
 
 def tt(name):
@@ -370,7 +376,7 @@ for name, e in effects.items():
     mac("ownRaw" + name, f"{100 * e['own_raw']:.0f}")
     mac("ownWithin" + name, f"{100 * e['own_within']['effect']:.0f}")
     lo, hi = e["own_within"]["ci"]
-    mac("ownWithinCI" + name, f"{100 * lo:.0f}--{100 * hi:.0f}")
+    mac("ownWithinCI" + name, pp_span((lo, hi)))
 ratio = round(effects["HeldPerm"]["icc"]["prompt"] / effects["HeldPerm"]["icc"]["guesser"])
 mac("iccRatioWord", ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][ratio])
 labels = {"Blind": "Blind", "Same": "Profile from the same answers", "HeldPerm": "Profile from other prompts",
@@ -771,9 +777,9 @@ mac("portraitSelf", pct(r1["accuracy_a"]))
 mac("portraitMeasured", pct(r1["accuracy_b"]))
 mac("portraitBlind", pct(r2["accuracy_b"]))
 mac("portraitPeer", pct(r3["accuracy_b"]))
-mac("portraitVsMeasured", f"{signed(100 * r1['gain'], 1)} points ({span(r1['ci'], 1, 100)})")
-mac("portraitVsBlind", f"{signed(100 * r2['gain'], 1)} points ({span(r2['ci'], 1, 100)})")
-mac("portraitVsPeer", f"{signed(100 * r3['gain'], 1)} points ({span(r3['ci'], 1, 100)})")
+mac("portraitVsMeasured", f"{signed(100 * r1['gain'], 1)} percentage points ({span(r1['ci'], 1, 100)})")
+mac("portraitVsBlind", f"{signed(100 * r2['gain'], 1)} percentage points ({span(r2['ci'], 1, 100)})")
+mac("portraitVsPeer", f"{signed(100 * r3['gain'], 1)} percentage points ({span(r3['ci'], 1, 100)})")
 mac("portraitPrompts", r1["prompts"])
 ph = E3["posthoc_vs_self"]
 mac("imDrift", way(ph["self_drift_toward_target"]["mean"]))
@@ -795,14 +801,14 @@ mac("hideUncoached", pct(acc4["UNCOACHED"]["mean"], 0))
 mac("hideUncoachedCI", ci(acc4["UNCOACHED"]["ci"], 0))
 mac("hideCoached", pct(acc4["COACHED"]["mean"], 0))
 mac("hideDrop", half_up(100 * E4["H3_coaching_hides_better"]["mean"], 0))
-mac("hideDropCI", f"{half_up(100 * E4['H3_coaching_hides_better']['ci'][0], 0)}--{half_up(100 * E4['H3_coaching_hides_better']['ci'][1], 0)}")
+mac("hideDropCI", pp_span(E4["H3_coaching_hides_better"]["ci"]))
 mac("hideHTwo", signed(E4["H2_stereotype_moves_more_than_accent"]["mean"]))
 mac("hideHTwoCI", span(E4["H2_stereotype_moves_more_than_accent"]["ci"]))
 c1_ = E5["C1_moves_toward_source"]
 mac("conShift", way(c1_["mean"]))
 mac("conShiftCI", wayspan(c1_["ci"]))
 mac("conProb", half_up(100 * E5["C2_classifier_leans_to_source"]["mean"], 1))
-mac("conProbCI", f"{half_up(100 * E5['C2_classifier_leans_to_source']['ci'][0], 1)}--{half_up(100 * E5['C2_classifier_leans_to_source']['ci'][1], 1)}")
+mac("conProbCI", pp_span(E5["C2_classifier_leans_to_source"]["ci"], 1))
 per = E5["C3_per_trait"]
 mac("conLength", signed(per["length"]["mean"]))
 mac("conExcl", signed(per["exuberance"]["mean"]))
@@ -841,7 +847,7 @@ names_v = {"portrait": "portraits", "pairs": "notes on confused pairs", "example
 lines = [f"{names_v[r['profile']]} & {pct(r['accuracy'])} & {pct(r['base_accuracy'])} & {signed(100 * r['gain'], 1)} "
          f"({span(r['ci'], 1, 100)}) \\\\" for r in sorted(pc, key=lambda r: -r["gain"])]
 (OUT / "tab_variants.tex").write_text(
-    "\\begin{tabular}{lrrr}\n\\toprule\nAdded to the profile & With it & Plain profile & Gain, points (95\\% CI) \\\\\n\\midrule\n"
+    "\\begin{tabular}{lrrr}\n\\toprule\nAdded to the profile & With it & Plain profile & Gain, percentage points (95\\% CI) \\\\\n\\midrule\n"
     + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}\n", encoding="utf-8")
 mac("variantBest", f"{signed(100 * max(r['gain'] for r in pc), 1)}")
 
@@ -873,7 +879,7 @@ REC_ROWS = [  # trait, which end, the preference, its trade-off
     ("answer_first", "high", "Leads with the answer", "little framing before the answer"),
     ("structure", "high", "Headings, lists and bold", "easy to scan; heavy for a short reply"),
     ("structure", "low", "Plain paragraphs", "harder to scan when long"),
-    ("readability", "high", "Plainer wording", "simpler sentences can lose precision; a gap of a few points"),
+    ("readability", "high", "Plainer wording", "simpler sentences can lose precision; a gap of a few reading-ease points"),
     ("hedging", "low", "Few hedges", "hedging is not calibration; fewer hedges can mean overstatement"),
     ("emdash", "low", "Few em dashes", "a habit some readers take as a mark of model text"),
 ]
@@ -1005,7 +1011,7 @@ mac("swapContent", way(SW["content"]["mean"], 1))
 mac("swapContentCI", wayspan(SW["content"]["ci"]))
 mac("swapSSOO", way(SW["ss_minus_oo"]["mean"], 1))
 mac("swapProb", half_up(100 * SW["classifier_voice"]["mean"], 1))
-mac("swapProbCI", f"{half_up(100 * SW['classifier_voice']['ci'][0], 1)}--{half_up(100 * SW['classifier_voice']['ci'][1], 1)}")
+mac("swapProbCI", pp_span(SW["classifier_voice"]["ci"], 1))
 mc = SW["manipulation_check"]
 assert mc["passed"]
 mac("swapRewriter", pct(mc["named_rewriter"]))
