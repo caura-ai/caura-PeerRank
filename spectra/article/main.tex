@@ -14,6 +14,7 @@
 \usepackage{placeins}  % \FloatBarrier keeps each appendix's floats inside its own section
 \usepackage{xcolor}
 \usepackage[numbers,sort&compress]{natbib}
+\usepackage{xurl}  % lets long URLs in the references break at any character
 \usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,urlcolor=blue!60!black]{hyperref}
 \emergencystretch=3em
 \providecommand{\bibfont}{}
@@ -58,7 +59,7 @@ Our later experiments were pre-registered, among them a test in which two models
 People who use language models daily notice how differently they write: one answers in two lines and another in two screens; one opens with the answer and another with a compliment; one is fond of em dashes and its sibling from the same vendor almost never uses them.
 These habits matter.
 Length and formatting shift what both human and model judges prefer \citep{zheng2023judging,dubois2024lengthcontrolled,lmsys2024stylecontrol}, word choices mark model-written text at scale \citep{kobak2024delving}, and models can be told apart from their writing with high accuracy \citep{sun2025idiosyncrasies}.
-Corpus linguists now describe the output of each model as an idiolect \citep{reinhart2025writelikehumans,rudnicka2026idiolect}.
+Corpus linguists now describe the output of each model as an idiolect \citep{rudnicka2026idiolect}.
 
 We call this voice an \emph{accent}, and ask three questions about it.
 \emph{Is it stable?} If a habit depends mostly on the prompt, it is not much of a voice.
@@ -66,7 +67,7 @@ We call this voice an \emph{accent}, and ask three questions about it.
 \emph{Does it spread?} Agents now read each other's output as notes, memory and retrieved context; if accents travel through that text, voices in multi-agent systems will blend.
 
 The answers are yes, barely, and yes.
-Our instrument, Spectra, measures \nStyleTraits{} style traits computed from the text and \nBehaviorTraits{} behaviors labeled by twocoder models outside the panel, on \nPrompts{} everyday prompts.
+Our instrument, Spectra, measures \nStyleTraits{} style traits computed from the text and \nBehaviorTraits{} behaviors labeled by two coder models outside the panel, on \nPrompts{} everyday prompts.
 Per answer, the prompt dominates: it explains a median \accentMedPrompt{} of the variation in a trait, and the model \accentMedModel{}.
 But the model's share is a steady shift, not noise: the order of the models holds in every task category, in a second run, and on a second prompt set that was locked before any answer to it existed.
 A small accent, consistently applied, is enough for a classifier, and for a model given a description, to name the author of most answers.
@@ -93,25 +94,28 @@ Finally, a model that reads another model's earlier answers as notes picks up pa
 
 \paragraph{Model voices.}
 Models write differently from humans and from each other in grammar and rhetoric \citep{reinhart2025writelikehumans}, along Biber's dimensions \citep{milicka2026stylisticvariation}, and in individual, idiolect-like patterns that shift between model generations \citep{rudnicka2026idiolect}; style words mark their text in the scientific literature \citep{kobak2024delving}, and \citet{shaib2025slop} give interpretable dimensions for low-quality model text.
-Some model vocabulary has no human author at all: ``vegetative electron microscopy'', a nonsense term born when the scanning of two 1950s papers joined words from neighboring columns and revived by a one-dot slip in Farsi translation, is what GPT-3 consistently writes to complete snippets of those papers, and it persists in later models \citep{snoswell2025vegetative}.
+Some model vocabulary has no human author at all: ``vegetative electron microscopy'', a nonsense term that, by one reconstruction, was born when the scanning of two 1950s papers joined words from neighboring columns and was apparently revived by a one-dot slip in Farsi translation, is what GPT-3 consistently writes to complete snippets of those papers, and it persists in later models \citep{snoswell2025vegetative}.
 Spectra adds a decomposition of each habit into model and prompt, tests its consistency where the prompt changes, and measures what models know about it.
 
 \paragraph{Telling models apart.}
-Attributing generated text began with naming which of $k$ generators wrote a passage \citep{uchendu2020attribution,uchendu2021turingbench,huang2024attributionsurvey}.
-A fine-tuned embedding classifier names the source among five chat model families with 97.1\% accuracy, and the signal survives rewriting \citep{sun2025idiosyncrasies}.
-VibeCheck \citep{dunlap2025vibecheck} scores qualitative differences with judges; LLMmap \citep{pasquini2025llmmap} and Hide and Seek \citep{iourovitski2024hideseek} identify models with crafted queries, and \citet{ko2026whosbehind} find that attribution degrades when domain and version shift.
+Prior work frames attribution of generated text as naming which of $k$ generators wrote a passage \citep{uchendu2020attribution,uchendu2021turingbench,huang2024attributionsurvey}.
+A fine-tuned embedding classifier names the source among five chat model families with 97.1\% accuracy, and the signal persists when another model rewrites, translates or summarizes the text \citep{sun2025idiosyncrasies}.
+VibeCheck \citep{dunlap2025vibecheck} scores qualitative differences with judges; LLMmap \citep{pasquini2025llmmap} and Hide and Seek \citep{iourovitski2024hideseek} identify models with crafted queries, and \citet{ko2026whosbehind} find that existing attribution methods degrade when the domain or model version shifts, and propose a more robust one.
 Peer evaluation measures identity and position effects when models grade each other \citep{margalit2026agentsaspeers}.
 We use identification as a check on descriptions, not as a goal.
 
 \paragraph{What models know about themselves.}
 Personality self-assessments of models shift with wording and option order \citep{gupta2024selfassessment}, though some are reliable under controlled prompting \citep{serapio2023personality,lee2025trait}.
 After fine-tuning, models predict their own behavior better than other models trained on it \citep{binder2024lookinginward}, and describe behaviors they were trained into \citep{betley2025tellme}.
-Model judges recognize and favor their own generations \citep{panickssery2024selfrecognition}, sometimes without consistent reasons \citep{ackerman2024recognize}, recognize better between two texts than from one \citep{zhou2025implicitexplicit}, or not at all, once style is controlled \citep{davidson2024selfrecognition,barkhordar2026stylenotself}; self-preference tracks familiarity \citep{wataoka2024selfpreference,goel2025thinkalike}.
+Model judges recognize and favor their own generations \citep{panickssery2024selfrecognition}, sometimes without consistent reasons \citep{ackerman2024recognize}, and recognize better between two texts than from one \citep{zhou2025implicitexplicit}.
+Other studies find no general or consistent self-recognition: judges pick the answer they consider best and often prefer stronger models' answers to their own \citep{davidson2024selfrecognition}, and in code, apparent self-recognition largely disappears once surface cues are normalized \citep{barkhordar2026stylenotself}.
+Judges favor text with lower perplexity, self-generated or not \citep{wataoka2024selfpreference}, and models whose mistakes resemble their own \citep{goel2025thinkalike}.
 We test descriptions against measured habits, with every model describing every other as a control, without fine-tuning.
 
 \paragraph{Imitating style.}
 Models imitate formal human writing reasonably and casual writing poorly from a few samples \citep{wang2025catchme}, and prompting strategy matters more than model size \citep{jemama2025imitate}.
-We found no study of one model imitating another's voice.
+ForgePrint \citep{yuan2026forgeprint} trains a rewriter that moves one model's output toward a chosen target model's fingerprint, as judged by attribution classifiers.
+We instead test whether unmodified frontier models can imitate one another while answering everyday prompts, given only the target's name or a measured profile.
 
 \paragraph{Accommodation and context.}
 Models converge toward the style of the conversation they continue, more than humans do \citep{blevins2026accommodate,blevins2026bothways}; humans drifting toward model style is modeled by \citet{thejaswi2026monoculture}.
@@ -119,8 +123,8 @@ Narrow in-context examples change model behavior on unrelated tasks \citep{afoni
 Contagion between models, through notes rather than dialogue, is to our knowledge unmeasured.
 
 \paragraph{Style in evaluation, and the traps.}
-Verbosity and position biases of model judges \citep{zheng2023judging}, length control \citep{dubois2024lengthcontrolled} and style control \citep{lmsys2024stylecontrol} motivate measuring style directly; YapBench measures length alone \citep{borisov2026yapbench}.
-Our traps follow dedicated benchmarks for sycophancy \citep{sharma2024sycophancy}, false premises \citep{hu2023falseqa}, ambiguity \citep{zhang2024clamber}, verifiable instructions \citep{zhou2023ifeval} and hedging \citep{zhou2024unreliable}, embedded in everyday prompts.
+Verbosity and position biases of model judges \citep{zheng2023judging}, length control \citep{dubois2024lengthcontrolled} and style control \citep{lmsys2024stylecontrol} motivate measuring style directly; YapBench measures excess length over a minimal sufficient answer \citep{borisov2026yapbench}.
+Our traps draw on prior work on sycophancy \citep{sharma2024sycophancy}, false premises \citep{hu2023falseqa}, ambiguity \citep{zhang2024clamber}, verifiable instructions \citep{zhou2023ifeval} and expressed uncertainty \citep{zhou2024unreliable}, adapted to everyday prompts.
 
 % =====================================================================
 \section{Method}
@@ -404,7 +408,7 @@ Measured in standard deviations along the axis, which unlike the fraction of the
 Because these are the original notes, the differences combine what the notes say with how they say it.
 
 \paragraph{A different coder.}
-The new coder pair agrees less than the old one (answering first: $\kappa=\pEightKappaAF$ against \pEightKappaAFOld), yet orders the six original models alike on every behavior (Spearman \pEightCodedRhoLow{} to \pEightCodedRhoHigh).
+The new coder pair agrees less than the old one (answering first: Cohen's $\kappa$ \citep{cohen1960kappa} of \pEightKappaAF{} against \pEightKappaAFOld), yet orders the six original models alike on every behavior (Spearman \pEightCodedRhoLow{} to \pEightCodedRhoHigh).
 
 \subsection{What limits recognition}
 \label{sec:difficulty}
@@ -433,7 +437,7 @@ One vague prompt, \ambNone{}, drew no question or stated assumption from any mod
 \label{tab:kappa}
 \input{generated/tab_kappa.tex}
 \end{table}
-Each trap label is scored only on the prompts carrying its trap (Table~\ref{tab:kappa} \citep{cohen1960kappa}), since elsewhere both coders answer ``not applicable'' and their agreement there would inflate $\kappa$ (over all answers, pasted errors would read \kappaERRAll{} and stated opinions \kappaOPAll).
+Each trap label is scored only on the prompts carrying its trap (Table~\ref{tab:kappa}), since elsewhere both coders answer ``not applicable'' and their agreement there would inflate $\kappa$ (over all answers, pasted errors would read \kappaERRAll{} and stated opinions \kappaOPAll).
 On their own prompts, agreement is high on pasted errors ($\kappa=\kappaERR$) and ambiguous requests (\kappaAMB), moderate on stated opinions (\kappaOP), and complete on false premises (\kappaFP), where \nFPChallenged{} of \nFPCoded{} answers challenge the premise, so that label says little about hard cases.
 On answering first ($\kappa=\kappaAF$) the coders disagree on \disagreeAF{} of answers, yet rank the models alike ($\rho=\rankAgreeAF$), and a third coder from another family, \tbCoder{}, labeling the \tbAnswers{} answers disputed on answering first or moral commentary, sided with \tbSideAF{} and left the order unchanged ($\rho$ of \tbRankAF).
 Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLow{} to \moralHigh{} of answers), the paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}; we draw no model-level conclusion from it.

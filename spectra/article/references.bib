@@ -1,6 +1,8 @@
 % References for the Spectra article.
 % Every entry was checked against its arXiv record, ACL Anthology page, publisher record (Crossref), PMLR or OpenReview
-% page, or its web page, on 24 and 25 Oct 2026. Author lists are complete.
+% page, or its web page, on 24 and 25 Oct 2026, and again against a third-party citation audit on 7 Nov 2026 (published
+% versions, DOIs and pages added; yuan2026forgeprint added). Author lists are complete. plainnat does not print
+% eprint fields, so arXiv IDs go in note; a day-level date goes in month so it prints once.
 
 % ---------------------------------------------------------------- telling models apart
 @inproceedings{sun2025idiosyncrasies,
@@ -23,6 +25,7 @@
   title     = {Authorship Attribution for Neural Text Generation},
   author    = {Uchendu, Adaku and Le, Thai and Shu, Kai and Lee, Dongwon},
   booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  pages     = {8384--8395},
   year      = {2020},
   doi       = {10.18653/v1/2020.emnlp-main.673}
 }
@@ -47,24 +50,33 @@
   title         = {Hide and Seek: Fingerprinting Large Language Models with Evolutionary Learning},
   author        = {Iourovitski, Dmitri and Sharma, Sanat and Talwar, Rakshak},
   year          = {2024},
-  eprint        = {2408.02871},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2408.02871}
+}
+
+@misc{yuan2026forgeprint,
+  title         = {Forging {LLM} Authorship Fingerprints with Targeted Rewriting},
+  author        = {Yuan, Haohan and Chen, Simin and Niu, Xi and Guo, Hanqing and Xu, Depeng and Zhang, Haopeng},
+  year          = {2026},
+  note          = {arXiv:2609.38831}
 }
 
 @misc{ko2026whosbehind,
   title         = {Who's Behind the Text? Robust Model Authorship Attribution},
   author        = {Ko, Minseok and Lee, Hyunseok and Song, Woomin and Kim, Beomjun and Shin, Jinwoo and Kim, Kunwoong},
   year          = {2026},
-  eprint        = {2610.19583},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2610.19583}
 }
 
-@misc{huang2024attributionsurvey,
+@article{huang2024attributionsurvey,
   title         = {Authorship Attribution in the Era of {LLMs}: Problems, Methodologies, and Challenges},
   author        = {Huang, Baixiang and Chen, Canyu and Shu, Kai},
+  journal       = {SIGKDD Explorations},
+  volume        = {26},
+  number        = {2},
+  pages         = {21--43},
   year          = {2024},
-  eprint        = {2408.08946},
-  archivePrefix = {arXiv}
+  doi           = {10.1145/3715073.3715076},
+  note          = {arXiv:2408.08946}
 }
 
 % ---------------------------------------------------------------- recognizing self and others
@@ -85,20 +97,19 @@
   doi       = {10.18653/v1/2024.findings-emnlp.703}
 }
 
-@misc{wataoka2024selfpreference,
+@inproceedings{wataoka2024selfpreference,
   title         = {Self-Preference Bias in {LLM}-as-a-Judge},
   author        = {Wataoka, Koki and Takahashi, Tsubasa and Ri, Ryokan},
+  booktitle     = {NeurIPS 2024 Workshop on Safe Generative {AI}},
   year          = {2024},
-  eprint        = {2410.21819},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2410.21819}
 }
 
 @misc{barkhordar2026stylenotself,
   title         = {Style, Not Self: Surface Cues Explain Zero-Shot Code Attribution by Large Language Models},
   author        = {Barkhordar, Ehsan and Thapa, Surendrabikram},
   year          = {2026},
-  eprint        = {2609.30048},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2609.30048}
 }
 
 @inproceedings{goel2025thinkalike,
@@ -121,37 +132,34 @@
   note      = {arXiv:2306.05685}
 }
 
-@misc{dubois2024lengthcontrolled,
+@inproceedings{dubois2024lengthcontrolled,
   title         = {Length-Controlled {AlpacaEval}: A Simple Way to Debias Automatic Evaluators},
   author        = {Dubois, Yann and Galambosi, Bal{\'a}zs and Liang, Percy and Hashimoto, Tatsunori B.},
+  booktitle     = {Conference on Language Modeling (COLM)},
   year          = {2024},
-  eprint        = {2404.04475},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2404.04475}
 }
 
 @misc{lmsys2024stylecontrol,
   title        = {Does Style Matter? Disentangling Style and Substance in {Chatbot Arena}},
   author       = {Li, Tianle and Angelopoulos, Anastasios and Chiang, Wei-Lin},
   year         = {2024},
-  month        = aug,
-  howpublished = {LMSYS Org blog, 29 August 2024, \url{https://lmsys.org/blog/2024-08-28-style-control/}}
+  month        = {29~August},
+  howpublished = {LMSYS Org blog, \url{https://lmsys.org/blog/2024-08-28-style-control/}}
 }
 
 @misc{borisov2026yapbench,
   title         = {Do Chatbot {LLMs} Talk Too Much? The {YapBench} Benchmark},
   author        = {Borisov, Vadim and Gr{\"o}ger, Michael and Mikhael, Mina and Schreiber, Richard H.},
   year          = {2026},
-  eprint        = {2601.00624},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2601.00624}
 }
 
 @misc{margalit2026agentsaspeers,
   title         = {Agents-as-Peers: Bias-Controlled {LLM} Evaluation as Multi-Agent Peer Assessment},
   author        = {Margalit, Yanki and Cohen-Inger, Nurit and Avram, Erni and Taig, Ran and Cohen, Seffi and Margalit, Oded},
   year          = {2026},
-  eprint        = {2602.02589},
-  archivePrefix = {arXiv},
-  note          = {Version 2, 20 Oct 2026}
+  note          = {arXiv:2602.02589v2}
 }
 
 % ---------------------------------------------------------------- the trap behaviors
@@ -184,7 +192,8 @@
 @inproceedings{zhou2024unreliable,
   title     = {Relying on the Unreliable: The Impact of Language Models' Reluctance to Express Uncertainty},
   author    = {Zhou, Kaitlyn and Hwang, Jena D. and Ren, Xiang and Sap, Maarten},
-  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages     = {3623--3643},
   year      = {2024},
   doi       = {10.18653/v1/2024.acl-long.198}
 }
@@ -193,8 +202,7 @@
   title         = {Instruction-Following Evaluation for Large Language Models},
   author        = {Zhou, Jeffrey and Lu, Tianjian and Mishra, Swaroop and Brahma, Siddhartha and Basu, Sujoy and Luan, Yi and Zhou, Denny and Hou, Le},
   year          = {2023},
-  eprint        = {2311.07911},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2311.07911}
 }
 
 % ---------------------------------------------------------------- vocabulary markers and measurement
@@ -214,8 +222,7 @@
   title         = {Measuring {AI} ``Slop'' in Text},
   author        = {Shaib, Chantal and Chakrabarty, Tuhin and Garcia-Olano, Diego and Wallace, Byron C.},
   year          = {2025},
-  eprint        = {2509.19163},
-  archivePrefix = {arXiv}
+  note          = {arXiv:2509.19163}
 }
 
 @article{chen2024behaviorchange,
@@ -225,24 +232,26 @@
   volume  = {6},
   number  = {2},
   year    = {2024},
+  doi     = {10.1162/99608f92.5317da47},
   note    = {arXiv:2307.09009}
 }
 
-@misc{atil2024stability,
-  title         = {Non-Determinism of ``Deterministic'' {LLM} Settings},
-  author        = {Atil, Berk and Aykent, Sarp and Chittams, Alexa and Fu, Lisheng and Passonneau, Rebecca J. and Radcliffe, Evan and Rajagopal, Guru Rajan and Sloan, Adam and Tudrej, Tomasz and Ture, Ferhan and Wu, Zhe and Xu, Lixinyu and Baldwin, Breck},
-  year          = {2024},
-  eprint        = {2408.04667},
-  archivePrefix = {arXiv},
-  note          = {Earlier versions titled ``{LLM} Stability: A Detailed Analysis with Some Surprises''}
+@inproceedings{atil2024stability,
+  title         = {Non-Determinism of ``Deterministic'' {LLM} System Settings in Hosted Environments},
+  booktitle     = {Proceedings of the 5th Workshop on Evaluation and Comparison of {NLP} Systems (Eval4NLP)},
+  pages         = {135--148},
+  doi           = {10.18653/v1/2025.eval4nlp-1.12},
+  author        = {At{\i}l, Berk and Aykent, Sarp and Chittams, Alexa and Fu, Lisheng and Passonneau, Rebecca J. and Radcliffe, Evan and Rajagopal, Guru Rajan and Sloan, Adam and Tudrej, Tomasz and Ture, Ferhan and Wu, Zhe and Xu, Lixinyu and Baldwin, Breck},
+  year          = {2025},
+  note          = {arXiv:2408.04667}
 }
 
 @misc{snoswell2025vegetative,
   title        = {A weird phrase is plaguing scientific papers -- and we traced it back to a glitch in {AI} training data},
   author       = {Snoswell, Aaron J. and Witzenberger, Kevin and El Masri, Rayane},
   year         = {2025},
-  month        = apr,
-  howpublished = {The Conversation, 15 April 2025, \url{https://theconversation.com/a-weird-phrase-is-plaguing-scientific-papers-and-we-traced-it-back-to-a-glitch-in-ai-training-data-254463}}
+  month        = {15~April},
+  howpublished = {The Conversation, \url{https://theconversation.com/a-weird-phrase-is-plaguing-scientific-papers-and-we-traced-it-back-to-a-glitch-in-ai-training-data-254463}}
 }
 
 @article{gilardi2023chatgpt,
@@ -251,7 +260,9 @@
   journal = {Proceedings of the National Academy of Sciences},
   volume  = {120},
   number  = {30},
+  pages   = {e2305016120},
   year    = {2023},
+  doi     = {10.1073/pnas.2305016120},
   note    = {arXiv:2303.15056}
 }
 
@@ -262,7 +273,8 @@
   volume  = {16},
   number  = {4},
   pages   = {372--403},
-  year    = {2008}
+  year    = {2008},
+  doi     = {10.1093/pan/mpn018}
 }
 
 @article{covington2010mattr,
@@ -315,7 +327,8 @@
   journal = {Journal of Machine Learning Research},
   volume  = {12},
   pages   = {2825--2830},
-  year    = {2011}
+  year    = {2011},
+  url     = {https://jmlr.org/papers/v12/pedregosa11a.html}
 }
 
 % ---------------------------------------------------------------- voice, self-knowledge, imitation, contagion
@@ -370,7 +383,8 @@
   title        = {Investigating the Ability of {LLMs} to Recognize Their Own Writing},
   author       = {Ackerman, Christopher and Panickssery, Nina},
   year         = {2024},
-  howpublished = {LessWrong and AI Alignment Forum, 30 July 2024}
+  month        = {30~July},
+  howpublished = {AI Alignment Forum and LessWrong, \url{https://www.alignmentforum.org/posts/ADrTuuus6JsQr5CSi/investigating-the-ability-of-llms-to-recognize-their-own}}
 }
 
 @misc{zhou2025implicitexplicit,
