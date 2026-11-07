@@ -45,7 +45,7 @@ Which model wrote an answer explains a median \accentMedModel{} of the variation
 With three answers per prompt, a larger part appears: each model reacts to particular prompts in its own repeatable way, \reactRatioLow{} to \reactRatio{} times as strongly as its steady accent, and generic habits such as warm openers barely differ between models overall but appear on different prompts for each.
 The accent lives in punctuation and word choice, and the models mishear it.
 Their descriptions of themselves and each other match the measurements only weakly (rank correlations of \descRankLow{} to \descRankHigh{}) and overstate generic AI habits, such as caveats \descCaveat{}-fold.
-Self-portraits let a reader recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
+Self-portraits let the strongest guesser recognize them \portraitSelf{} of the time, against \portraitBlind{} blind and \portraitMeasured{} with measured profiles; writing as another model, they move only \imName{} of the way toward it; asked to hide, they are still named \hideUncoached{} of the time.
 Measurement makes the accent usable: a measured profile moves imitations \imProfile{} of the way, and coaching on measured habits cuts identification to \hideCoached{}.
 Accents are also contagious: after reading another model's notes, answers move \conShift{} of the way toward its accent.
 A style swap that rewrites the notes to keep their content shows that most of this is what the notes say; their voice moves answers \swapVoice{} of the way, though rewriting cannot hold the content exactly fixed.
@@ -66,7 +66,7 @@ We call this voice an \emph{accent}, and ask three questions about it.
 \emph{Does it spread?} Agents now read each other's output as notes, memory and retrieved context; if accents travel through that text, voices in multi-agent systems will blend.
 
 The answers are yes, barely, and yes.
-Spectra measures \nStyleTraits{} style traits computed from the text and \nBehaviorTraits{} behaviors labeled by two coder models outside the panel, on \nPrompts{} everyday prompts.
+Our instrument, Spectra, measures \nStyleTraits{} style traits computed from the text and \nBehaviorTraits{} behaviors labeled by twocoder models outside the panel, on \nPrompts{} everyday prompts.
 Per answer, the prompt dominates: it explains a median \accentMedPrompt{} of the variation in a trait, and the model \accentMedModel{}.
 But the model's share is a steady shift, not noise: the order of the models holds in every task category, in a second run, and on a second prompt set that was locked before any answer to it existed.
 A small accent, consistently applied, is enough for a classifier, and for a model given a description, to name the author of most answers.
@@ -154,11 +154,12 @@ Signature words come from log-odds with an informative Dirichlet prior \citep{mo
 \subsection{The accent}
 \label{sec:accent-method}
 For each everyday trait (all but the traps and limit adherence) we split the variation between single answers, on prompts every model answered, into the part explained by which model wrote the answer and the part explained by which prompt it answers (two-way main effects); the rest is a model's reaction to a particular prompt plus noise.
+Two sets of style traits, fixed from the main run in the phase 2 pre-registration, recur in the results: the \emph{accent traits}, on which the model explains 5\% or more of the variation (\accentSetList), and the \emph{stereotyped traits}, the habits AI writing is known for, on which it explains 2\% or less (\stereoSetList).
 Kendall's $W$ measures whether the \nCategories{} categories rank the models alike (0 none, 1 perfect), and a Spearman correlation whether the order of the model means survives into another run or prompt set.
 A model's \emph{accent card} lists its departures of $|d|\ge 0.2$ that hold on the same side of the panel in at least 80\% of categories.
 Distances between models over the everyday traits' effect sizes, joined by average linkage, give a family tree.
 \paragraph{Three answers per prompt.}
-To separate a model's reactions from noise, every model answered each prompt of the main run twice more (pre-registered), and a two-way analysis of variance with replication splits each of the \repNTraits{} style traits into the model, the prompt, the model's \emph{reaction} to the prompt (the model-by-prompt interaction) and noise.
+To separate a model's reactions from noise, every model answered each prompt of the main run twice more (pre-registered), and a two-way analysis of variance with replication splits each of the \repNTraits{} style traits other than limit adherence into the model, the prompt, the model's \emph{reaction} to the prompt (the model-by-prompt interaction) and noise.
 An $F$ test compares the reactions with the noise (pre-registered).
 Since sums of squares hand a third of the noise to the interaction when there are three answers, we also report each part's share of a single answer's variance, estimated from expected mean squares, with intervals from \bootReps{} resamples of prompts and three robustness checks (post hoc; formulas in Appendix~\ref{app:variance}).
 A model's \emph{self-consistency} is the share of its own variation that lies between prompts rather than between repeat answers to one prompt.
@@ -174,7 +175,7 @@ As references, logistic-regression author classifiers \citep{pedregosa2011sklear
 \subsection{Can models hear accents?}
 \label{sec:hearing-method}
 \paragraph{Describe.}
-Each model describes its own writing and every other model's: a written portrait and numeric estimates of \nEstimates{} traits we measure, scored by rank against the measurements; every model is described by five others, which controls for describing oneself.
+Each model describes its own writing and every other model's: a written portrait and numeric estimates of \nEstimates{} of the measured traits (\descEstimateList), scored by rank against the measurements; every model is described by five others, which controls for describing oneself.
 Five samples were collected, the later ones with the panel and estimates listed in a shuffled order.
 \paragraph{Recognize from portraits.}
 The strongest guesser, \texttt{gemini-4-argon}, plays the game with its brief replaced by the portraits: each model's portrait of itself, or of it by another model (never argon), and is compared with its own blind and measured-profile games on the same prompts.
@@ -238,7 +239,7 @@ The model matters most for \accentTopTrait{} (\accentTopShare{}) and length (\ac
 \paragraph{Steady everywhere.}
 The model's share is small but it does not wander (Table~\ref{tab:accent}).
 The categories rank the models alike on em dashes ($W=\accentEmdashW$) and length ($W=\accentLengthW$), but not on caveats ($W=\accentCaveatW$) or warm openers ($W=\accentWarmW$).
-From one run to the next, \accentRtHigh{} of \accentRtN{} traits keep the order of the six models at Spearman 0.89 or higher (median \accentRtMedian{}).
+From one run to the next, \accentRtHigh{} of \accentRtN{} traits keep the order of the six models at Spearman \accentRtThreshold{} or higher, as rounded in Table~\ref{tab:accent} (median \accentRtMedian{}).
 On the locked second prompt set, the pre-registered test held: \vTwoAccentPass{} accent traits kept the order of the first set (\vTwoAccentList{}), and the median model share was \vTwoMedModel{} (prompt \vTwoMedPrompt{}).
 The least stable habits are again the generic ones: caveats keep their order at only \vTwoCaveatRt{}.
 
@@ -273,7 +274,7 @@ Shuffling the remaining words costs only \abShuffleDrop{} more percentage points
 \end{figure}
 
 \paragraph{The steady accent replicates.}
-With three answers to every prompt, the model's median share of the variation is \repModel{}, as with one answer on the same prompts (\repModelOne; pre-registered).
+With three answers to every prompt, the model's median share of the variation over the \repNTraits{} style traits is \repModel{}, as with one answer on the same prompts (\repModelOne; pre-registered); the \accentMedModel{} of Section~\ref{sec:accent} is the median over all \accentNTraits{} everyday traits, behaviors included.
 What one answer could not separate now splits in two: a model's reaction to a particular prompt is significant against the noise between its repeat answers on all \repSig{} of \repNTraits{} style traits, and on all \repSigLater{} with only the two answers collected on the same day (pre-registered $F$ tests, $F$ from \repFMin{} to \repFMax{}, all $p<0.001$).
 
 \paragraph{Reactions outweigh the steady accent.}
@@ -302,7 +303,7 @@ Models also differ in how much they repeat themselves: \consHighModel{} is the m
 
 \paragraph{They cannot describe them.}
 Across \descSamples{} samples of \descNPerSample{} descriptions, the describers' estimates rank the panel above chance but weakly, at mean Spearman correlations of \descRankLow{} to \descRankHigh{}.
-They describe the stereotype of AI writing: in the pre-registered sample, the median estimate overstates caveats \descCaveat{}-fold and warm openings \descWarm{}-fold, and understates how often models flag a pasted error (\descErrors{} times the measured rate); the prediction held in \descHFiveAll{} of four samples.
+They describe the stereotype of AI writing: in the pre-registered sample, the median estimate overstates caveats \descCaveat{}-fold and warm openings \descWarm{}-fold, and understates how often models flag a pasted error (\descErrors{} times the measured rate); registered after the first of the five samples, this prediction held in \descHFiveAll{} of the four that followed.
 They know behavior better than style (rank \descBehaviorRank{} against \descStyleRank{}), and the habits that carry the accent least of all: the widest gap between siblings, \descEmGapMeasured{} standard deviations in em dashes, is seen as \descEmGapSeen{}.
 In its estimates, no model knows itself better than others know it: across samples, a model's own placement differs from the others' placement of it by between \descSelfLow{} and \descSelfHigh{} places, in both directions.
 The best guesser in the game describes itself worst: \texttt{gemini-4-argon} places itself \argonSelfPlaces{} places off on average, the others \argonOthersPlaces.
@@ -434,7 +435,7 @@ One vague prompt, \ambNone{}, drew no question or stated assumption from any mod
 \end{table}
 Each trap label is scored only on the prompts carrying its trap (Table~\ref{tab:kappa} \citep{cohen1960kappa}), since elsewhere both coders answer ``not applicable'' and their agreement there would inflate $\kappa$ (over all answers, pasted errors would read \kappaERRAll{} and stated opinions \kappaOPAll).
 On their own prompts, agreement is high on pasted errors ($\kappa=\kappaERR$) and ambiguous requests (\kappaAMB), moderate on stated opinions (\kappaOP), and complete on false premises (\kappaFP), where \nFPChallenged{} of \nFPCoded{} answers challenge the premise, so that label says little about hard cases.
-On answering first ($\kappa=\kappaAF$) the coders disagree on \disagreeAF{} of answers, yet rank the models alike ($\rho=\rankAgreeAF$), and a third coder from another family, \tbCoder{}, labeling the \tbAnswers{} disputed answers, sided with \tbSideAF{} and left the order unchanged ($\rho$ of \tbRankAF).
+On answering first ($\kappa=\kappaAF$) the coders disagree on \disagreeAF{} of answers, yet rank the models alike ($\rho=\rankAgreeAF$), and a third coder from another family, \tbCoder{}, labeling the \tbAnswers{} answers disputed on answering first or moral commentary, sided with \tbSideAF{} and left the order unchanged ($\rho$ of \tbRankAF).
 Moral commentary has a low $\kappa$ ($\kappaMoral$) because it is rare (\moralLow{} to \moralHigh{} of answers), the paradox of high agreement with low $\kappa$ \citep{feinstein1990paradox}; we draw no model-level conclusion from it.
 
 % =====================================================================
@@ -640,7 +641,7 @@ Table~\ref{tab:profile} lists selected traits for each model, Table~\ref{tab:tra
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{generated/fig_stylemap.pdf}
-\caption{Style map of the 16 style features, run \texttt{oct-23-26}. Left: every answer, with model averages as large dots. Right: the averages alone, zoomed. The first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.}
+\caption{Style map of \nStyleFeatures{} numeric style features, run \texttt{oct-23-26}: the measures behind most style traits, plus sentence length and counts of headers, list items, bold spans and code blocks. Left: every answer, with model averages as large dots. Right: the averages alone, zoomed. The first principal component, \pcOneVar{} of the variance, runs from \pcOneNeg{} towards \pcOnePos{}.}
 \label{fig:stylemap}
 \end{figure}
 \FloatBarrier

@@ -319,6 +319,8 @@ for name, analysis in (("", A), ("Repl", A0)):
         mac("confAuthor", tt(best[0]))
         mac("confNamed", tt(best[1]))
 mac("chance", pct(1 / len(models)))
+from spectra.analyze import NUMERIC_STYLE_COLS  # noqa: E402
+mac("nStyleFeatures", len(NUMERIC_STYLE_COLS))
 mac("pcOneVar", pct(A["style_map"]["variance"][0], 0))
 mac("pcTwoVar", pct(A["style_map"]["variance"][1], 0))
 mac("pcOnePos", ", ".join(A["style_map"]["axes"]["pc1"]["pos"]))
@@ -698,7 +700,12 @@ mac("accentCaveatW", num(rows_ac["caveats"]["category_w"]))
 mac("accentWarmW", num(rows_ac["warm_open"]["category_w"]))
 rt = [r["run_to_run"] for r in AC["traits"] if r["run_to_run"] is not None]
 mac("accentRtMedian", num(statistics.median(rt)))
-mac("accentRtHigh", sum(x >= 0.89 for x in rt))
+RT_HIGH = 0.90  # counted on the values as Table 2 prints them (two decimals), so the text and the table agree
+mac("accentRtHigh", sum(round(x, 2) >= RT_HIGH for x in rt))
+mac("accentRtThreshold", num(RT_HIGH))
+# the two trait sets fixed in the phase 2 pre-registration, by model share among the style traits
+mac("accentSetList", ", ".join(label_of[k].lower() for k in ACCENT_KEYS))
+mac("stereoSetList", ", ".join(label_of[k].lower() for k in STEREO_KEYS))
 mac("accentRtN", len(rt))
 v2_accent = [rows_v2[k]["run_to_run"] for k in ACCENT_KEYS]
 mac("vTwoAccentList", ", ".join(f"{label_of[k].lower()} {num(rows_v2[k]['run_to_run'])}" for k in ACCENT_KEYS))
@@ -744,6 +751,7 @@ mac("curveTwenty", pct(ATT["curve"]["20"]["matched_accuracy"]))
 # describing: the first pre-registration's samples 0-1 and this one's 2-4
 from spectra.describe import ESTIMATES  # noqa: E402
 mac("nEstimates", len(ESTIMATES))
+mac("descEstimateList", ", ".join(label_of[key].lower() for key, *_ in ESTIMATES.values()))
 desc = {0: json.loads((DATA / MAIN / "descriptions.json").read_text(encoding="utf-8"))}
 for s in (1, 2, 3, 4):
     desc[s] = json.loads((DATA / MAIN / f"descriptions-s{s}.json").read_text(encoding="utf-8"))
@@ -917,7 +925,7 @@ T8a = {t["key"]: t for t in A8["traits"]}
 mac("pEightGrokLen", f"{T8a['length']['per_model']['grok-4.7']['value']:.0f}")
 mac("pEightGrokAF", pct(T8a["answer_first"]["per_model"]["grok-4.7"]["value"], 0))
 rt8 = [rows_8v2[k]["run_to_run"] for k in rows_8v2 if rows_8v2[k]["run_to_run"] is not None]
-mac("pEightRtHigh", sum(x >= 0.8 for x in rt8))
+mac("pEightRtHigh", sum(round(x, 2) >= 0.8 for x in rt8))  # as the table prints them
 mac("pEightRtN", len(rt8))
 mac("pEightRtMedian", num(statistics.median(rt8)))
 
